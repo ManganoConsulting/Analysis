@@ -1,0 +1,418 @@
+classdef AxisPanel < matlab.mixin.Copyable & hgsetget
+    
+    %% Public properties - Object Handles
+    properties   
+        Parent
+        Panel
+        Axis
+        Title
+        LabelComp
+        LabelCont
+    end % Public properties
+  
+    %% Private properties
+    properties ( Access = private )      
+        PrivateVisible
+    end % Public properties
+        
+    %% Read-only properties
+    properties ( GetAccess = public, SetAccess = private, Hidden = true )
+
+        
+    end % Read-only properties
+    
+    %% Hidden Properties
+    properties (Hidden = true)
+        
+    
+    end % Hidden properties
+
+    %% Dependant properties
+    properties (Dependent = true)
+        Visible
+        Position
+        Units
+        
+        HTMLTitle
+    end % Dependant properties
+    
+    %% Events
+    events
+        AxisEvent
+    end % Events
+    
+    %% Methods - Constructor
+    methods      
+        function obj = AxisPanel(varargin) 
+            if nargin == 0
+               return; 
+            end  
+            p = inputParser;
+            addParameter(p,'Parent',gcf);
+            addParameter(p,'Title','',@ischar);
+            addParameter(p,'Units','Normalized',@ischar);
+            addParameter(p,'Position',[0,0,1,1]);
+            checknumAx = @(x) any(x == [1,2,3,4]);
+            addParameter(p,'NumOfAxis',4,checknumAx);
+            orientationErrorStr = 'Value must be Horizontal, Vertical, or Grid(Default)';
+            checkOrientation = @(x) assert(any(strcmp(x,{'Horizontal','Vertical','Grid'})),orientationErrorStr);
+            addParameter(p,'Orientation','Grid',checkOrientation); % Horizontal,Vertical,Grid(Default)
+            p.KeepUnmatched = true;
+            parse(p,varargin{:});
+            options = p.Results;
+
+            obj.Title = options.Title;
+            obj.Parent = options.Parent;
+            obj.Panel = uipanel('Parent',obj.Parent,'Units', options.Units,'Position',options.Position);
+            set(obj.Parent,'ResizeFcn',@obj.reSize);
+            
+            numOfAxis = options.NumOfAxis;
+            orientation = options.Orientation;
+            
+            switch orientation
+                case {'Grid'}
+                    axisGrid( obj , numOfAxis );
+                case {'Horizontal'}
+                    axisHorizontal( obj , numOfAxis );
+                case {'Vertical'}
+                    obj.Panel.ButtonDownFcn = @obj.buttonClickInPanel;
+                    axisVertical( obj , numOfAxis );         
+            end
+        end % AxisPanel
+    end % Constructor
+
+    %% Methods - Property Access
+    methods
+        function set.Visible(obj,value)
+            obj.PrivateVisible = value;
+            if value
+                set(obj.Panel,'Visible','on');
+            else
+                set(obj.Panel,'Visible','off');
+            end            
+        end % Visible - Set
+        
+        function y = get.Visible(obj)
+            y = obj.PrivateVisible;          
+        end % Visible - Get
+        
+        function set.Position(obj,pos)
+            set(obj.Panel,'Position',pos);
+        end % Position - Set
+        
+        function y = get.Position(obj)
+            y = get(obj.Panel,'Position');
+        end % Position - Get
+        
+        function set.Units(obj,units)
+            set(obj.Panel,'Units',units);
+        end % Units -Set
+        
+        function y = get.Units(obj)
+            y = set(obj.Panel,'Units');
+        end % Units -Get
+        
+        function y = get.HTMLTitle(obj)
+            y = ['<html><font color="black" face="Courier New" size = 10 >&nbsp;',obj.Title,'</html>'];
+        end % HTMLTitle
+        
+    end % Property access methods
+   
+    %% Methods - Ordinary
+    methods 
+      
+        function setTitle( obj , title ) 
+            obj.Title = title;
+            obj.LabelComp.setText(obj.HTMLTitle)
+        end % setTitle
+        
+        function reSize( obj , ~ , ~ )
+
+        end % reSize
+      
+        
+    end % Ordinary Methods
+    
+    %% Methods - Delete
+    methods
+%         function delete( obj )
+%             try
+%                 
+%                 %delete(handle(obj.Axis));
+%             end
+%         end
+    end
+    
+    %% Methods - Protected
+    methods (Access = protected) 
+        
+        function update(obj)
+
+        end % update
+        
+        function buttonClickInPanel( obj , hobj , eventdata )            
+            hcmenu = uicontextmenu;
+            uimenu(hcmenu,'Label','View all logged signals','UserData',hobj,'Callback',@obj.showSimViewer);
+            hobj.UIContextMenu = hcmenu;
+        end % buttonClickInPanel
+        
+        function showSimViewer( obj , hobj , eventdata )
+            notify(obj,'AxisEvent',UserInterface.AxisEventData('SimViewerLaunch',obj.Title,[]));
+
+        end % showSimViewer
+        
+        function buttonClickInAxis( obj , hobj , eventdata )            
+            hcmenu = uicontextmenu;
+            uimenu(hcmenu,'Label','Undock','UserData',hobj,'Callback',@obj.unDockAxis);
+            uimenu(hcmenu,'Label','Change Axis Limits','UserData',hobj,'Callback',@obj.changeAxisLimits);
+            hobj.UIContextMenu = hcmenu;
+        end % buttonClickInAxis
+        
+        function unDockAxis( obj , hobj , eventdata )
+            
+            newfH  = figure( ...
+                'Name', hobj.UserData.Title.String, ...
+                'NumberTitle', 'off');
+
+            leg = hobj.UserData.UserData;
+            newAxH = copyobj([hobj.UserData,leg],newfH);
+            drawnow();pause(0.5);
+            newAxH(1).Units = 'Normal';
+            newAxH(1).OuterPosition = [ 0 , 0 , 1 , 1 ];
+            drawnow();pause(0.5);
+            delete ( findobj ( ancestor(hobj,'figure','toplevel'), 'type','uicontextmenu' ) );
+            delete ( findobj ( ancestor(newAxH(1),'figure','toplevel'), 'type','uicontextmenu' ) );
+        end % unDockAxis
+        
+        function changeAxisLimits( obj , hobj , eventdata )
+            
+%             xlim = hobj.UserData.XLim;
+%             ylim = hobj.UserData.YLim;
+%             
+%             
+%             prompt = {'X Lower Limit:','X Upper Limit:','Y Lower Limit:','Y Upper Limit:'};
+%             dlg_title = 'Input';
+%             num_lines = 1;
+%             defaultans = {num2str(xlim(1)),num2str(xlim(2)),num2str(ylim(1)),num2str(ylim(2))};
+%             answer = inputdlg(prompt,dlg_title,num_lines,defaultans); 
+%             if isempty(answer)
+%                 return;
+%             end
+%             try
+            UserInterface.SetAxesProperties(hobj.UserData);
+%                 uiwait(axPropGUI.Parent);
+%                 
+% 
+%                 
+%                 newXlim = [str2double(answer{1}),str2double(answer{2})];
+%                 newYlim = [str2double(answer{3}),str2double(answer{4})];
+% 
+%                 hobj.UserData.XLim = newXlim;
+%                 hobj.UserData.YLim = newYlim; 
+%             end
+        end % changeAxisLimits
+        
+    end
+    
+    %% Methods - Private
+    methods (Access = private)
+        
+        function axisGrid( obj , numOfAxis )
+            if numOfAxis == 4
+                obj.Axis(1) = axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [0,0.5,0.5,0.5] );
+                obj.Axis(2) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [0.5,0.5,0.5,0.5] );
+                obj.Axis(3) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [0,0,0.5,0.5] );
+                obj.Axis(4) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [0.5,0,0.5,0.5] );
+            elseif numOfAxis == 3
+                obj.Axis(1) = axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [0,0.5,0.5,0.5] );
+                obj.Axis(2) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [0.5,0.5,0.5,0.5] );
+                obj.Axis(3) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [0,0,1,0.5] );
+            elseif numOfAxis == 2
+                obj.Axis(1) = axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [0,0.5,1,0.5] );
+                obj.Axis(2) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [0,0,1,0.5] );
+            elseif numOfAxis == 1
+                obj.Axis(1) = axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [0,0,1,1] );
+
+            end
+        end % axisGrid
+        
+        function axisHorizontal( obj , numOfAxis )
+            if numOfAxis == 4
+                obj.Axis(1) = axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ 0 , 0 , 0.25 , 1 ]  );
+                obj.Axis(2) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ 0.25 , 0 , 0.25 , 1 ]);
+                obj.Axis(3) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ 0.5 , 0 , 0.25 , 1 ] );
+                obj.Axis(4) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ 0.75 , 0 , 0.25 , 1 ] );
+            elseif numOfAxis == 3
+                obj.Axis(1) = axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ 0 , 0 , 0.33 , 1 ] );
+                obj.Axis(2) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ 0.33 , 0 , 0.33 , 1 ] );
+                obj.Axis(3) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ 0.66 , 0 , 0.34 , 1 ] );
+            elseif numOfAxis == 2
+                obj.Axis(1) = axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ 0 , 0 , 0.5 , 1 ] );
+                obj.Axis(2) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ 0.5 , 0 , 0.5 , 1 ] );
+            elseif numOfAxis == 1
+                obj.Axis(1) = axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ 0 , 0 , 1 , 1 ] );
+
+            end
+        end % axisHorizontal
+        
+        function axisVertical( obj , numOfAxis )
+%             if isempty(obj.Title)
+%                 offset = 0;
+%             else
+                offset = 0.05;
+                
+                
+%             labelStr = '<html><font color="black" face="Courier New" size = 10 >&nbsp;Status Window</html>';
+            jLabelview = javaObjectEDT('javax.swing.JLabel',obj.HTMLTitle);
+%             JLabel label = new JLabel("Label");
+            jLabelview.setUI(VerticalLabelUI());
+            
+            jLabelview.setOpaque(true);
+%             jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
+            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+%             jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
+            [obj.LabelComp,obj.LabelCont] = javacomponent(jLabelview,[], obj.Panel );
+            set(obj.LabelCont,'Units','Normal','Position',[ 0 , 0 , offset , 1 ]);
+               
+         
+%             end
+            if numOfAxis == 4
+                obj.Axis(1) = axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ offset , 0.75 , 1 - offset , 0.25 ] );
+                obj.Axis(2) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ offset , 0.5 , 1 - offset , 0.25 ] );
+                obj.Axis(3) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ offset , 0.25 , 1 - offset , 0.25 ] );
+                obj.Axis(4) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ offset , 0 , 1 - offset , 0.25 ] );
+            elseif numOfAxis == 3
+                obj.Axis(1) = axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ offset , 0.66 , 1 - offset , 0.33 ] );
+                obj.Axis(2) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ offset , 0.33 , 1 - offset , 0.33 ] );
+                obj.Axis(3) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ offset , 0 , 1 - offset , 0.34 ] );
+            elseif numOfAxis == 2
+                obj.Axis(1) = axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ offset , 0.5 , 1 - offset , 0.5 ] );
+                obj.Axis(2) =axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ offset , 0 , 1 - offset , 0.5 ] );
+            elseif numOfAxis == 1
+                obj.Axis(1) = axes('Parent',obj.Panel,...
+                    'Units', 'Normalized',...
+                    'Visible','off',...
+                    'ButtonDownFcn',@obj.buttonClickInAxis,...
+                    'OuterPosition', [ offset , 0 , 1 - offset , 1 ] );
+
+            end
+        end % axisVertical
+        
+    end
+end
