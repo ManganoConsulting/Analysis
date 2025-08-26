@@ -31,8 +31,10 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
         
         ShowInvalidTrimJCheckbox
         ShowLogSignalsJCheckbox
-        
+
         PlotJButton
+
+        GenerateReportJButton
 
     end % Public properties
   
@@ -116,6 +118,8 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
 
         TabPanelChanged
         ExportTable
+
+        GenerateReport
         
         NewProject
         LoadProject
@@ -339,11 +343,26 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
                 clrTblButton.setMargin(java.awt.Insets(0, 0, 0, 0));
                 obj.JRibbonPanel.add(clrTblButton);
                 clrTblButton.setBounds(224,39,95,20);
-                obj.MainJButton = clrTblButton;     
+                obj.MainJButton = clrTblButton;
 
-                % ClearSel Button             
+                % Generate Report Button
+                genRptButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
+                genRptButton.setText('Generate Report');
+                genRptButtonH = handle(genRptButton,'CallbackProperties');
+                set(genRptButtonH,'ActionPerformedCallback',@obj.generateReport_CB);
+                myIcon = fullfile(icon_dir,'report_app_24.png');
+                genRptButton.setIcon(javax.swing.ImageIcon(myIcon));
+                genRptButton.setToolTipText('Generate analysis report');
+                genRptButton.setBorder([]);
+                genRptButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.HORIZONTAL);
+                genRptButton.setMargin(java.awt.Insets(0, 0, 0, 0));
+                obj.JRibbonPanel.add(genRptButton);
+                genRptButton.setBounds(224,63,120,20);
+                obj.GenerateReportJButton = genRptButton;
+
+                % ClearSel Button
                 clrTblSelJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-                clrTblSelJButton.setText('');        
+                clrTblSelJButton.setText('');
                 clrTblSelJButtonH = handle(clrTblSelJButton,'CallbackProperties');
                 set(clrTblSelJButtonH, 'ActionPerformedCallback',@obj.clearSelect_CB)
                 myIcon = fullfile(icon_dir,'arrowDown_16.png');
@@ -1024,8 +1043,12 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
         
         function exportTableM_CB( obj , ~ , ~ )
             notify(obj,'ExportTable',UserInterface.UserInterfaceEventData('m'));
-        end % exportTableCSV_CB  
-        
+        end % exportTableCSV_CB
+
+        function generateReport_CB( obj , ~ , ~ )
+            notify(obj,'GenerateReport');
+        end % generateReport_CB
+
         function settingsButton_CB( obj , ~ , ~ )
             this_dir = fileparts( mfilename( 'fullpath' ) );
             icon_dir = fullfile( this_dir,'..','..','Resources' );
