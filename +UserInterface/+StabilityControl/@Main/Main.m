@@ -1301,6 +1301,67 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             obj.generateReport();
         end % generateReport_CB
 
+        function generateReport( obj )
+
+            operCondColl = obj.OperCondCollObj(obj.AnalysisTabSelIndex);
+
+            [fileName, pathName] = uiputfile( ...
+                {'*.docx'; '*.pdf'}, ...
+                'Save Report', 'StabilityReport.docx');
+
+            if isequal(fileName,0) || isequal(pathName,0)
+                return;
+            end
+
+            fullName = fullfile(pathName, fileName);
+
+            try
+                rpt = Report.Report(fullName);
+                addTOC(rpt);
+                addOperCondTable(rpt, operCondColl.OperatingCondition, operCondColl.TableColumnNames);
+
+                axisSets = {};
+                if ~isempty(obj.AxisColl) && numel(obj.AxisColl) >= obj.AnalysisTabSelIndex
+                    axisSets{end+1} = obj.AxisColl(obj.AnalysisTabSelIndex);
+                end
+                if ~isempty(obj.PostSimAxisColl) && numel(obj.PostSimAxisColl) >= obj.AnalysisTabSelIndex
+                    axisSets{end+1} = obj.PostSimAxisColl(obj.AnalysisTabSelIndex);
+                end
+
+                for s = 1:numel(axisSets)
+                    axQueue = axisSets{s}.AxisHandleQueue;
+                    for i = 0:axQueue.size-1
+                        ax = handle(axQueue.get(i));
+                        if ~ishandle(ax) || isempty(get(ax,'Children'))
+                            continue;
+                        end
+
+                        plotTitle = get(get(ax,'Title'),'String');
+                        if iscell(plotTitle)
+                            plotTitle = strjoin(plotTitle);
+                        end
+
+                        imgFile = [tempname,'.png'];
+                        try
+                            exportgraphics(ax,imgFile);
+                        catch
+                            saveas(ax,imgFile);
+                        end
+
+                        addFigure(rpt, struct('Filename',imgFile,'Title',plotTitle));
+                        delete(imgFile);
+                    end
+                end
+
+                updateTOC(rpt);
+                saveAs(rpt, fullName);
+                closeWord(rpt);
+            catch
+                warndlg('Unable to create report.','Report Generation');
+            end
+
+        end % generateReport
+
         function reqObjCreated( obj , ~ , eventdata )
             reqObj = eventdata.Object;
             switch class(reqObj)
