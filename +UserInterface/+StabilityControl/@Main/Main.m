@@ -166,8 +166,9 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             addlistener(obj.RibbonObj,'CloseProject',@obj.closeProject_CB); 
 %             addlistener(obj.RibbonObj,'ShowInvalidTrim',@obj.showInvalidTrim_CB); 
             addlistener(obj.RibbonObj,'ShowLogSignals',@obj.showLogSignals_CB); 
-            addlistener(obj.RibbonObj,'Add2Batch',@obj.addBatch2AnalysisNode_CB); 
+            addlistener(obj.RibbonObj,'Add2Batch',@obj.addBatch2AnalysisNode_CB);
             addlistener(obj.RibbonObj,'ExportTable',@obj.exportTable_CB);
+            addlistener(obj.RibbonObj,'GenerateReport',@obj.generateReport_CB);
             addlistener(obj.RibbonObj,'NewAnalysis',@obj.newAnalysisObj_CB);
             addlistener(obj.RibbonObj,'LoadAnalysisObject',@obj.loadAnalysisObj);            
             addlistener(obj.RibbonObj,'SetNumPlotsPlts',@obj.setNumPlotsPlts);
@@ -1295,7 +1296,11 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             end
         end % exportTable_CB
 
-        
+
+        function generateReport_CB( obj , ~ , ~ )
+            obj.generateReport();
+        end % generateReport_CB
+
         function reqObjCreated( obj , ~ , eventdata )
             reqObj = eventdata.Object;
             switch class(reqObj)
