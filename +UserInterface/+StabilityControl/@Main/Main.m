@@ -1313,45 +1313,42 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 return;
             end
 
-            [~,~,ext] = fileparts(file);
-            if strcmpi(ext,'.pdf')
-                rptType = 'pdf';
-            else
-                rptType = 'docx';
-            end
-
             fullName = fullfile(path,file);
 
-            if ~exist('mlreportgen.report.Report','class')
-                warndlg('MATLAB Report Generator is required to export reports.', 'Report');
+            try
+                rpt = Report.Report(fullName);
+            catch
+                warndlg('Microsoft Word is required to export reports.', 'Report');
                 return;
             end
 
-            import mlreportgen.report.*
-            import mlreportgen.dom.*
+            % Title page
+            rpt.ActX_word.Selection.TypeText('Flight Dynamics Report');
+            rpt.ActX_word.Selection.Style = 'Title';
+            rpt.ActX_word.Selection.TypeParagraph;
 
-            rpt = Report(fullName, rptType);
-            append(rpt, TitlePage('Title','Flight Dynamics Report'));
-            append(rpt, TableOfContents);
+            addTOC(rpt);
 
             % Add operating condition history table
             if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
-                append(rpt, Heading1('Operating Conditions'));
-                header = obj.OperCondCollObj.TableColumnNames;
-                data = obj.OperCondCollObj.TableData;
-                tbl = FormalTable([header; data]);
-                tbl.Width = '100%';
-                tbl.Header.Style{end+1} = BackgroundColor('#F2F2F2');
-                append(rpt, tbl);
+                rpt.ActX_word.Selection.TypeText('Operating Conditions');
+                rpt.ActX_word.Selection.Style = 'Heading 1';
+                rpt.ActX_word.Selection.TypeParagraph;
+
+                addOperCondTable(rpt, obj.OperCondCollObj.OperatingCondition, obj.OperCondCollObj.TableColumnNames);
             end
 
             % Add plots from current views
-            append(rpt, Heading1('Plots'));
+            rpt.ActX_word.Selection.TypeText('Plots');
+            rpt.ActX_word.Selection.Style = 'Heading 1';
+            rpt.ActX_word.Selection.TypeParagraph;
+
             addAxisCollectionPlots(obj.AxisColl);
             addAxisCollectionPlots(obj.PostSimAxisColl);
 
-            close(rpt);
-            rptview(rpt);
+            updateTOC(rpt);
+            saveAs(rpt, fullName);
+            closeWord(rpt);
 
             function addAxisCollectionPlots(coll)
                 if isempty(coll); return; end
@@ -1368,7 +1365,11 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                     fig = ancestor(ax, 'figure');
                                     saveas(fig, imgFile);
                                 end
-                                append(rpt, Image(imgFile));
+                                titleStr = get(get(ax,'Title'),'String');
+                                if isempty(titleStr)
+                                    titleStr = 'Plot';
+                                end
+                                addFigure(rpt, struct('Filename', imgFile, 'Title', titleStr));
                             catch
                                 % If exporting the graphic fails, continue without it
                             end
