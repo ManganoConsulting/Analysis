@@ -1301,6 +1301,83 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             obj.generateReport();
         end % generateReport_CB
 
+        function generateReport(obj)
+            %GENERATEREPORT Export a report of current data and plots.
+            %   Prompts the user for a destination file (DOCX or PDF) and
+            %   builds a document that contains a table of the operating
+            %   condition data as well as images of any plots currently
+            %   displayed in the application.
+
+            [file,path] = uiputfile({'*.docx';'*.pdf'}, 'Export Report', 'AnalysisReport.docx');
+            if isequal(file,0)
+                return;
+            end
+
+            [~,~,ext] = fileparts(file);
+            if strcmpi(ext,'.pdf')
+                rptType = 'pdf';
+            else
+                rptType = 'docx';
+            end
+
+            fullName = fullfile(path,file);
+
+            if ~exist('mlreportgen.report.Report','class')
+                warndlg('MATLAB Report Generator is required to export reports.', 'Report');
+                return;
+            end
+
+            import mlreportgen.report.*
+            import mlreportgen.dom.*
+
+            rpt = Report(fullName, rptType);
+            append(rpt, TitlePage('Title','Flight Dynamics Report'));
+            append(rpt, TableOfContents);
+
+            % Add operating condition history table
+            if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
+                append(rpt, Heading1('Operating Conditions'));
+                header = obj.OperCondCollObj.TableColumnNames;
+                data = obj.OperCondCollObj.TableData;
+                tbl = FormalTable([header; data]);
+                tbl.Width = '100%';
+                tbl.Header.Style{end+1} = BackgroundColor('#F2F2F2');
+                append(rpt, tbl);
+            end
+
+            % Add plots from current views
+            append(rpt, Heading1('Plots'));
+            addAxisCollectionPlots(obj.AxisColl);
+            addAxisCollectionPlots(obj.PostSimAxisColl);
+
+            close(rpt);
+            rptview(rpt);
+
+            function addAxisCollectionPlots(coll)
+                if isempty(coll); return; end
+                for p = 1:length(coll.Panel)
+                    panel = coll.Panel(p);
+                    for k = 1:length(panel.Axis)
+                        ax = panel.Axis(k);
+                        if isgraphics(ax) && ~isempty(get(ax,'Children'))
+                            imgFile = [tempname '.png'];
+                            try
+                                if exist('exportgraphics','file')
+                                    exportgraphics(ax, imgFile, 'Resolution', 150);
+                                else
+                                    fig = ancestor(ax, 'figure');
+                                    saveas(fig, imgFile);
+                                end
+                                append(rpt, Image(imgFile));
+                            catch
+                                % If exporting the graphic fails, continue without it
+                            end
+                        end
+                    end
+                end
+            end
+        end % generateReport
+
         function reqObjCreated( obj , ~ , eventdata )
             reqObj = eventdata.Object;
             switch class(reqObj)
