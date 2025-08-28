@@ -27,8 +27,10 @@ classdef TrimSettings < matlab.mixin.Copyable
         FlapSimulinkVal = 1
         LandingGearSimulinkName
         LandingGearSimulinkVal = 1
-        
-        
+
+        CombinationMode char = 'all'  % 'all' or 'specified'
+
+
     end % Public properties
         
     %% Read-only properties
@@ -44,7 +46,9 @@ classdef TrimSettings < matlab.mixin.Copyable
         LabelEditBox
         NumOfTrimText
         NumOfTrimComboBox
-        
+        CombinationModeText
+        CombinationModeComboBox
+
         TabPanel
         Tab1
         Tab2
@@ -126,7 +130,9 @@ classdef TrimSettings < matlab.mixin.Copyable
         TrimLabelString = char.empty
         NumOfTrimSelectionString = {'1','2'}
         NumOfTrimSelectionValue  = 1
-        
+        CombinationModeSelectionString = {'All combinations','Specified values'}
+        CombinationModeSelectionValue  = 1
+
         Input1TableData
         Output1TableData
         State1TableData
@@ -384,7 +390,22 @@ classdef TrimSettings < matlab.mixin.Copyable
                 'Value',obj.NumOfTrimSelectionValue,...
                 'ForegroundColor',[0 0 0],...
                 'HorizontalAlignment','center',...
-                'Callback',@obj.numOfTrimComboBox_CB);    
+                'Callback',@obj.numOfTrimComboBox_CB);
+
+            obj.CombinationModeText = uicontrol('Parent',obj.MainPanel,...
+                'Style','text',...
+                'FontSize',10,...
+                'String','Combination Mode:',...
+                'ForegroundColor',[0 0 0],...
+                'HorizontalAlignment','Left');
+            obj.CombinationModeComboBox = uicontrol('Parent',obj.MainPanel,...
+                'Style','popup',...
+                'FontSize',10,...
+                'String',obj.CombinationModeSelectionString,...
+                'Value',obj.CombinationModeSelectionValue,...
+                'ForegroundColor',[0 0 0],...
+                'HorizontalAlignment','center',...
+                'Callback',@obj.combinationModeComboBox_CB);
             
             obj.GearVarText = uicontrol('Parent',obj.MainPanel,...
                 'Style','text',...
@@ -889,12 +910,21 @@ classdef TrimSettings < matlab.mixin.Copyable
         end % gearVarComboBox_CB 
         
         function flapVarComboBox_CB( obj , hobj , ~ )
-  
+
             obj.FlapVariableSelectionValue = obj.FlapVarComboBox.Value;
             obj.FlapSimulinkVal = obj.FlapVariableSelectionValue;
             obj.FlapSimulinkName= obj.FlapVarComboBox.String{obj.FlapVariableSelectionValue};
         end % flapVarComboBox_CB
-        
+
+        function combinationModeComboBox_CB( obj , hobj , ~ )
+            obj.CombinationModeSelectionValue = obj.CombinationModeComboBox.Value;
+            if obj.CombinationModeComboBox.Value == 1
+                obj.CombinationMode = 'all';
+            else
+                obj.CombinationMode = 'specified';
+            end
+        end % combinationModeComboBox_CB
+
     end
     
     %% Methods - Protected
@@ -913,10 +943,17 @@ classdef TrimSettings < matlab.mixin.Copyable
             
             obj.GearVarComboBox.String = obj.GearVariableSelectionString;
             obj.GearVarComboBox.Value = obj.GearVariableSelectionValue;
-            
+
             obj.FlapVarComboBox.String = obj.FlapVariableSelectionString;
             obj.FlapVarComboBox.Value = obj.FlapVariableSelectionValue;
-            
+
+            obj.CombinationModeComboBox.String = obj.CombinationModeSelectionString;
+            if strcmpi(obj.CombinationMode,'specified')
+                obj.CombinationModeComboBox.Value = 2;
+            else
+                obj.CombinationModeComboBox.Value = 1;
+            end
+
             obj.ModelEditBox.String = obj.ModelName;
             if ~isempty(obj)
                 %obj.Label = obj.TrimLabelString;
@@ -960,11 +997,15 @@ classdef TrimSettings < matlab.mixin.Copyable
             set(obj.NumOfTrimText,'Units','Pixels',...
                 'Position',[220 , position(4) - 20 , 100 , 17]);  
             set(obj.NumOfTrimComboBox,'Units','Pixels',...
-                'Position',[220 , position(4) - 45 , 70 , 25]);  
+                'Position',[220 , position(4) - 45 , 70 , 25]);
             set(obj.GearVarText,'Units','Pixels',...
-                'Position',[330 , position(4) - 20 , 130 , 17]);  
+                'Position',[330 , position(4) - 20 , 130 , 17]);
             set(obj.GearVarComboBox,'Units','Pixels',...
-                'Position',[330 , position(4) - 45 , 70 , 25]);  
+                'Position',[330 , position(4) - 45 , 70 , 25]);
+            set(obj.CombinationModeText,'Units','Pixels',...
+                'Position',[440 , position(4) - 20 , 150 , 17]);
+            set(obj.CombinationModeComboBox,'Units','Pixels',...
+                'Position',[440 , position(4) - 45 , 110 , 25]);
             
             
             set(obj.TabPanel,'Units','Pixels',...

@@ -2420,9 +2420,26 @@ function tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , selLinMdl
     [ stateshdr , statesVal ] = getHeaderValueArray( vectorStateObjs );
     [ statesDerivhdr , statesDerivVal ] = getHeaderValueArray( vectorStateDerivObjs );
 
-    cols = [ cols , inputVal , outputVal , statesVal , statesDerivVal ];               
+    cols = [ cols , inputVal , outputVal , statesVal , statesDerivVal ];
 
-    tabledata = allcomb(cols{:});
+    if strcmpi(selTrimDef.CombinationMode,'specified')
+        lengths = cellfun(@numel, cols);
+        nrows = max(lengths);
+        if any(lengths ~= 1 & lengths ~= nrows)
+            error('Vectors must be the same size for specified combination mode.');
+        end
+        tabledata = cell(nrows, numel(cols));
+        for i = 1:numel(cols)
+            c = cols{i}(:);
+            if numel(c) == 1
+                tabledata(:,i) = repmat(c, nrows, 1);
+            else
+                tabledata(:,i) = c(1:nrows);
+            end
+        end
+    else
+        tabledata = allcomb(cols{:});
+    end
 
 
     tempTrimTask(size(tabledata,1)) = lacm.TrimTask;    
