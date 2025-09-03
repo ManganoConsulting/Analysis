@@ -1317,38 +1317,42 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
             try
                 rpt = Report.Report(fullName);
-            catch
-                warndlg('Microsoft Word is required to export reports.', 'Report');
-                return;
-            end
 
-            % Title page
-            rpt.ActX_word.Selection.TypeText('Flight Dynamics Report');
-            rpt.ActX_word.Selection.Style = 'Title';
-            rpt.ActX_word.Selection.TypeParagraph;
+                % Title page
+                rpt.ActX_word.Selection.TypeText('Flight Dynamics Report');
+                rpt.ActX_word.Selection.Style = 'Title';
+                rpt.ActX_word.Selection.TypeParagraph;
 
-            addTOC(rpt);
+                addTOC(rpt);
 
-            % Add operating condition history table
-            if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
-                rpt.ActX_word.Selection.TypeText('Operating Conditions');
+                % Add operating condition history table
+                operCondColl = obj.OperCondCollObj;
+                if ~isempty(operCondColl) && ~isempty(operCondColl.TableData)
+                    rpt.ActX_word.Selection.TypeText('Operating Conditions');
+                    rpt.ActX_word.Selection.Style = 'Heading 1';
+                    rpt.ActX_word.Selection.TypeParagraph;
+
+                    addOperCondTable(rpt, operCondColl.OperatingCondition, operCondColl.TableColumnNames);
+                end
+
+                % Add plots from current views
+                rpt.ActX_word.Selection.TypeText('Plots');
                 rpt.ActX_word.Selection.Style = 'Heading 1';
                 rpt.ActX_word.Selection.TypeParagraph;
 
-                addOperCondTable(rpt, obj.OperCondCollObj.OperatingCondition, obj.OperCondCollObj.TableColumnNames);
+                addAxisCollectionPlots(obj.AxisColl);
+                addAxisCollectionPlots(obj.PostSimAxisColl);
+
+                updateTOC(rpt);
+                saveAs(rpt, fullName);
+                closeWord(rpt);
+            catch
+                warndlg('Microsoft Word is required to export reports.', 'Report');
+                if exist('rpt','var')
+                    try closeWord(rpt); end %#ok<TRYNC>
+                end
+                return;
             end
-
-            % Add plots from current views
-            rpt.ActX_word.Selection.TypeText('Plots');
-            rpt.ActX_word.Selection.Style = 'Heading 1';
-            rpt.ActX_word.Selection.TypeParagraph;
-
-            addAxisCollectionPlots(obj.AxisColl);
-            addAxisCollectionPlots(obj.PostSimAxisColl);
-
-            updateTOC(rpt);
-            saveAs(rpt, fullName);
-            closeWord(rpt);
 
             function addAxisCollectionPlots(coll)
                 if isempty(coll); return; end
@@ -1365,13 +1369,16 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                     fig = ancestor(ax, 'figure');
                                     saveas(fig, imgFile);
                                 end
-                                titleStr = get(get(ax,'Title'),'String');
-                                if isempty(titleStr)
-                                    titleStr = 'Plot';
+                                plotTitle = get(get(ax,'Title'),'String');
+                                if isempty(plotTitle)
+                                    plotTitle = 'Plot';
                                 end
-                                addFigure(rpt, struct('Filename', imgFile, 'Title', titleStr));
+                                addFigure(rpt, struct('Filename', imgFile, 'Title', plotTitle));
                             catch
                                 % If exporting the graphic fails, continue without it
+                            end
+                            if exist(imgFile,'file')
+                                delete(imgFile);
                             end
                         end
                     end
