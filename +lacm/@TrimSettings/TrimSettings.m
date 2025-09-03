@@ -21,14 +21,14 @@ classdef TrimSettings < matlab.mixin.Copyable
         SimulinkInports
         SimulinkOutports
         SimulinkStates
-        
-        
+
+
         FlapSimulinkName
         FlapSimulinkVal = 1
         LandingGearSimulinkName
         LandingGearSimulinkVal = 1
-        
-        
+
+        UseAllCombinations logical = true
     end % Public properties
         
     %% Read-only properties
@@ -44,6 +44,8 @@ classdef TrimSettings < matlab.mixin.Copyable
         LabelEditBox
         NumOfTrimText
         NumOfTrimComboBox
+        CombinationText
+        CombinationComboBox
         
         TabPanel
         Tab1
@@ -126,6 +128,8 @@ classdef TrimSettings < matlab.mixin.Copyable
         TrimLabelString = char.empty
         NumOfTrimSelectionString = {'1','2'}
         NumOfTrimSelectionValue  = 1
+        CombinationSelectionString = {'All Combinations','Index Based'}
+        CombinationSelectionValue  = 1
         
         Input1TableData
         Output1TableData
@@ -414,7 +418,22 @@ classdef TrimSettings < matlab.mixin.Copyable
                 'Value',obj.FlapVariableSelectionValue,...
                 'ForegroundColor',[0 0 0],...
                 'HorizontalAlignment','center',...
-                'Callback',@obj.flapVarComboBox_CB);    
+                'Callback',@obj.flapVarComboBox_CB);
+
+            obj.CombinationText = uicontrol('Parent',obj.MainPanel,...
+                'Style','text',...
+                'FontSize',10,...
+                'String','Trim Combination:',...
+                'ForegroundColor',[0 0 0],...
+                'HorizontalAlignment','Left');
+            obj.CombinationComboBox = uicontrol('Parent',obj.MainPanel,...
+                'Style','popup',...
+                'FontSize',10,...
+                'String',obj.CombinationSelectionString,...
+                'Value',obj.CombinationSelectionValue,...
+                'ForegroundColor',[0 0 0],...
+                'HorizontalAlignment','center',...
+                'Callback',@obj.combinationComboBox_CB);
             
             
             obj.TabPanel = uitabgroup('Parent',obj.MainPanel);
@@ -889,11 +908,16 @@ classdef TrimSettings < matlab.mixin.Copyable
         end % gearVarComboBox_CB 
         
         function flapVarComboBox_CB( obj , hobj , ~ )
-  
+
             obj.FlapVariableSelectionValue = obj.FlapVarComboBox.Value;
             obj.FlapSimulinkVal = obj.FlapVariableSelectionValue;
             obj.FlapSimulinkName= obj.FlapVarComboBox.String{obj.FlapVariableSelectionValue};
         end % flapVarComboBox_CB
+
+        function combinationComboBox_CB( obj , hobj , ~ )
+            obj.CombinationSelectionValue = obj.CombinationComboBox.Value;
+            obj.UseAllCombinations = obj.CombinationSelectionValue == 1;
+        end % combinationComboBox_CB
         
     end
     
@@ -913,9 +937,12 @@ classdef TrimSettings < matlab.mixin.Copyable
             
             obj.GearVarComboBox.String = obj.GearVariableSelectionString;
             obj.GearVarComboBox.Value = obj.GearVariableSelectionValue;
-            
+
             obj.FlapVarComboBox.String = obj.FlapVariableSelectionString;
             obj.FlapVarComboBox.Value = obj.FlapVariableSelectionValue;
+
+            obj.CombinationComboBox.String = obj.CombinationSelectionString;
+            obj.CombinationComboBox.Value = obj.CombinationSelectionValue;
             
             obj.ModelEditBox.String = obj.ModelName;
             if ~isempty(obj)
@@ -950,7 +977,12 @@ classdef TrimSettings < matlab.mixin.Copyable
             set(obj.FlapVarText,'Units','Pixels',...
                 'Position',[330 , position(4) - 70 , 130 , 17]);  
             set(obj.FlapVarComboBox,'Units','Pixels',...
-                'Position',[330 , position(4) - 95 , 70 , 25]);  
+                'Position',[330 , position(4) - 95 , 70 , 25]);
+
+            set(obj.CombinationText,'Units','Pixels',...
+                'Position',[10 , position(4) - 120 , 150 , 17]);
+            set(obj.CombinationComboBox,'Units','Pixels',...
+                'Position',[10 , position(4) - 145 , 150 , 25]);
             
             
             set(obj.LabelText,'Units','Pixels',...
@@ -968,7 +1000,7 @@ classdef TrimSettings < matlab.mixin.Copyable
             
             
             set(obj.TabPanel,'Units','Pixels',...
-                'Position',[10 , 2 , position(3)-20 , position(4) - 100 ]);
+                'Position',[10 , 2 , position(3)-20 , position(4) - 180 ]);
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             positionTab = getpixelposition(obj.TabPanel);
             tableHeight = (positionTab(4) - 180)/2;
@@ -1556,9 +1588,12 @@ classdef TrimSettings < matlab.mixin.Copyable
             
             obj.FlapSimulinkName = obj.FlapVariableSelectionString{obj.FlapVariableSelectionValue};
             obj.LandingGearSimulinkName =  obj.GearVariableSelectionString{obj.GearVariableSelectionValue};
-            
+
             obj.FlapSimulinkVal = obj.FlapVariableSelectionValue;
             obj.LandingGearSimulinkVal = obj.GearVariableSelectionValue;
+
+            obj.CombinationSelectionValue = 1;
+            obj.UseAllCombinations = true;
             
             %obj = trimSettings;
             

@@ -2420,9 +2420,54 @@ function tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , selLinMdl
     [ stateshdr , statesVal ] = getHeaderValueArray( vectorStateObjs );
     [ statesDerivhdr , statesDerivVal ] = getHeaderValueArray( vectorStateDerivObjs );
 
-    cols = [ cols , inputVal , outputVal , statesVal , statesDerivVal ];               
+    cols = [ cols , inputVal , outputVal , statesVal , statesDerivVal ];
 
-    tabledata = allcomb(cols{:});
+    if selTrimDef.UseAllCombinations
+        tabledata = allcomb(cols{:});
+    else
+        baseCols = cols(1:startingColIndex-1);
+        vectorCols = cols(startingColIndex:end);
+        lens = cellfun(@numel, vectorCols);
+        lens = lens(lens > 1);
+        if ~isempty(lens) && any(lens ~= lens(1))
+            error('All arrays must be the same size when using index based combinations.');
+        end
+        if isempty(lens)
+            n = 1;
+        else
+            n = lens(1);
+        end
+        if isempty(baseCols)
+            baseData = { };
+        else
+            baseData = allcomb(baseCols{:});
+        end
+        if isempty(baseData)
+            baseRows = 1;
+        else
+            baseRows = size(baseData,1);
+        end
+        tabledata = cell(baseRows*n, length(cols));
+        row = 1;
+        for b = 1:baseRows
+            for i = 1:n
+                if ~isempty(baseCols)
+                    tabledata(row,1:length(baseCols)) = baseData(b,:);
+                end
+                col = length(baseCols)+1;
+                for v = 1:length(vectorCols)
+                    vals = vectorCols{v};
+                    if numel(vals)==1
+                        tabledata{row,col} = vals{1};
+                    else
+                        tabledata{row,col} = vals{i};
+                    end
+                    col = col + 1;
+                end
+                row = row + 1;
+            end
+        end
+    end
 
 
     tempTrimTask(size(tabledata,1)) = lacm.TrimTask;    
