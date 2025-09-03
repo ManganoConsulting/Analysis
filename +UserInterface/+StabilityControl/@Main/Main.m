@@ -1301,6 +1301,84 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             obj.generateReport();
         end % generateReport_CB
 
+        function generateReport(obj)
+            %GENERATEREPORT Export a report of current data and plots.
+            %   Prompts the user for a destination file (DOCX or PDF) and
+            %   builds a document that contains a table of the operating
+            %   condition data as well as images of any plots currently
+            %   displayed in the application.
+
+            [file,path] = uiputfile({'*.docx';'*.pdf'}, 'Export Report', 'AnalysisReport.docx');
+            if isequal(file,0)
+                return;
+            end
+
+            fullName = fullfile(path,file);
+
+            try
+                rpt = Report.Report(fullName);
+            catch
+                warndlg('Microsoft Word is required to export reports.', 'Report');
+                return;
+            end
+
+            % Title page
+            rpt.ActX_word.Selection.TypeText('Flight Dynamics Report');
+            rpt.ActX_word.Selection.Style = 'Title';
+            rpt.ActX_word.Selection.TypeParagraph;
+
+            addTOC(rpt);
+
+            % Add operating condition history table
+            if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
+                rpt.ActX_word.Selection.TypeText('Operating Conditions');
+                rpt.ActX_word.Selection.Style = 'Heading 1';
+                rpt.ActX_word.Selection.TypeParagraph;
+
+                addOperCondTable(rpt, obj.OperCondCollObj.OperatingCondition, obj.OperCondCollObj.TableColumnNames);
+            end
+
+            % Add plots from current views
+            rpt.ActX_word.Selection.TypeText('Plots');
+            rpt.ActX_word.Selection.Style = 'Heading 1';
+            rpt.ActX_word.Selection.TypeParagraph;
+
+            addAxisCollectionPlots(obj.AxisColl);
+            addAxisCollectionPlots(obj.PostSimAxisColl);
+
+            updateTOC(rpt);
+            saveAs(rpt, fullName);
+            closeWord(rpt);
+
+            function addAxisCollectionPlots(coll)
+                if isempty(coll); return; end
+                for p = 1:length(coll.Panel)
+                    panel = coll.Panel(p);
+                    for k = 1:length(panel.Axis)
+                        ax = panel.Axis(k);
+                        if isgraphics(ax) && ~isempty(get(ax,'Children'))
+                            imgFile = [tempname '.png'];
+                            try
+                                if exist('exportgraphics','file')
+                                    exportgraphics(ax, imgFile, 'Resolution', 150);
+                                else
+                                    fig = ancestor(ax, 'figure');
+                                    saveas(fig, imgFile);
+                                end
+                                titleStr = get(get(ax,'Title'),'String');
+                                if isempty(titleStr)
+                                    titleStr = 'Plot';
+                                end
+                                addFigure(rpt, struct('Filename', imgFile, 'Title', titleStr));
+                            catch
+                                % If exporting the graphic fails, continue without it
+                            end
+                        end
+                    end
+                end
+            end
+        end % generateReport
+
         function reqObjCreated( obj , ~ , eventdata )
             reqObj = eventdata.Object;
             switch class(reqObj)
