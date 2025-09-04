@@ -31,6 +31,7 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
         
         ShowInvalidTrimJCheckbox
         ShowLogSignalsJCheckbox
+        UseAllCombinationsJCheckbox
 
         PlotJButton
 
@@ -61,6 +62,7 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
         
         ShowLoggedSignalsState = false
         ShowInvalidTrimState = 1
+        UseAllCombinationsState = true
         
         TrimSettings
     end % Public properties
@@ -127,6 +129,7 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
         
 %         ShowInvalidTrim
         ShowLogSignals
+        UseAllCombinations
         Add2Batch
         NewAnalysis
         LoadAnalysisObject
@@ -542,6 +545,19 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
                 showLogSignalsJCheckbox.setBounds(565,20 ,135, 15);
                 obj.ShowLogSignalsJCheckbox = showLogSignalsJCheckbox;
                 obj.ShowLogSignalsJCheckbox.setSelected(obj.ShowLoggedSignalsState);
+
+                % Use All Combinations Button
+                useAllCombinationsJCheckbox = javaObjectEDT('com.mathworks.toolstrip.components.TSCheckBox');
+                useAllCombinationsJCheckbox.setText('Use All Combinations');
+                useAllCombinationsJCheckboxH = handle(useAllCombinationsJCheckbox,'CallbackProperties');
+                set(useAllCombinationsJCheckboxH, 'ActionPerformedCallback',@obj.useAllCombinationsCheckbox_CB)
+                useAllCombinationsJCheckbox.setToolTipText('Use every combination');
+                useAllCombinationsJCheckbox.setBorder([]);
+                useAllCombinationsJCheckbox.setMargin(java.awt.Insets(0, 0, 0, 0));
+                obj.JRibbonPanel.add(useAllCombinationsJCheckbox);
+                useAllCombinationsJCheckbox.setBounds(565,37 ,135, 15);
+                obj.UseAllCombinationsJCheckbox = useAllCombinationsJCheckbox;
+                obj.UseAllCombinationsJCheckbox.setSelected(obj.UseAllCombinationsState);
                 
                 
             % Break    
@@ -646,6 +662,11 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
             obj.ShowInvalidTrimState = state;
            obj.ShowInvalidTrimJCheckbox.setSelectedItem(obj.ShowInvalidTrimState);
         end % setShowInvalidTrim
+
+        function setUseAllCombinations(obj, state)
+            obj.UseAllCombinationsState = state;
+            obj.UseAllCombinationsJCheckbox.setSelected(obj.UseAllCombinationsState);
+        end % setUseAllCombinations
         
         function createNewAnalysis_CB( obj , ~ , ~ )
             notify(obj,'NewAnalysis');
@@ -653,8 +674,13 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
         
         function showLogSignalsCheckbox_CB( obj , ~ , eventdata )
             obj.ShowLoggedSignalsState = eventdata.getSource.isSelected;
-            notify(obj,'ShowLogSignals',GeneralEventData(eventdata.getSource.isSelected));  
+            notify(obj,'ShowLogSignals',GeneralEventData(eventdata.getSource.isSelected));
         end % showLogSignalsCheckbox_CB
+
+        function useAllCombinationsCheckbox_CB( obj , ~ , eventdata )
+            obj.UseAllCombinationsState = eventdata.getSource.isSelected;
+            notify(obj,'UseAllCombinations',GeneralEventData(eventdata.getSource.isSelected));
+        end % useAllCombinationsCheckbox_CB
         
         function showInvalidTrimCheckbox_CB( obj , hobj , eventdata )
 %             obj.ShowInvalidTrimState = eventdata.getSource.isSelected;
@@ -1245,6 +1271,7 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
             obj.ReqEditJButton = [];
             obj.ShowInvalidTrimJCheckbox = [];
             obj.ShowLogSignalsJCheckbox = [];
+            obj.UseAllCombinationsJCheckbox = [];
             obj.UnitsSelComboBox = [];
             obj.SimReqEditJButton = [];
             
