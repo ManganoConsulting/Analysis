@@ -242,9 +242,31 @@ classdef RowFilter < UserInterface.tree
     %% Methods - Public Update Methods
     methods 
         
-        function initialize( obj , struct ) 
+        function initialize( obj , struct )
+            % Store current selections before clearing existing nodes so that
+            % previously selected/unselected nodes can be restored if they
+            % exist in the new data set
+            nodeVariableNames =  {'StatesNode','StateDerivsNode',...
+                'InputsNode','OutputsNode','FltCondNode','MassPropNode','SignalLogNode'};
+            prevSelection = containers.Map('KeyType','char','ValueType','logical');
+            for k = 1:length(nodeVariableNames)
+                parentNode = obj.(nodeVariableNames{k});
+                parentName = char(parentNode.getName);
+                for j = 0:(parentNode.getChildCount-1)
+                    child = parentNode.getChildAt(j);
+                    key = [parentName ':' char(child.getName)];
+                    prevSelection(key) = strcmpi('selected',char(child.getValue));
+                end
+            end
+
+            % Remove all existing nodes from the tree
             clearNodes( obj );
-            
+
+            % Logic array describing which rows of the table should be shown
+            logicArray = false(length(struct),1);
+
+            % Add nodes for the new data, restoring previous selections when
+            % possible and selecting any new nodes by default
             for i = 1:length(struct)
                 switch struct(i).Type
                     case 'States'
@@ -261,21 +283,62 @@ classdef RowFilter < UserInterface.tree
                         nodeName = 'MassPropNode';
                     case 'Signal Log'
                         nodeName = 'SignalLogNode';
-                end      
+                end
                 node = uitreenode('v0','',...
                     struct(i).Name, [], 0);
                 obj.TreeModel.insertNodeInto(...
                     node,...
                     obj.(nodeName),...
-                    obj.(nodeName).getChildCount()); 
-                node.setIcon(obj.JavaImage_checked); 
-                node.setValue('selected');
-                
-                obj.(nodeName).setIcon(obj.JavaImage_checked); 
-                obj.(nodeName).setValue('selected');
+                    obj.(nodeName).getChildCount());
+
+                key = [struct(i).Type ':' struct(i).Name];
+                if isKey(prevSelection,key) && prevSelection(key)
+                    node.setIcon(obj.JavaImage_checked);
+                    node.setValue('selected');
+                    logicArray(i) = true;
+                elseif isKey(prevSelection,key) && ~prevSelection(key)
+                    node.setIcon(obj.JavaImage_unchecked);
+                    node.setValue('unselected');
+                    logicArray(i) = false;
+                else
+                    % New node, select by default
+                    node.setIcon(obj.JavaImage_checked);
+                    node.setValue('selected');
+                    logicArray(i) = true;
+                end
             end
+
+            % Update parent node icons based on their children's selection
+            for k = 1:length(nodeVariableNames)
+                parentNode = obj.(nodeVariableNames{k});
+                count = parentNode.getChildCount;
+                if count == 0
+                    parentNode.setValue('unselected');
+                    parentNode.setIcon(obj.JavaImage_unchecked);
+                else
+                    selState = cell(count,1);
+                    for j = 0:(count-1)
+                        selState{j+1} = char(parentNode.getChildAt(j).getValue);
+                    end
+                    if all(strcmp('selected',selState))
+                        parentNode.setValue('selected');
+                        parentNode.setIcon(obj.JavaImage_checked);
+                    elseif all(strcmp('unselected',selState))
+                        parentNode.setValue('unselected');
+                        parentNode.setIcon(obj.JavaImage_unchecked);
+                    else
+                        parentNode.setValue('mixed');
+                        parentNode.setIcon(obj.JavaImage_partialchecked);
+                    end
+                end
+            end
+
             obj.JTree.treeDidChange();
             obj.JTree.repaint;
+
+            % Notify listeners so that the table can be updated to reflect
+            % the new selections
+            notify(obj,'ShowDataEvent',UserInterface.UserInterfaceEventData(logicArray));
         end % initialize
 
             
