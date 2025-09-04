@@ -20,6 +20,9 @@ classdef TrimOptions < matlab.mixin.Copyable & hgsetget
         MaxBisection = 10
         StatePertubationSize = 1e-6
         InputPertubationSize = 1e-6
+
+        UseAllCombinations logical = true
+        CombinationSelectionValue = 1
     end % Public properties
     
     %% Properties - Observable
