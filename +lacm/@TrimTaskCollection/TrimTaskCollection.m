@@ -1851,7 +1851,7 @@ classdef TrimTaskCollection < dynamicprops & matlab.mixin.Copyable %& UserInterf
             
         end % updateSelectedConfiguration
         
-        function tempTrimTask = createTaskObjManual( obj , mdl , constFile , selTrimDef , selLinMdlDef , selMassProp )
+        function tempTrimTask = createTaskObjManual( obj , mdl , constFile , selTrimDef , selLinMdlDef , selMassProp, useIndexBasedComb)
             import Utilities.*
 
             assert(~isempty(obj.FC1_EB_String),         'FCOND:EMPTY','Flight Conditions must be specified');
@@ -1869,7 +1869,8 @@ classdef TrimTaskCollection < dynamicprops & matlab.mixin.Copyable %& UserInterf
                 wc_string = strjoin({selMassProp.WeightCode},',');
             end
 
-            
+            obj.FC_IndexMatch = ~useIndexBasedComb;
+
             tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , selLinMdlDef , selMassProp ,...
                 obj.FC1_EB_String , obj.FC2_EB_String , obj.FC1_PM_String{obj.FC1_PM_SelValue} , obj.FC2_PM_String{obj.FC2_PM_SelValue} , obj.SetName_String , wc_string , [] , obj.FC_IndexMatch );
 
