@@ -210,7 +210,9 @@ classdef TrimTaskCollection < dynamicprops & matlab.mixin.Copyable %& UserInterf
         
         FC1_EB_String
         FC2_EB_String
-        
+
+        FC_IndexMatch logical = false
+
         UnitsSystem = 1 % 1 = english , 2 = metric
         
         SetName_String
@@ -1869,7 +1871,7 @@ classdef TrimTaskCollection < dynamicprops & matlab.mixin.Copyable %& UserInterf
 
             
             tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , selLinMdlDef , selMassProp ,...
-                obj.FC1_EB_String , obj.FC2_EB_String , obj.FC1_PM_String{obj.FC1_PM_SelValue} , obj.FC2_PM_String{obj.FC2_PM_SelValue} , obj.SetName_String , wc_string , [] );
+                obj.FC1_EB_String , obj.FC2_EB_String , obj.FC1_PM_String{obj.FC1_PM_SelValue} , obj.FC2_PM_String{obj.FC2_PM_SelValue} , obj.SetName_String , wc_string , [] , obj.FC_IndexMatch );
 
         end % createTaskObjManual
         
@@ -1930,7 +1932,7 @@ classdef TrimTaskCollection < dynamicprops & matlab.mixin.Copyable %& UserInterf
 
                  tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , tempLinMdlDefObjs , massPropObjs ,...
                     batchTaskObjs(i).FLIGHTCONDITION1{2} , batchTaskObjs(i).FLIGHTCONDITION2{2} , batchTaskObjs(i).FLIGHTCONDITION1{1}, batchTaskObjs(i).FLIGHTCONDITION2{1} , batchTaskObjs(i).LABEL , batchTaskObjs(i).WEIGHTCODE ,...
-                    batchTaskObjs(i).VARIABLES);
+                    batchTaskObjs(i).VARIABLES , obj.FC_IndexMatch);
                 
 
 
@@ -2383,20 +2385,25 @@ function status = checkFlightCondition(a, b)
 
 end % checkFlightCondition     
 
-function tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , selLinMdlDef , selMassProp , fc1ValueString , fc2ValueString , fc1TypeString , fc2TypeString ,setName , wcString , batchVariables )
+function tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , selLinMdlDef , selMassProp , fc1ValueString , fc2ValueString , fc1TypeString , fc2TypeString ,setName , wcString , batchVariables , fcIndexMatch )
     import Utilities.*
 
     tempTrimTask = lacm.TrimTask.empty;
 
-    % Find all combinations of FlightConditon and MassProperies
+    fc1Vals = num2cell(str2num(fc1ValueString));
+    fc2Vals = num2cell(str2num(fc2ValueString));
+
+    if nargin < 13 || isempty(fcIndexMatch)
+        fcIndexMatch = false;
+    end
+
+    if fcIndexMatch && numel(fc1Vals) ~= numel(fc2Vals)
+        error('FCOND:SIZE','Flight condition vectors must be the same length when matching by index');
+    end
+
     if selMassProp(1).DummyMode
-        cols = {num2cell(str2num(fc1ValueString)),...
-                    num2cell(str2num(fc2ValueString))};
         startingColIndex = 3;
-    else      
-        cols = {num2cell(str2num(fc1ValueString)),...
-                    num2cell(str2num(fc2ValueString)),... 
-                    strsplit(wcString,',')};
+    else
         startingColIndex = 4;
     end
     % Update Simulink model conditions
@@ -2420,9 +2427,40 @@ function tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , selLinMdl
     [ stateshdr , statesVal ] = getHeaderValueArray( vectorStateObjs );
     [ statesDerivhdr , statesDerivVal ] = getHeaderValueArray( vectorStateDerivObjs );
 
-    cols = [ cols , inputVal , outputVal , statesVal , statesDerivVal ];               
+    if fcIndexMatch
+        if selMassProp(1).DummyMode
+            otherCols = {};
+        else
+            otherCols = {strsplit(wcString,',')};
+        end
+        otherCols = [otherCols , inputVal , outputVal , statesVal , statesDerivVal];
 
-    tabledata = allcomb(cols{:});
+        if isempty(otherCols)
+            otherData = cell(1,0);
+        else
+            otherData = allcomb(otherCols{:});
+        end
+
+        nPair = numel(fc1Vals);
+        nOther = size(otherData,1);
+        tabledata = cell(nPair*nOther , 2 + size(otherData,2));
+        for ii = 1:nPair
+            idx = ( (ii-1)*nOther + 1 ) : (ii*nOther);
+            tabledata(idx,1) = fc1Vals(ii);
+            tabledata(idx,2) = fc2Vals(ii);
+            if ~isempty(otherData)
+                tabledata(idx,3:end) = otherData;
+            end
+        end
+    else
+        if selMassProp(1).DummyMode
+            cols = {fc1Vals, fc2Vals};
+        else
+            cols = {fc1Vals, fc2Vals, strsplit(wcString,',')};
+        end
+        cols = [cols , inputVal , outputVal , statesVal , statesDerivVal];
+        tabledata = allcomb(cols{:});
+    end
 
 
     tempTrimTask(size(tabledata,1)) = lacm.TrimTask;    
@@ -2600,8 +2638,8 @@ function saveFormat = getSaveFormat(mdl)
             end
             saveFormat.Format = get_param(cset,'SaveFormat');
         catch
-            error('SIMULINK:GETSTATENAMESDATASAVEFORMAT','Unable to set the data save format to ''array''. This is neccessary to use the command ''getInitialState''.');  
+            error('SIMULINK:GETSTATENAMESDATASAVEFORMAT','Unable to set the data save format to ''array''. This is neccessary to use the command ''getInitialState''.');
         end
     end
-    
+
 end % getSaveFormat
