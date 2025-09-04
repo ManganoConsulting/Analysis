@@ -84,7 +84,9 @@ function nodeSelection_CB( obj , node )
                     end
                 end
         end
-
+        if strcmp(node.getParent.getName,'Trim Definition')
+            notify(obj,'UseExistingTrim',GeneralEventData(strcmp(node.getValue,'selected')));
+        end
     end
 
     if node.getLevel >= 1

@@ -193,9 +193,6 @@ icon_dir = fullfile( this_dir,'..','..','Resources' );
                 
                 if ~isempty(nodeValue)
                     
-                    if node.getLevel == 4 && strcmp(node.getParent.getName,'Trim Definition')
-                        return;
-                    end
                     switch nodeValue
                         case 'selected'
                             node.setValue('unselected');
@@ -278,8 +275,11 @@ icon_dir = fullfile( this_dir,'..','..','Resources' );
                                 end
                             end
                     end
+                    if strcmp(node.getParent.getName,'Trim Definition')
+                        notify(obj,'UseExistingTrim',GeneralEventData(strcmp(node.getValue,'selected')));
+                    end
                     if strcmp(char(node.getParent.getName),'Mass Properties')
-                        notify(obj,'MassPropertyAdded');  
+                        notify(obj,'MassPropertyAdded');
                     end
                 end
                 
