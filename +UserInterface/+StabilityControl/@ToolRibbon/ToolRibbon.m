@@ -342,7 +342,7 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
                 clrTblButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.HORIZONTAL);
                 clrTblButton.setMargin(java.awt.Insets(0, 0, 0, 0));
                 obj.JRibbonPanel.add(clrTblButton);
-                clrTblButton.setBounds(224,39,95,20);
+                clrTblButton.setBounds(224,29,95,20);
                 obj.MainJButton = clrTblButton;
 
                 % Generate Report Button
@@ -357,7 +357,7 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
                 genRptButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.HORIZONTAL);
                 genRptButton.setMargin(java.awt.Insets(0, 0, 0, 0));
                 obj.JRibbonPanel.add(genRptButton);
-                genRptButton.setBounds(224,63,120,20);
+                genRptButton.setBounds(224,53,120,20);
                 obj.GenerateReportJButton = genRptButton;
 
                 % ClearSel Button
@@ -373,7 +373,7 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
                 clrTblSelJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
                 clrTblSelJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
                 obj.JRibbonPanel.add(clrTblSelJButton);
-                clrTblSelJButton.setBounds(319,39,25,20);
+                clrTblSelJButton.setBounds(319,29,25,20);
                 obj.ClrTblSelJButton = clrTblSelJButton;
                 
             % Break    
