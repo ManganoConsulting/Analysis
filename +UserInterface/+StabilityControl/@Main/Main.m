@@ -63,7 +63,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
         ShowLoggedSignalsState = false
         ShowInvalidTrimState = 1
         UseAllCombinationsState = true
-        
+        UseExistingTrimState = false
+
         NumberOfPlotPerPagePostPlts= 4
         NumberOfPlotPerPagePlts = 4
         
@@ -283,6 +284,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             addlistener(obj.Tree,'BatchNodesRemoved',@obj.batchNodesRemoved);
             addlistener(obj.Tree,'AnalysisObjectSaved',@obj.analysisObjectSaved);
             addlistener(obj.Tree,'AnalysisObjectEdited',@obj.analysisObjectEdited);
+            addlistener(obj.Tree,'UseExistingTrim',@obj.useExistingTrim);
             
             
             % Task Collection Listners
@@ -2088,10 +2090,14 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 batchRunNumber = 1;
             end
              if length(obj.TaskCollectionObjBatch) >= index && ~isempty(obj.TaskCollectionObjBatch(index))
-                updateMassProps( obj.TaskCollectionObjBatch(index).TrimTaskCollObj(batchRunNumber) , massProps ); 
+                updateMassProps( obj.TaskCollectionObjBatch(index).TrimTaskCollObj(batchRunNumber) , massProps );
             end
         end % massPropertyAddedToPanel
-        
+
+        function useExistingTrim( obj , ~ , eventData )
+            obj.UseExistingTrimState = eventData.Value;
+        end % useExistingTrim
+
     end
 
     %% Methods - Protected - ReSize

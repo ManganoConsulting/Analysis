@@ -64,6 +64,7 @@ classdef StabTree < UserInterface.tree
         MassPropertyAdded
         BatchNodeSelected
         BatchNodesRemoved
+        UseExistingTrim
         AnalysisObjectEdited
     end
     
