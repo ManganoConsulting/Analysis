@@ -62,6 +62,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
         
         ShowLoggedSignalsState = false
         ShowInvalidTrimState = 1
+        UseAllCombinationsState = true
         
         NumberOfPlotPerPagePostPlts= 4
         NumberOfPlotPerPagePlts = 4
@@ -164,8 +165,9 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             addlistener(obj.RibbonObj,'NewProject',@obj.newProject_CB);
             addlistener(obj.RibbonObj,'LoadProject',@obj.loadProject_CB);
             addlistener(obj.RibbonObj,'CloseProject',@obj.closeProject_CB); 
-%             addlistener(obj.RibbonObj,'ShowInvalidTrim',@obj.showInvalidTrim_CB); 
-            addlistener(obj.RibbonObj,'ShowLogSignals',@obj.showLogSignals_CB); 
+%             addlistener(obj.RibbonObj,'ShowInvalidTrim',@obj.showInvalidTrim_CB);
+            addlistener(obj.RibbonObj,'ShowLogSignals',@obj.showLogSignals_CB);
+            addlistener(obj.RibbonObj,'UseAllCombinations',@obj.useAllCombinations_CB);
             addlistener(obj.RibbonObj,'Add2Batch',@obj.addBatch2AnalysisNode_CB);
             addlistener(obj.RibbonObj,'ExportTable',@obj.exportTable_CB);
             addlistener(obj.RibbonObj,'GenerateReport',@obj.generateReport_CB);
@@ -183,6 +185,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             % Set toolribbon checkboxes
             setShowLoggedSignals(obj.RibbonObj, obj.ShowLoggedSignalsState);
             setShowInvalidTrim(obj.RibbonObj, obj.ShowInvalidTrimState);
+            setUseAllCombinations(obj.RibbonObj, obj.UseAllCombinationsState);
 
             % Create Main Container
 
@@ -979,6 +982,10 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 obj.OperCondCollObj(i).OperatingConditionStructureIsDefined = false;
             end
         end % showLogSignals_CB
+
+        function useAllCombinations_CB( obj , ~ , eventdata )
+            obj.UseAllCombinationsState = eventdata.Value;
+        end % useAllCombinations_CB
         
         function showSimViewer( obj , hobj , eventData , title )
             
