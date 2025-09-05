@@ -1544,7 +1544,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         'Missing Dependency', 'Install','Cancel','Install');
                     if strcmp(choice,'Install')
                         if ispc
-                            system('winget install -e --id wkhtmltopdf.wkhtmltopdf');
+                            system('winget install -e --id wkhtmltopdf.wkhtmltox');
                         else
                             system('sudo apt-get install -y wkhtmltopdf');
                         end
