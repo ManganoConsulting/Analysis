@@ -1854,6 +1854,10 @@ classdef TrimTaskCollection < dynamicprops & matlab.mixin.Copyable %& UserInterf
         function tempTrimTask = createTaskObjManual( obj , mdl , constFile , selTrimDef , selLinMdlDef , selMassProp, useIndexBasedComb)
             import Utilities.*
 
+            if nargin < 7 || isempty(useIndexBasedComb)
+                useIndexBasedComb = true;
+            end
+
             assert(~isempty(obj.FC1_EB_String),         'FCOND:EMPTY','Flight Conditions must be specified');
             assert(~isempty(str2num(obj.FC1_EB_String)),'FCOND:FORMAT','Flight Conditions must in numeric format');
             assert(~isempty(obj.FC2_EB_String),         'FCOND:EMPTY','Flight Conditions must be specified');
@@ -2429,28 +2433,58 @@ function tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , selLinMdl
     [ statesDerivhdr , statesDerivVal ] = getHeaderValueArray( vectorStateDerivObjs );
 
     if fcIndexMatch
-        if selMassProp(1).DummyMode
-            otherCols = {};
-        else
-            otherCols = {strsplit(wcString,',')};
-        end
-        otherCols = [otherCols , inputVal , outputVal , statesVal , statesDerivVal];
-
-        if isempty(otherCols)
-            otherData = cell(1,0);
-        else
-            otherData = allcomb(otherCols{:});
-        end
-
         nPair = numel(fc1Vals);
-        nOther = size(otherData,1);
-        tabledata = cell(nPair*nOther , 2 + size(otherData,2));
-        for ii = 1:nPair
-            idx = ( (ii-1)*nOther + 1 ) : (ii*nOther);
-            tabledata(idx,1) = fc1Vals(ii);
-            tabledata(idx,2) = fc2Vals(ii);
-            if ~isempty(otherData)
-                tabledata(idx,3:end) = otherData;
+
+        if ~selMassProp(1).DummyMode
+            wcVals = strsplit(wcString,',');
+            if numel(wcVals) ~= nPair
+                error('MASSPROP:SIZE','Mass property vectors must be the same length when matching by index');
+            end
+        else
+            wcVals = {};
+        end
+
+        for i = 1:length(inputVal)
+            if numel(inputVal{i}) ~= nPair
+                error('INPUT:SIZE','Input vector %s must be the same length when matching by index',inputhdr{i});
+            end
+        end
+        for i = 1:length(outputVal)
+            if numel(outputVal{i}) ~= nPair
+                error('OUTPUT:SIZE','Output vector %s must be the same length when matching by index',outputhdr{i});
+            end
+        end
+        for i = 1:length(statesVal)
+            if numel(statesVal{i}) ~= nPair
+                error('STATE:SIZE','State vector %s must be the same length when matching by index',stateshdr{i});
+            end
+        end
+        for i = 1:length(statesDerivVal)
+            if numel(statesDerivVal{i}) ~= nPair
+                error('STATEDER:SIZE','State derivative vector %s must be the same length when matching by index',statesDerivhdr{i});
+            end
+        end
+
+        tableCols = 2 + (~selMassProp(1).DummyMode) + length(inputVal) + length(outputVal) + length(statesVal) + length(statesDerivVal);
+        tabledata = cell(nPair , tableCols);
+        for j = 1:nPair
+            col = 1;
+            tabledata{j,col} = fc1Vals{j}; col = col + 1;
+            tabledata{j,col} = fc2Vals{j}; col = col + 1;
+            if ~selMassProp(1).DummyMode
+                tabledata{j,col} = wcVals{j}; col = col + 1;
+            end
+            for i = 1:length(inputVal)
+                tabledata{j,col} = inputVal{i}{j}; col = col + 1;
+            end
+            for i = 1:length(outputVal)
+                tabledata{j,col} = outputVal{i}{j}; col = col + 1;
+            end
+            for i = 1:length(statesVal)
+                tabledata{j,col} = statesVal{i}{j}; col = col + 1;
+            end
+            for i = 1:length(statesDerivVal)
+                tabledata{j,col} = statesDerivVal{i}{j}; col = col + 1;
             end
         end
     else
