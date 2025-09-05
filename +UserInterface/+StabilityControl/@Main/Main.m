@@ -65,6 +65,12 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
         UseAllCombinationsState = true
         UseExistingTrimState = false
 
+        % When true the original Microsoft Word based report generation is
+        % used.  When false a new open-source report generator is used that
+        % creates HTML or PDF reports without relying on proprietary
+        % software.
+        UseLegacyReport = true
+
         NumberOfPlotPerPagePostPlts= 4
         NumberOfPlotPerPagePlts = 4
         
@@ -1311,11 +1317,18 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
         end % generateReport_CB
 
         function generateReport(obj)
-            %GENERATEREPORT Export a report of current data and plots.
-            %   Prompts the user for a destination file (DOCX or PDF) and
-            %   builds a document that contains a table of the operating
-            %   condition data as well as images of any plots currently
-            %   displayed in the application.
+            %GENERATEREPORT Dispatch to the selected report generator.
+            if obj.UseLegacyReport
+                obj.generateReportLegacy();
+            else
+                obj.generateReportOpenSource();
+            end
+        end % generateReport
+
+        function generateReportLegacy(obj)
+            %GENERATEREPORTLEGACY Export a report using Microsoft Word.
+            %   This retains the previous ActiveX based implementation
+            %   for backwards compatibility.
 
             [file,path] = uiputfile({'*.docx';'*.pdf'}, 'Export Report', 'AnalysisReport.docx');
             if isequal(file,0)
@@ -1386,7 +1399,122 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     end
                 end
             end
-        end % generateReport
+        end % generateReportLegacy
+
+        function generateReportOpenSource(obj)
+            %GENERATEREPORTOPENSOURCE Export report using open-source tools.
+            %   Generates an HTML report and optionally converts it to PDF
+            %   using Pandoc if available.
+
+            [file,path] = uiputfile({'*.pdf';'*.html'}, 'Export Report', 'AnalysisReport.pdf');
+            if isequal(file,0)
+                return;
+            end
+
+            fullName = fullfile(path,file);
+            [~,~,ext] = fileparts(fullName);
+
+            if strcmpi(ext,'.pdf')
+                htmlFile = [tempname '.html'];
+                writeHtmlReport(htmlFile);
+                if ensurePandoc()
+                    [status,~] = system(sprintf('pandoc "%s" -o "%s"', htmlFile, fullName));
+                    if status ~= 0
+                        errordlg('Failed to create PDF using pandoc.','Report');
+                    end
+                else
+                    errordlg('Pandoc is required to export PDF reports.','Report');
+                end
+            else
+                writeHtmlReport(fullName);
+            end
+
+            function writeHtmlReport(filename)
+                fid = fopen(filename,'w');
+                if fid == -1
+                    errordlg('Unable to create report file.','Report');
+                    return;
+                end
+                cleanup = onCleanup(@() fclose(fid));
+                fprintf(fid,'<html><head><title>Flight Dynamics Report</title></head><body>\n');
+                fprintf(fid,'<h1>Flight Dynamics Report</h1>\n');
+
+                if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
+                    fprintf(fid,'<h2>Operating Conditions</h2>\n<table border="1">\n<tr>');
+                    for i = 1:length(obj.OperCondCollObj.TableColumnNames)
+                        fprintf(fid,'<th>%s</th>', obj.OperCondCollObj.TableColumnNames{i});
+                    end
+                    fprintf(fid,'</tr>\n');
+                    data = obj.OperCondCollObj.TableData;
+                    for r = 1:size(data,1)
+                        fprintf(fid,'<tr>');
+                        for c = 1:size(data,2)
+                            val = data{r,c};
+                            if isnumeric(val)
+                                val = num2str(val);
+                            end
+                            fprintf(fid,'<td>%s</td>', val);
+                        end
+                        fprintf(fid,'</tr>\n');
+                    end
+                    fprintf(fid,'</table>\n');
+                end
+
+                fprintf(fid,'<h2>Plots</h2>\n');
+                addAxisCollectionPlots(fid, obj.AxisColl);
+                addAxisCollectionPlots(fid, obj.PostSimAxisColl);
+
+                fprintf(fid,'</body></html>');
+            end
+
+            function addAxisCollectionPlots(fid, coll)
+                if isempty(coll); return; end
+                for p = 1:length(coll.Panel)
+                    panel = coll.Panel(p);
+                    for k = 1:length(panel.Axis)
+                        ax = panel.Axis(k);
+                        if isgraphics(ax) && ~isempty(get(ax,'Children'))
+                            imgFile = [tempname '.png'];
+                            try
+                                if exist('exportgraphics','file')
+                                    exportgraphics(ax, imgFile, 'Resolution', 150);
+                                else
+                                    fig = ancestor(ax, 'figure');
+                                    saveas(fig, imgFile);
+                                end
+                                titleStr = get(get(ax,'Title'),'String');
+                                if isempty(titleStr)
+                                    titleStr = 'Plot';
+                                end
+                                fprintf(fid,'<figure><img src="%s" alt="%s"><figcaption>%s</figcaption></figure>\n',...
+                                    imgFile,titleStr,titleStr);
+                            catch
+                                % Continue without this figure on failure
+                            end
+                        end
+                    end
+                end
+            end
+
+            function tf = ensurePandoc()
+                % Ensure pandoc is available, attempt install if missing
+                [status,~] = system('pandoc -v');
+                tf = status == 0;
+                if ~tf
+                    choice = questdlg('Pandoc is required to export PDF reports. Install now?', ...
+                        'Missing Dependency', 'Install','Cancel','Install');
+                    if strcmp(choice,'Install')
+                        if ispc
+                            system('winget install -e --id JohnMacFarlane.Pandoc');
+                        else
+                            system('sudo apt-get install -y pandoc');
+                        end
+                        [status,~] = system('pandoc -v');
+                        tf = status == 0;
+                    end
+                end
+            end
+        end % generateReportOpenSource
 
         function reqObjCreated( obj , ~ , eventdata )
             reqObj = eventdata.Object;
