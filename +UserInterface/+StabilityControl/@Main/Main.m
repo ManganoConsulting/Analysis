@@ -1417,13 +1417,14 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             if strcmpi(ext,'.pdf')
                 htmlFile = [tempname '.html'];
                 writeHtmlReport(htmlFile);
-                if ensurePandoc()
-                    [status,~] = system(sprintf('pandoc "%s" -o "%s"', htmlFile, fullName));
+                if ensurePandoc() && ensureWkhtmltopdf()
+                    cmd = sprintf('pandoc "%s" -o "%s" --pdf-engine=wkhtmltopdf', htmlFile, fullName);
+                    [status,~] = system(cmd);
                     if status ~= 0
-                        errordlg('Failed to create PDF using pandoc.','Report');
+                        errordlg('Failed to create PDF using pandoc/wkhtmltopdf.','Report');
                     end
                 else
-                    errordlg('Pandoc is required to export PDF reports.','Report');
+                    errordlg('Pandoc and wkhtmltopdf are required to export PDF reports.','Report');
                 end
             else
                 writeHtmlReport(fullName);
@@ -1524,6 +1525,43 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         for c = 1:numel(candidates)
                             binDir = candidates{c};
                             if exist(fullfile(binDir,'pandoc.exe'),'file')
+                                setenv('PATH',[getenv('PATH'), pathsep, binDir]);
+                                break;
+                            end
+                        end
+                    else
+                        setenv('PATH',[getenv('PATH'), pathsep, '/usr/local/bin', pathsep, '/usr/bin']);
+                    end
+                end
+            end
+
+            function isWkhtmltopdfAvailable = ensureWkhtmltopdf()
+                % Ensure wkhtmltopdf is available, attempt install if missing
+                [exitCode,~] = system('wkhtmltopdf -V');
+                isWkhtmltopdfAvailable = (exitCode == 0);
+                if ~isWkhtmltopdfAvailable
+                    choice = questdlg('wkhtmltopdf is required to export PDF reports. Install now?', ...
+                        'Missing Dependency', 'Install','Cancel','Install');
+                    if strcmp(choice,'Install')
+                        if ispc
+                            system('winget install -e --id wkhtmltopdf.wkhtmltopdf');
+                        else
+                            system('sudo apt-get install -y wkhtmltopdf');
+                        end
+                        refreshWkhtmltopdfPath();
+                        [exitCode,~] = system('wkhtmltopdf -V');
+                        isWkhtmltopdfAvailable = (exitCode == 0);
+                    end
+                end
+
+                function refreshWkhtmltopdfPath()
+                    % Add common wkhtmltopdf install locations to MATLAB's PATH
+                    if ispc
+                        candidates = { ...
+                            'C:\\Program Files\\wkhtmltopdf\\bin'};
+                        for c = 1:numel(candidates)
+                            binDir = candidates{c};
+                            if exist(fullfile(binDir,'wkhtmltopdf.exe'),'file')
                                 setenv('PATH',[getenv('PATH'), pathsep, binDir]);
                                 break;
                             end
