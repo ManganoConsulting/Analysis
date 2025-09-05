@@ -1264,50 +1264,37 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 colIndices = colIndices(colIndices <= maxLength);
             end
         
-            operCondTableData = operCondColl.TableData(:,colIndices); 
+            operCondTableData = operCondColl.TableData(:,colIndices);
             if isempty(operCondTableData)
-                operCondTableData = {}; 
+                operCondTableData = {};
             end
-        
+
+            exportData = operCondTableData;
+            if expOpt.Transpose
+                exportData = exportData.';
+            end
+
             if strcmp(eventData.Object,'mat')
                 [filename, pathname] = uiputfile({'*.mat'}, 'Save Operating Condition Table Data', 'TableData');
                 if isequal(filename,0)
                     return;
                 end
+                operCondTableData = exportData; %#ok<NASGU>
                 save(fullfile(pathname,filename), 'operCondTableData');
-        
+
             elseif strcmp(eventData.Object,'csv')
-                % ---- NEW: ask user for CSV orientation ----
-                choice = questdlg( ...
-                    'How should the CSV be oriented?', ...
-                    'Export to CSV', ...
-                    'Normal (rows as-is)', ...
-                    'Transpose (swap rows/cols)', ...
-                    'Cancel', ...
-                    'Normal (rows as-is)');
-        
-                if isempty(choice) || strcmpi(choice,'Cancel')
-                    return;
-                end
-        
-                data2write = operCondTableData;
-                if startsWith(choice, 'Transpose', 'IgnoreCase', true)
-                    data2write = operCondTableData.';   % transpose cell array
-                end
-                % -------------------------------------------
-        
                 [filename, pathname] = uiputfile({'*.csv'}, 'Save Operating Condition Table Data', 'TableData');
                 if isequal(filename,0)
                     return;
                 end
-                Utilities.cell2csv(fullfile(pathname,filename), data2write, ',');
-        
+                Utilities.cell2csv(fullfile(pathname,filename), exportData, ',');
+
             else
                 [filename, pathname] = uiputfile({'*.m'}, 'Save Operating Condition Table Data', 'TableData');
                 if isequal(filename,0)
                     return;
                 end
-                Utilities.cell2mfile(fullfile(pathname,filename), operCondTableData);
+                Utilities.cell2mfile(fullfile(pathname,filename), exportData);
             end
         end % exportTable_CB
 
