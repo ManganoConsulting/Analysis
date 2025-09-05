@@ -67,7 +67,12 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
         NumberOfPlotPerPagePostPlts= 4
         NumberOfPlotPerPagePlts = 4
-        
+
+        % When true, use the original Microsoft Word based report
+        % generation. When false, use the new open-source reporting
+        % implementation that creates HTML or PDF using free tools.
+        UseLegacyReport = false
+
         TrimSettings UserInterface.StabilityControl.TrimOptions = UserInterface.StabilityControl.TrimOptions(0)
     end % Public properties
         
@@ -1312,10 +1317,20 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
         function generateReport(obj)
             %GENERATEREPORT Export a report of current data and plots.
-            %   Prompts the user for a destination file (DOCX or PDF) and
-            %   builds a document that contains a table of the operating
-            %   condition data as well as images of any plots currently
-            %   displayed in the application.
+            %   Depending on the UseLegacyReport property, this method will
+            %   either call the original Microsoft Word based report
+            %   generator or a new open-source implementation that exports
+            %   to HTML or PDF using free tools.
+
+            if obj.UseLegacyReport
+                obj.generateReportLegacy();
+            else
+                obj.generateReportOpen();
+            end
+        end % generateReport
+
+        function generateReportLegacy(obj)
+            % Original report generation using Microsoft Word ActiveX
 
             [file,path] = uiputfile({'*.docx';'*.pdf'}, 'Export Report', 'AnalysisReport.docx');
             if isequal(file,0)
@@ -1386,7 +1401,162 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     end
                 end
             end
-        end % generateReport
+        end % generateReportLegacy
+
+        function generateReportOpen(obj)
+            % New open-source report generation. Creates HTML or PDF files
+            % without relying on proprietary software. PDF export requires
+            % a LaTeX distribution with pdflatex on the system path.
+
+            [file,path] = uiputfile({'*.pdf';'*.html'}, 'Export Report', 'AnalysisReport.pdf');
+            if isequal(file,0)
+                return;
+            end
+
+            fullName = fullfile(path,file);
+            [~,~,ext] = fileparts(fullName);
+
+            switch lower(ext)
+                case '.html'
+                    generateHtml(fullName);
+                otherwise
+                    generatePdf(fullName);
+            end
+
+            function plots = collectPlots(directory)
+                plots = struct('Filename',{},'Title',{});
+                idx = 1;
+                function addPlots(coll)
+                    if isempty(coll); return; end
+                    for p = 1:length(coll.Panel)
+                        panel = coll.Panel(p);
+                        for k = 1:length(panel.Axis)
+                            ax = panel.Axis(k);
+                            if isgraphics(ax) && ~isempty(get(ax,'Children'))
+                                imgFile = fullfile(directory,sprintf('plot%d.png',idx));
+                                try
+                                    if exist('exportgraphics','file')
+                                        exportgraphics(ax, imgFile, 'Resolution', 150);
+                                    else
+                                        fig = ancestor(ax,'figure');
+                                        saveas(fig,imgFile);
+                                    end
+                                    titleStr = get(get(ax,'Title'),'String');
+                                    if isempty(titleStr)
+                                        titleStr = 'Plot';
+                                    end
+                                    plots(end+1).Filename = imgFile; %#ok<AGROW>
+                                    plots(end).Title = titleStr;
+                                    idx = idx + 1;
+                                catch
+                                    % continue without plot
+                                end
+                            end
+                        end
+                    end
+                end
+                addPlots(obj.AxisColl);
+                addPlots(obj.PostSimAxisColl);
+            end
+
+            function generateHtml(fname)
+                imgDir = fileparts(fname);
+                plots = collectPlots(imgDir);
+                fid = fopen(fname,'w');
+                fprintf(fid,'<html><head><meta charset="UTF-8"><title>Flight Dynamics Report</title></head><body>');
+                fprintf(fid,'<h1>Flight Dynamics Report</h1>');
+                addOperCondTableHtml(fid);
+                fprintf(fid,'<h1>Plots</h1>');
+                for i = 1:numel(plots)
+                    [~,name,extImg] = fileparts(plots(i).Filename);
+                    fprintf(fid,'<h2>%s</h2><img src="%s" alt="%s"/>',plots(i).Title,[name,extImg],plots(i).Title);
+                end
+                fprintf(fid,'</body></html>');
+                fclose(fid);
+            end
+
+            function addOperCondTableHtml(fid)
+                if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
+                    fprintf(fid,'<h1>Operating Conditions</h1>');
+                    fprintf(fid,'<table border="1">');
+                    names = obj.OperCondCollObj.TableColumnNames;
+                    fprintf(fid,'<tr>');
+                    for j=1:numel(names)
+                        fprintf(fid,'<th>%s</th>',names{j});
+                    end
+                    fprintf(fid,'</tr>');
+                    data = obj.OperCondCollObj.TableData;
+                    for r=1:size(data,1)
+                        fprintf(fid,'<tr>');
+                        for c=1:size(data,2)
+                            val = data{r,c};
+                            if isnumeric(val), val=num2str(val); end
+                            fprintf(fid,'<td>%s</td>',val);
+                        end
+                        fprintf(fid,'</tr>');
+                    end
+                    fprintf(fid,'</table>');
+                end
+            end
+
+            function generatePdf(fname)
+                tmpDir = tempname; mkdir(tmpDir);
+                plots = collectPlots(tmpDir);
+                texFile = fullfile(tmpDir,'report.tex');
+                fid = fopen(texFile,'w');
+                fprintf(fid,'\\documentclass{article}\\usepackage{graphicx}\\usepackage[margin=1in]{geometry}\\begin{document}');
+                fprintf(fid,'\\title{Flight Dynamics Report}\\maketitle\\tableofcontents');
+                addOperCondTableLatex(fid);
+                fprintf(fid,'\\section{Plots}');
+                for i = 1:numel(plots)
+                    [~,name,extImg] = fileparts(plots(i).Filename);
+                    fprintf(fid,'\\begin{figure}[h]\\centering\\includegraphics[width=0.9\\linewidth]{%s}\\caption{%s}\\end{figure}',[name,extImg],plots(i).Title);
+                end
+                fprintf(fid,'\\end{document}');
+                fclose(fid);
+                oldDir = pwd; cd(tmpDir);
+                [status,~] = system('pdflatex -interaction=nonstopmode report.tex');
+                cd(oldDir);
+                if status == 0
+                    movefile(fullfile(tmpDir,'report.pdf'), fname);
+                else
+                    warndlg('pdflatex not found. Unable to create PDF report.', 'Report');
+                end
+            end
+
+            function addOperCondTableLatex(fid)
+                if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
+                    data = obj.OperCondCollObj.TableData;
+                    names = obj.OperCondCollObj.TableColumnNames;
+                    fprintf(fid,'\\section{Operating Conditions}');
+                    fprintf(fid,'\\begin{tabular}{|%s|}\\hline',repmat('c|',1,size(data,2)));
+                    for j=1:numel(names)
+                        fprintf(fid,'%s',escapeLatex(names{j}));
+                        if j<size(data,2), fprintf(fid,' & '); end
+                    end
+                    fprintf(fid,'\\\\ \\hline');
+                    for r=1:size(data,1)
+                        for c=1:size(data,2)
+                            val = data{r,c};
+                            if isnumeric(val), val=num2str(val); end
+                            fprintf(fid,'%s',escapeLatex(val));
+                            if c<size(data,2), fprintf(fid,' & '); end
+                        end
+                        fprintf(fid,'\\\\ \\hline');
+                    end
+                    fprintf(fid,'\\end{tabular}');
+                end
+            end
+
+            function out = escapeLatex(str)
+                if isnumeric(str), str=num2str(str); end
+                reps = {'\','\\';'_','\_';'%','\%';'#','\#';'&','\&';'{','\{';'}','\}';'$','\$';'^','\^{}';'~','\~{}'};
+                out = str;
+                for ii=1:size(reps,1)
+                    out = strrep(out,reps{ii,1},reps{ii,2});
+                end
+            end
+        end % generateReportOpen
 
         function reqObjCreated( obj , ~ , eventdata )
             reqObj = eventdata.Object;
