@@ -1496,11 +1496,11 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 end
             end
 
-            function tf = ensurePandoc()
+            function isPandocAvailable = ensurePandoc()
                 % Ensure pandoc is available, attempt install if missing
-                [status,~] = system('pandoc -v');
-                tf = status == 0;
-                if ~tf
+                [exitCode,~] = system('pandoc -v');
+                isPandocAvailable = (exitCode == 0); % exit code 0 indicates success
+                if ~isPandocAvailable
                     choice = questdlg('Pandoc is required to export PDF reports. Install now?', ...
                         'Missing Dependency', 'Install','Cancel','Install');
                     if strcmp(choice,'Install')
@@ -1509,8 +1509,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         else
                             system('sudo apt-get install -y pandoc');
                         end
-                        [status,~] = system('pandoc -v');
-                        tf = status == 0;
+                        [exitCode,~] = system('pandoc -v');
+                        isPandocAvailable = (exitCode == 0); % exit code 0 indicates success
                     end
                 end
             end
