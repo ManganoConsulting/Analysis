@@ -1509,8 +1509,27 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         else
                             system('sudo apt-get install -y pandoc');
                         end
+                        refreshPandocPath();
                         [exitCode,~] = system('pandoc -v');
                         isPandocAvailable = (exitCode == 0); % exit code 0 indicates success
+                    end
+                end
+
+                function refreshPandocPath()
+                    % Add common pandoc install locations to MATLAB's PATH
+                    if ispc
+                        candidates = { ...
+                            'C:\\Program Files\\Pandoc', ...
+                            fullfile(getenv('LOCALAPPDATA'),'Pandoc')};
+                        for c = 1:numel(candidates)
+                            binDir = candidates{c};
+                            if exist(fullfile(binDir,'pandoc.exe'),'file')
+                                setenv('PATH',[getenv('PATH'), pathsep, binDir]);
+                                break;
+                            end
+                        end
+                    else
+                        setenv('PATH',[getenv('PATH'), pathsep, '/usr/local/bin', pathsep, '/usr/bin']);
                     end
                 end
             end
