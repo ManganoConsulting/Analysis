@@ -253,6 +253,13 @@ classdef RowFilter < UserInterface.tree
     methods 
         
         function initialize( obj , struct )
+            % Ensure the selection cache exists in case the object was loaded
+            % from an older session where it wasn't initialized properly.
+            if ~isa(obj.NodeSelectionCache,'containers.Map')
+                obj.NodeSelectionCache = containers.Map('KeyType','char', ...
+                    'ValueType','logical');
+            end
+
             % Persist current selections in cache before clearing existing nodes.
             nodeVariableNames =  {'StatesNode','StateDerivsNode',...
                 'InputsNode','OutputsNode','FltCondNode','MassPropNode','SignalLogNode'};
@@ -300,7 +307,7 @@ classdef RowFilter < UserInterface.tree
                     obj.(nodeName).getChildCount());
 
                 key = [struct(i).Type ':' struct(i).Name];
-                if isKey(obj.NodeSelectionCache,key)
+                if obj.NodeSelectionCache.isKey(key)
                     selected = obj.NodeSelectionCache(key);
                 else
                     selected = true; % New node, select by default
