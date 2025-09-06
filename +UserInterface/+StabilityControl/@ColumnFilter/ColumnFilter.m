@@ -287,7 +287,7 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
                 'Parent',parent,...
                 'Style','popupmenu',...
                 'String', obj.FilterValue4String,...
-                'Value',obj.FilterValue4SelValue,...'String', {'All'},...
+                'Value',obj.FilterValue4SelValue,...
                 'BackgroundColor', [1 1 1],...
                 'Units','Pixels',...
                 'Callback',@obj.filterValue4_CB);
@@ -372,6 +372,12 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
                 resetVar4 = true;
             end
             
+            % Preserve currently selected filter values before updating
+            oldVal1 = obj.FilterValue1String{min(obj.FilterValue1SelValue,numel(obj.FilterValue1String))};
+            oldVal2 = obj.FilterValue2String{min(obj.FilterValue2SelValue,numel(obj.FilterValue2String))};
+            oldVal3 = obj.FilterValue3String{min(obj.FilterValue3SelValue,numel(obj.FilterValue3String))};
+            oldVal4 = obj.FilterValue4String{min(obj.FilterValue4SelValue,numel(obj.FilterValue4String))};
+
             obj.FilterVar1String = ['All';names];
             obj.FilterVar2String = ['All';names];
             obj.FilterVar3String = ['All';names];
@@ -405,78 +411,63 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
             if obj.FilterVar1SelValue == 1
                 obj.FilterValue1String = {'All'};
                 obj.FilterValue1SelValue = 1;
-            else                      
-                data = obj.DisplayData( obj.FilterVar1SelValue - 1 , 4:end);                 
+                obj.FilterRange1String = [];
+            else
+                data = obj.DisplayData( obj.FilterVar1SelValue - 1 , 4:end);
                 obj.FilterValue1String = createUniqueCellStringWithAll( obj, data );
+                if ismember(oldVal1, obj.FilterValue1String)
+                    obj.FilterValue1SelValue = find(ismember(obj.FilterValue1String, oldVal1));
+                else
+                    obj.FilterValue1SelValue = 1;
+                    obj.FilterRange1String = [];
+                end
             end
-            
+
             if obj.FilterVar2SelValue == 1
                 obj.FilterValue2String = {'All'};
                 obj.FilterValue2SelValue = 1;
-            else                      
-                data = obj.DisplayData( obj.FilterVar2SelValue - 1 , 4:end);                 
+                obj.FilterRange2String = [];
+            else
+                data = obj.DisplayData( obj.FilterVar2SelValue - 1 , 4:end);
                 obj.FilterValue2String = createUniqueCellStringWithAll( obj, data );
+                if ismember(oldVal2, obj.FilterValue2String)
+                    obj.FilterValue2SelValue = find(ismember(obj.FilterValue2String, oldVal2));
+                else
+                    obj.FilterValue2SelValue = 1;
+                    obj.FilterRange2String = [];
+                end
             end
-            
+
             if obj.FilterVar3SelValue == 1
                 obj.FilterValue3String = {'All'};
                 obj.FilterValue3SelValue = 1;
-            else                      
-                data = obj.DisplayData( obj.FilterVar3SelValue - 1 , 4:end);                 
+                obj.FilterRange3String = [];
+            else
+                data = obj.DisplayData( obj.FilterVar3SelValue - 1 , 4:end);
                 obj.FilterValue3String = createUniqueCellStringWithAll( obj, data );
+                if ismember(oldVal3, obj.FilterValue3String)
+                    obj.FilterValue3SelValue = find(ismember(obj.FilterValue3String, oldVal3));
+                else
+                    obj.FilterValue3SelValue = 1;
+                    obj.FilterRange3String = [];
+                end
             end
-            
+
             if obj.FilterVar4SelValue == 1
                 obj.FilterValue4String = {'All'};
                 obj.FilterValue4SelValue = 1;
-            else                      
-                data = obj.DisplayData( obj.FilterVar4SelValue - 1 , 4:end);                 
-                obj.FilterValue4String = createUniqueCellStringWithAll( obj, data );
-            end
-            
-            
-            if ~isnan(str2double(obj.FilterRange1String)) && (isempty(obj.FilterRange1String) || ~ismember(obj.FilterRange1String, obj.FilterValue1String))
-                obj.FilterValue1SelValue = 1;
-                obj.FilterRange1String = [];
-            end
-            
-            if ~isnan(str2double(obj.FilterRange2String)) && (isempty(obj.FilterRange2String) || ~ismember(obj.FilterRange2String, obj.FilterValue2String))
-                obj.FilterValue2SelValue = 1;
-                obj.FilterRange2String = [];
-            end
-            
-            if ~isnan(str2double(obj.FilterRange3String)) && (isempty(obj.FilterRange3String) || ~ismember(obj.FilterRange3String, obj.FilterValue3String))
-                obj.FilterValue3SelValue = 1;
-                obj.FilterRange3String = [];
-            end
-            
-            if ~isnan(str2double(obj.FilterRange4String)) && (isempty(obj.FilterRange4String) || ~ismember(obj.FilterRange4String, obj.FilterValue4String))
-                obj.FilterValue4SelValue = 1;
                 obj.FilterRange4String = [];
+            else
+                data = obj.DisplayData( obj.FilterVar4SelValue - 1 , 4:end);
+                obj.FilterValue4String = createUniqueCellStringWithAll( obj, data );
+                if ismember(oldVal4, obj.FilterValue4String)
+                    obj.FilterValue4SelValue = find(ismember(obj.FilterValue4String, oldVal4));
+                else
+                    obj.FilterValue4SelValue = 1;
+                    obj.FilterRange4String = [];
+                end
             end
             
-%             obj.FilterValue1String = {'All'};
-%             obj.FilterValue2String = {'All'};
-%             obj.FilterValue3String = {'All'};
-%             obj.FilterValue4String = {'All'};
-        
-%             selVal1
-%             obj.FilterValue1SelValue = 1;
-%             obj.FilterValue2SelValue = 1;
-%             obj.FilterValue3SelValue = 1;
-%             obj.FilterValue4SelValue = 1;
-
-%             obj.FilterRange1String = [];
-%             obj.FilterRange2String = [];
-%             obj.FilterRange3String = [];
-%             obj.FilterRange4String = [];
-            
-%             trueArray = true(size(obj.Data,2),1);
-%             obj.Filter1ColumnLogicalArray = trueArray;
-%             obj.Filter2ColumnLogicalArray = trueArray;
-%             obj.Filter3ColumnLogicalArray = trueArray;
-%             obj.Filter4ColumnLogicalArray = trueArray;
-
             calculateFilter1ColLogicalArrayRange(obj);
             calculateFilter2ColLogicalArrayRange(obj);
             calculateFilter3ColLogicalArrayRange(obj);
