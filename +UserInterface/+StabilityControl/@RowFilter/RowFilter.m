@@ -24,7 +24,9 @@ classdef RowFilter < UserInterface.tree
     
     %% Private properties - Data Storage
     properties  ( Access = private )
- 
+        % Cache of user selections. Keys are "<Parent>:<Child>" and values
+        % are logical true/false indicating whether the node was selected.
+        NodeSelectionCache
     end
         
     %% Read-only properties
@@ -56,9 +58,17 @@ classdef RowFilter < UserInterface.tree
     end % Events
     
     %% Methods - Constructor
-    methods      
+    methods
         function obj = RowFilter( parent )
             obj = obj@UserInterface.tree( parent );
+            % Initialize the selection cache which stores user choices across
+            % multiple initializations of the tree.  This allows the variable
+            % selection state to persist even if nodes are removed and later
+            % restored (for example when the Simulink model I/O changes or
+            % when toggling logged signals).
+            obj.NodeSelectionCache = containers.Map('KeyType','char', ...
+                'ValueType','logical');
+
             createView( obj , parent );
         end % RowFilter
     end % Constructor
@@ -243,19 +253,24 @@ classdef RowFilter < UserInterface.tree
     methods 
         
         function initialize( obj , struct )
-            % Store current selections before clearing existing nodes so that
-            % previously selected/unselected nodes can be restored if they
-            % exist in the new data set
+            % Ensure the selection cache exists in case the object was loaded
+            % from an older session where it wasn't initialized properly.
+            if ~isa(obj.NodeSelectionCache,'containers.Map')
+                obj.NodeSelectionCache = containers.Map('KeyType','char', ...
+                    'ValueType','logical');
+            end
+
+            % Persist current selections in cache before clearing existing nodes.
             nodeVariableNames =  {'StatesNode','StateDerivsNode',...
                 'InputsNode','OutputsNode','FltCondNode','MassPropNode','SignalLogNode'};
-            prevSelection = containers.Map('KeyType','char','ValueType','logical');
             for k = 1:length(nodeVariableNames)
                 parentNode = obj.(nodeVariableNames{k});
                 parentName = char(parentNode.getName);
                 for j = 0:(parentNode.getChildCount-1)
                     child = parentNode.getChildAt(j);
                     key = [parentName ':' char(child.getName)];
-                    prevSelection(key) = strcmpi('selected',char(child.getValue));
+                    obj.NodeSelectionCache(key) = strcmpi('selected', ...
+                        char(child.getValue));
                 end
             end
 
@@ -292,20 +307,24 @@ classdef RowFilter < UserInterface.tree
                     obj.(nodeName).getChildCount());
 
                 key = [struct(i).Type ':' struct(i).Name];
-                if isKey(prevSelection,key) && prevSelection(key)
+                if obj.NodeSelectionCache.isKey(key)
+                    selected = obj.NodeSelectionCache(key);
+                else
+                    selected = true; % New node, select by default
+                end
+
+                if selected
                     node.setIcon(obj.JavaImage_checked);
                     node.setValue('selected');
                     logicArray(i) = true;
-                elseif isKey(prevSelection,key) && ~prevSelection(key)
+                else
                     node.setIcon(obj.JavaImage_unchecked);
                     node.setValue('unselected');
                     logicArray(i) = false;
-                else
-                    % New node, select by default
-                    node.setIcon(obj.JavaImage_checked);
-                    node.setValue('selected');
-                    logicArray(i) = true;
                 end
+
+                % Update cache with the current state of the node
+                obj.NodeSelectionCache(key) = selected;
             end
 
             % Update parent node icons based on their children's selection
@@ -423,12 +442,20 @@ classdef RowFilter < UserInterface.tree
     %% Methods - Protected -  Copy
     methods (Access = protected)            
         function cpObj = copyElement(obj)
-            % Override copyElement method:    
+            % Override copyElement method:
             % Make a shallow copy of all properties
             cpObj = copyElement@matlab.mixin.Copyable(obj);
-%             % Make a deep copy of the xxxx object
-%             cpObj.xxxx = copy(obj.xxxx);
-            
+            % Make a deep copy of the NodeSelectionCache so that copied
+            % RowFilter objects maintain their own selection history
+            if ~isempty(obj.NodeSelectionCache)
+                cpObj.NodeSelectionCache = containers.Map( ...
+                    keys(obj.NodeSelectionCache), ...
+                    values(obj.NodeSelectionCache));
+            else
+                cpObj.NodeSelectionCache = containers.Map('KeyType','char', ...
+                    'ValueType','logical');
+            end
+
         end
         
     end
