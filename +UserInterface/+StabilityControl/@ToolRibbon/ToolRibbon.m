@@ -349,10 +349,11 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
                 obj.MainJButton = clrTblButton;
 
                 % Generate Report Button
-                genRptButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
+                genRptButton = javaObjectEDT('com.mathworks.toolstrip.components.TSSplitButton');
                 genRptButton.setText('Generate Report');
                 genRptButtonH = handle(genRptButton,'CallbackProperties');
-                set(genRptButtonH,'ActionPerformedCallback',@obj.generateReport_CB);
+                set(genRptButtonH,'ActionPerformedCallback',@obj.generateReportMenu_CB);
+                set(genRptButtonH,'DropDownActionPerformedCallback',@obj.generateReportMenu_CB);
                 myIcon = fullfile(icon_dir,'report_app_24.png');
                 genRptButton.setIcon(javax.swing.ImageIcon(myIcon));
                 genRptButton.setToolTipText('Generate analysis report');
@@ -1057,11 +1058,33 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
         
         function runAndSave_CB( obj , ~ , ~ )
             notify(obj,'RunSave');
-        end % runAndSave_CB 
-          
+        end % runAndSave_CB
+
+        function generateReportMenu_CB( obj , hobj , ~ )
+            hobj.setSelected(true);
+            jmenu = javax.swing.JPopupMenu;
+            jmenuh = handle(jmenu,'CallbackProperties');
+            jmenuh.PopupMenuWillBecomeInvisibleCallback = {@obj.popUpMenuCancelled,hobj};
+
+            pdfItem   = javax.swing.JMenuItem('<html>PDF');
+            pdfItemh  = handle(pdfItem,'CallbackProperties');
+            set(pdfItemh,'ActionPerformedCallback',{@obj.generateReport_CB,'PDF'});
+
+            wordItem  = javax.swing.JMenuItem('<html>MS Word');
+            wordItemh = handle(wordItem,'CallbackProperties');
+            set(wordItemh,'ActionPerformedCallback',{@obj.generateReport_CB,'MS Word'});
+
+            jmenu.add(pdfItem);
+            jmenu.add(wordItem);
+
+            jmenu.show(hobj, 0 , 20 );
+            % jmenu.show(hobj, 0 , 69 );
+            jmenu.repaint;
+        end % generateReportMenu_CB
+
         function exportTable_CB( obj , ~ , ~ )
             notify(obj,'ExportTable',UserInterface.UserInterfaceEventData('mat'));
-        end % exportTable_CB    
+        end % exportTable_CB
         
         function exportTableCSV_CB( obj , ~ , ~ )
             notify(obj,'ExportTable',UserInterface.UserInterfaceEventData('csv'));
@@ -1071,8 +1094,11 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
             notify(obj,'ExportTable',UserInterface.UserInterfaceEventData('m'));
         end % exportTableCSV_CB
 
-        function generateReport_CB( obj , ~ , ~ )
-            notify(obj,'GenerateReport');
+        function generateReport_CB( obj , ~ , ~ , format )
+            if nargin < 4
+                format = 'PDF';
+            end
+            notify(obj,'GenerateReport',UserInterface.UserInterfaceEventData(format));
         end % generateReport_CB
 
         function settingsButton_CB( obj , ~ , ~ )

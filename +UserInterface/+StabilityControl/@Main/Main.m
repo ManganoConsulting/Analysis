@@ -1299,7 +1299,14 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
         end % exportTable_CB
 
 
-        function generateReport_CB( obj , ~ , ~ )
+        function generateReport_CB( obj , ~ , eventData )
+            if nargin < 3 || isempty(eventData) || isempty(eventData.Object)
+                format = 'PDF';
+            else
+                format = eventData.Object;
+            end
+
+            obj.UseLegacyReport = strcmpi(format,'MS Word');
             obj.generateReport();
         end % generateReport_CB
 
