@@ -1361,6 +1361,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
             addAxisCollectionPlots(obj.AxisColl);
             addAxisCollectionPlots(obj.PostSimAxisColl);
+            addSimAxisPlots(obj.SimAxisColl);
 
             updateTOC(rpt);
             saveAs(rpt, fullName);
@@ -1390,6 +1391,17 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                 % If exporting the graphic fails, continue without it
                             end
                         end
+                    end
+                end
+            end
+
+            function addSimAxisPlots(simColl)
+                if isempty(simColl); return; end
+                for s = 1:numel(simColl)
+                    try
+                        addAxisCollectionPlots(simColl(s).AxisPanelCollObj);
+                    catch
+                        % Ignore invalid simulation viewers
                     end
                 end
             end
@@ -1458,6 +1470,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 fprintf(fid,'<h2>Plots</h2>\n');
                 addAxisCollectionPlots(fid, obj.AxisColl);
                 addAxisCollectionPlots(fid, obj.PostSimAxisColl);
+                addSimAxisPlots(fid, obj.SimAxisColl);
 
                 fprintf(fid,'</body></html>');
             end
@@ -1487,6 +1500,17 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                 % Continue without this figure on failure
                             end
                         end
+                    end
+                end
+            end
+
+            function addSimAxisPlots(fid, simColl)
+                if isempty(simColl); return; end
+                for s = 1:numel(simColl)
+                    try
+                        addAxisCollectionPlots(fid, simColl(s).AxisPanelCollObj);
+                    catch
+                        % Ignore invalid simulation viewers
                     end
                 end
             end
