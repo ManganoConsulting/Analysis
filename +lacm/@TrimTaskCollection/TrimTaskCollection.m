@@ -2398,9 +2398,9 @@ function tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , selLinMdl
         fcIndexMatch = false;
     end
 
-    if fcIndexMatch && numel(fc1Vals) ~= numel(fc2Vals)
-        error('FCOND:SIZE','Flight condition vectors must be the same length when matching by index');
-    end
+    % When matching by index, all value arrays are synchronized in length
+    % later in the function.  Size checks are handled after assembling all
+    % arrays, so no early error is required here.
 
     if selMassProp(1).DummyMode
         startingColIndex = 3;
@@ -2429,30 +2429,111 @@ function tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , selLinMdl
     [ statesDerivhdr , statesDerivVal ] = getHeaderValueArray( vectorStateDerivObjs );
 
     if fcIndexMatch
+        % Match all value arrays by index.  Determine the maximum length
+        % among non-scalar arrays and replicate scalar entries to that
+        % length so that each row in the table corresponds to a single
+        % index across all variables.
+
+        % Gather all value arrays and their identifying names
+        valueArrays = {fc1Vals , fc2Vals};
+        valueNames  = {'Flight Condition 1' , 'Flight Condition 2'};
+
         if selMassProp(1).DummyMode
-            otherCols = {};
+            massPropVals = {};
         else
-            otherCols = {strsplit(wcString,',')};
-        end
-        otherCols = [otherCols , inputVal , outputVal , statesVal , statesDerivVal];
-
-        if isempty(otherCols)
-            otherData = cell(1,0);
-        else
-            otherData = allcomb(otherCols{:});
+            massPropVals = strsplit(wcString,',');
+            valueArrays{end+1} = massPropVals;
+            valueNames{end+1}  = 'Mass Properties';
         end
 
-        nPair = numel(fc1Vals);
-        nOther = size(otherData,1);
-        tabledata = cell(nPair*nOther , 2 + size(otherData,2));
-        for ii = 1:nPair
-            idx = ( (ii-1)*nOther + 1 ) : (ii*nOther);
-            tabledata(idx,1) = fc1Vals(ii);
-            tabledata(idx,2) = fc2Vals(ii);
-            if ~isempty(otherData)
-                tabledata(idx,3:end) = otherData;
+        for ii = 1:length(inputVal)
+            valueArrays{end+1} = inputVal{ii};
+            valueNames{end+1}  = ['Input ' inputhdr{ii}];
+        end
+        for ii = 1:length(outputVal)
+            valueArrays{end+1} = outputVal{ii};
+            valueNames{end+1}  = ['Output ' outputhdr{ii}];
+        end
+        for ii = 1:length(statesVal)
+            valueArrays{end+1} = statesVal{ii};
+            valueNames{end+1}  = ['State ' stateshdr{ii}];
+        end
+        for ii = 1:length(statesDerivVal)
+            valueArrays{end+1} = statesDerivVal{ii};
+            valueNames{end+1}  = ['State Derivative ' statesDerivhdr{ii}];
+        end
+
+        % Compute lengths and determine maximum non-scalar length
+        valueLengths = cellfun(@numel, valueArrays);
+        nonScalarIdx = find(valueLengths > 1);
+        if isempty(nonScalarIdx)
+            maxLen = 1;
+        else
+            maxLen = max(valueLengths(nonScalarIdx));
+            mismatchIdx = nonScalarIdx(valueLengths(nonScalarIdx) ~= maxLen);
+            if ~isempty(mismatchIdx)
+                error('FCOND:SIZE', '%s value array length mismatch', valueNames{mismatchIdx(1)});
             end
         end
+
+        % Replicate scalar arrays to match the maximum length
+        for ii = 1:numel(valueArrays)
+            if numel(valueArrays{ii}) == 1 && maxLen > 1
+                valueArrays{ii} = repmat(valueArrays{ii}, 1, maxLen);
+            end
+        end
+
+        % Assign expanded arrays back to original variables
+        idx = 1;
+        fc1Vals = valueArrays{idx}; idx = idx + 1;
+        fc2Vals = valueArrays{idx}; idx = idx + 1;
+        if ~selMassProp(1).DummyMode
+            massPropVals = valueArrays{idx}; idx = idx + 1;
+        end
+        for ii = 1:length(inputVal)
+            inputVal{ii} = valueArrays{idx}; idx = idx + 1;
+        end
+        for ii = 1:length(outputVal)
+            outputVal{ii} = valueArrays{idx}; idx = idx + 1;
+        end
+        for ii = 1:length(statesVal)
+            statesVal{ii} = valueArrays{idx}; idx = idx + 1;
+        end
+        for ii = 1:length(statesDerivVal)
+            statesDerivVal{ii} = valueArrays{idx}; idx = idx + 1;
+        end
+
+        % Construct table data by index across all arrays
+        nRows = maxLen;
+        nCols = 2 + (~selMassProp(1).DummyMode) + length(inputVal) + ...
+                length(outputVal) + length(statesVal) + length(statesDerivVal);
+        tabledata = cell(nRows, nCols);
+        for ii = 1:nRows
+            tabledata{ii,1} = fc1Vals{ii};
+            tabledata{ii,2} = fc2Vals{ii};
+            col = 3;
+            if ~selMassProp(1).DummyMode
+                tabledata{ii,col} = massPropVals{ii};
+                col = col + 1;
+            end
+            for jj = 1:length(inputVal)
+                tabledata{ii,col} = inputVal{jj}{ii};
+                col = col + 1;
+            end
+            for jj = 1:length(outputVal)
+                tabledata{ii,col} = outputVal{jj}{ii};
+                col = col + 1;
+            end
+            for jj = 1:length(statesVal)
+                tabledata{ii,col} = statesVal{jj}{ii};
+                col = col + 1;
+            end
+            for jj = 1:length(statesDerivVal)
+                tabledata{ii,col} = statesDerivVal{jj}{ii};
+                col = col + 1;
+            end
+        end
+
     else
         if selMassProp(1).DummyMode
             cols = {fc1Vals, fc2Vals};
