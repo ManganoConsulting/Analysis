@@ -1361,6 +1361,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
             addAxisCollectionPlots(obj.AxisColl);
             addAxisCollectionPlots(obj.PostSimAxisColl);
+            addSimAxisPlots(obj.SimAxisColl);
 
             updateTOC(rpt);
             saveAs(rpt, fullName);
@@ -1372,7 +1373,12 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     panel = coll.Panel(p);
                     for k = 1:length(panel.Axis)
                         ax = panel.Axis(k);
-                        if isgraphics(ax) && ~isempty(get(ax,'Children'))
+                        if isgraphics(ax)
+                            axType = get(ax,'Type');
+                        else
+                            axType = '';
+                        end
+                        if isgraphics(ax) && any(strcmp(axType, {'axes','polaraxes','uiaxes'})) && ~isempty(get(ax,'Children'))
                             imgFile = [tempname '.png'];
                             try
                                 if exist('exportgraphics','file')
@@ -1390,6 +1396,58 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                 % If exporting the graphic fails, continue without it
                             end
                         end
+                    end
+                end
+            end
+
+            function addSimAxisPlots(simColl)
+                if isempty(simColl); return; end
+                for s = 1:numel(simColl)
+                    try
+                        coll = simColl(s).AxisPanelCollObj;
+                        if isempty(coll) || isempty(coll.Panel); continue; end
+                        panels = coll.Panel;
+                        visStates = arrayfun(@(p) p.Visible, panels);
+                        for p = 1:numel(panels)
+                            % Show only this panel while capturing
+                            for j = 1:numel(panels)
+                                panels(j).Visible = (j == p);
+                            end
+                            drawnow();
+                            panelHandle = panels(p).Panel;
+
+                            % Determine if any axes on this page contain data
+                            hasData = false;
+                            for k = 1:length(panels(p).Axis)
+                                ax = panels(p).Axis(k);
+                                if isgraphics(ax) && ~isempty(get(ax,'Children'))
+                                    hasData = true; break;
+                                end
+                            end
+                            if ~hasData
+                                continue;
+                            end
+
+                            imgFile = [tempname '.png'];
+                            try
+                                if exist('exportgraphics','file')
+                                    exportgraphics(panelHandle, imgFile, 'Resolution', 150);
+                                else
+                                    fr = getframe(panelHandle);
+                                    imwrite(fr.cdata, imgFile);
+                                end
+                                titleStr = sprintf('Simulation Page %d', p);
+                                addFigure(rpt, struct('Filename', imgFile, 'Title', titleStr));
+                            catch
+                                % Ignore failures for this panel
+                            end
+                        end
+                        % Restore original visibility
+                        for j = 1:numel(panels)
+                            panels(j).Visible = visStates(j);
+                        end
+                    catch
+                        % Ignore invalid simulation viewers
                     end
                 end
             end
@@ -1458,6 +1516,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 fprintf(fid,'<h2>Plots</h2>\n');
                 addAxisCollectionPlots(fid, obj.AxisColl);
                 addAxisCollectionPlots(fid, obj.PostSimAxisColl);
+                addSimAxisPlots(fid, obj.SimAxisColl);
 
                 fprintf(fid,'</body></html>');
             end
@@ -1468,7 +1527,12 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     panel = coll.Panel(p);
                     for k = 1:length(panel.Axis)
                         ax = panel.Axis(k);
-                        if isgraphics(ax) && ~isempty(get(ax,'Children'))
+                        if isgraphics(ax)
+                            axType = get(ax,'Type');
+                        else
+                            axType = '';
+                        end
+                        if isgraphics(ax) && any(strcmp(axType, {'axes','polaraxes','uiaxes'})) && ~isempty(get(ax,'Children'))
                             imgFile = [tempname '.png'];
                             try
                                 if exist('exportgraphics','file')
@@ -1487,6 +1551,59 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                 % Continue without this figure on failure
                             end
                         end
+                    end
+                end
+            end
+
+            function addSimAxisPlots(fid, simColl)
+                if isempty(simColl); return; end
+                for s = 1:numel(simColl)
+                    try
+                        coll = simColl(s).AxisPanelCollObj;
+                        if isempty(coll) || isempty(coll.Panel); continue; end
+                        panels = coll.Panel;
+                        visStates = arrayfun(@(p) p.Visible, panels);
+                        for p = 1:numel(panels)
+                            % Show only this panel
+                            for j = 1:numel(panels)
+                                panels(j).Visible = (j == p);
+                            end
+                            drawnow();
+                            panelHandle = panels(p).Panel;
+
+                            % Check that at least one axis has plotted data
+                            hasData = false;
+                            for k = 1:length(panels(p).Axis)
+                                ax = panels(p).Axis(k);
+                                if isgraphics(ax) && ~isempty(get(ax,'Children'))
+                                    hasData = true; break;
+                                end
+                            end
+                            if ~hasData
+                                continue;
+                            end
+
+                            imgFile = [tempname '.png'];
+                            try
+                                if exist('exportgraphics','file')
+                                    exportgraphics(panelHandle, imgFile, 'Resolution', 150);
+                                else
+                                    fr = getframe(panelHandle);
+                                    imwrite(fr.cdata, imgFile);
+                                end
+                                titleStr = sprintf('Simulation Page %d', p);
+                                fprintf(fid,'<figure><img src="%s" alt="%s"><figcaption>%s</figcaption></figure>\n', ...
+                                    imgFile,titleStr,titleStr);
+                            catch
+                                % Continue without this panel on failure
+                            end
+                        end
+                        % Restore visibility
+                        for j = 1:numel(panels)
+                            panels(j).Visible = visStates(j);
+                        end
+                    catch
+                        % Ignore invalid simulation viewers
                     end
                 end
             end
