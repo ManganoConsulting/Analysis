@@ -1373,7 +1373,12 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     panel = coll.Panel(p);
                     for k = 1:length(panel.Axis)
                         ax = panel.Axis(k);
-                        if isgraphics(ax) && ~isempty(get(ax,'Children'))
+                        if isgraphics(ax)
+                            axType = get(ax,'Type');
+                        else
+                            axType = '';
+                        end
+                        if isgraphics(ax) && any(strcmp(axType, {'axes','polaraxes','uiaxes'})) && ~isempty(get(ax,'Children'))
                             imgFile = [tempname '.png'];
                             try
                                 if exist('exportgraphics','file')
@@ -1481,7 +1486,12 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     panel = coll.Panel(p);
                     for k = 1:length(panel.Axis)
                         ax = panel.Axis(k);
-                        if isgraphics(ax) && ~isempty(get(ax,'Children'))
+                        if isgraphics(ax)
+                            axType = get(ax,'Type');
+                        else
+                            axType = '';
+                        end
+                        if isgraphics(ax) && any(strcmp(axType, {'axes','polaraxes','uiaxes'})) && ~isempty(get(ax,'Children'))
                             imgFile = [tempname '.png'];
                             try
                                 if exist('exportgraphics','file')
