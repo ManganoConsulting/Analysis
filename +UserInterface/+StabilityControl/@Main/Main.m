@@ -1300,10 +1300,10 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
 
         function generateReport_CB( obj , ~ , eventData )
-            if nargin < 3 || isempty(eventData) || isempty(eventData.Data)
+            if nargin < 3 || isempty(eventData) || isempty(eventData.Object)
                 format = 'PDF';
             else
-                format = eventData.Data;
+                format = eventData.Object;
             end
 
             obj.UseLegacyReport = strcmpi(format,'MS Word');

@@ -1077,7 +1077,8 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
             jmenu.add(pdfItem);
             jmenu.add(wordItem);
 
-            jmenu.show(hobj, 0 , 69 );
+            jmenu.show(hobj, 0 , 20 );
+            % jmenu.show(hobj, 0 , 69 );
             jmenu.repaint;
         end % generateReportMenu_CB
 
