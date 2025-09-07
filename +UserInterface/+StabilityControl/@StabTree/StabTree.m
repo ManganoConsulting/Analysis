@@ -1901,17 +1901,23 @@ classdef StabTree < UserInterface.tree
         end
         
         function insertTrimObj_Private( obj , parentNode , newObj)
-          
+
                 index = length(newObj);
 
                 node  = uitreenode(...
                     'v0','selected', newObj(index).Label, [], 0);
-                node.setUserObject('');
+                % Ensure trim nodes display as checkboxes by default
+                node.setUserObject('JavaImage_checked');
+                node.setIcon(obj.JavaImage_checked);
                 obj.TreeModel.insertNodeInto(...
                     node,...
                     parentNode,...
                     parentNode.getChildCount());
                 node.UserData = newObj(index);
+
+                % Mark the parent trim definition group as selected
+                parentNode.setIcon(obj.JavaImage_checked);
+                parentNode.setUserObject('JavaImage_checked');
                 % Insert Model Name
                 
 %                 newMdlName = getModelCompiledStateName(newObj(index).SimulinkModelName);
