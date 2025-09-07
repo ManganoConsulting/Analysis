@@ -1994,7 +1994,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
                     
-                if obj.UseExistingTrimState && ...
+                if ~obj.UseExistingTrimState && ...
                         ~isempty(obj.OperCondCollObj(ind).OperatingCondition)
                     % Use previously computed operating conditions
                     operCond = obj.OperCondCollObj(ind).OperatingCondition;
