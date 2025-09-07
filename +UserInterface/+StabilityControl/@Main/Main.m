@@ -1421,18 +1421,16 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     % arrays along with FC?_PM_SelValue indices.
                     fc1 = 'All';
                     fc2 = 'All';
-                    tcObj = [];
                     if ~isempty(obj.TaskCollectionObj)
-                        tcObj = obj.TaskCollectionObj(1);
+                        fc1 = obj.TaskCollectionObj.FC1_PM_String{obj.TaskCollectionObj.FC1_PM_SelValue};
+                        fc2 = obj.TaskCollectionObj.FC2_PM_String{obj.TaskCollectionObj.FC2_PM_SelValue};
                     elseif ~isempty(obj.TaskCollectionObjBatch)
                         idx = min(obj.AnalysisTabSelIndex, length(obj.TaskCollectionObjBatch));
                         if ~isempty(obj.TaskCollectionObjBatch(idx).TrimTaskCollObj)
                             tcObj = obj.TaskCollectionObjBatch(idx).TrimTaskCollObj(1);
+                            fc1 = tcObj.FC1_PM_String{tcObj.FC1_PM_SelValue};
+                            fc2 = tcObj.FC2_PM_String{tcObj.FC2_PM_SelValue};
                         end
-                    end
-                    if ~isempty(tcObj)
-                        fc1 = tcObj.FC1_PM_String{tcObj.FC1_PM_SelValue};
-                        fc2 = tcObj.FC2_PM_String{tcObj.FC2_PM_SelValue};
                     end
                     header = {'', fc1, fc2, 'All', 'All'};
                     addOperCondTable(rpt, obj.OperCondCollObj.OperatingCondition, header);
