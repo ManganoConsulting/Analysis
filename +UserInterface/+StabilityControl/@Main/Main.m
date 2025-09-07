@@ -1998,7 +1998,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     
                      
                     % ******Run trims *******
-                    if obj.UseExistingTrimState
+                    %if obj.UseExistingTrimState
                         operCond = lacm.OperatingCondition( taskObjs, obj.TrimSettings);
                         resetSaveFormat( saveFormat );                   
                         % Get Logged Signal Data for trim
@@ -2036,7 +2036,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
     %                     newFunction( obj.OperCondCollObj(ind).OperCondColumnFilterObj );
                         obj.OperCondCollObj(ind).add(operCond);
                         newFunction( obj.OperCondCollObj(ind).OperCondColumnFilterObj );
-                    end
+                    %end
                 end%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     %********************* Run Methods ************************
                     methodObjs = analysisObjs(ind).Requirement(selObjLogic(ind).Requirement); %getSelectedMethodObjs( obj.Tree );  
