@@ -1332,7 +1332,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             fullName = fullfile(path,file);
 
             try
-                rpt = Report.Report(fullName);
+                rpt = Report(fullName);
             catch
                 warndlg('Microsoft Word is required to export reports.', 'Report');
                 return;
@@ -1343,15 +1343,36 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             rpt.ActX_word.Selection.Style = 'Title';
             rpt.ActX_word.Selection.TypeParagraph;
 
+            % Table of Contents
             addTOC(rpt);
+            rpt.ActX_word.Selection.InsertBreak;
 
-            % Add operating condition history table
-            if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
+            % Table of Figures
+            rpt.ActX_word.Selection.TypeText('Table of Figures');
+            rpt.ActX_word.Selection.Style = 'Normal';
+            rpt.ActX_word.Selection.Font.Size = 14;
+            rpt.ActX_word.Selection.Font.Bold = 1;
+            rpt.ActX_word.Selection.ParagraphFormat.Alignment = 1; % center
+            rpt.ActX_word.Selection.TypeParagraph;
+            addTOF(rpt);
+            rpt.ActX_word.Selection.InsertBreak;
+
+            % Analysis setup and operating conditions
+            rpt.ActX_word.Selection.TypeText('Analysis Setup');
+            rpt.ActX_word.Selection.Style = 'Heading 1';
+            rpt.ActX_word.Selection.TypeParagraph;
+
+            if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.OperatingCondition)
                 rpt.ActX_word.Selection.TypeText('Operating Conditions');
-                rpt.ActX_word.Selection.Style = 'Heading 1';
+                rpt.ActX_word.Selection.Style = 'Heading 2';
                 rpt.ActX_word.Selection.TypeParagraph;
 
-                addOperCondTable(rpt, obj.OperCondCollObj.OperatingCondition, obj.OperCondCollObj.TableColumnNames);
+                operCond = obj.OperCondCollObj.OperatingCondition;
+                oc = operCond(1);
+                fc1 = oc.FC1_PM_String{oc.FC1_PM_SelValue};
+                fc2 = oc.FC2_PM_String{oc.FC2_PM_SelValue};
+                header = {'A', fc1, fc2, 'All', 'All', 'D', ' '};
+                addOperCondTable(rpt, operCond, header);
             end
 
             % Add plots from current views
@@ -1364,6 +1385,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             addSimAxisPlots(obj.SimAxisColl);
 
             updateTOC(rpt);
+            updateTOF(rpt);
             saveAs(rpt, fullName);
             closeWord(rpt);
 
@@ -1492,22 +1514,35 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 fprintf(fid,'<html><head><title>Flight Dynamics Report</title></head><body>\n');
                 fprintf(fid,'<h1>Flight Dynamics Report</h1>\n');
 
-                if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
+                if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.OperatingCondition)
+                    operCond = obj.OperCondCollObj.OperatingCondition;
+                    oc = operCond(1);
+                    fc1 = oc.FC1_PM_String{oc.FC1_PM_SelValue};
+                    fc2 = oc.FC2_PM_String{oc.FC2_PM_SelValue};
+                    headers = {};
+                    if ~strcmp(fc1,'All'); headers{end+1} = fc1; end
+                    if ~strcmp(fc2,'All'); headers{end+1} = fc2; end
+                    headers{end+1} = 'Color';
                     fprintf(fid,'<h2>Operating Conditions</h2>\n<table border="1">\n<tr>');
-                    for i = 1:length(obj.OperCondCollObj.TableColumnNames)
-                        fprintf(fid,'<th>%s</th>', obj.OperCondCollObj.TableColumnNames{i});
+                    for i = 1:length(headers)
+                        fprintf(fid,'<th>%s</th>', headers{i});
                     end
                     fprintf(fid,'</tr>\n');
-                    data = obj.OperCondCollObj.TableData;
-                    for r = 1:size(data,1)
+                    for r = 1:length(operCond)
                         fprintf(fid,'<tr>');
-                        for c = 1:size(data,2)
-                            val = data{r,c};
-                            if isnumeric(val)
-                                val = num2str(val);
-                            end
-                            fprintf(fid,'<td>%s</td>', val);
+                        if ~strcmp(fc1,'All')
+                            val1 = operCond(r).FlightCondition.(fc1);
+                            if isnumeric(val1); val1 = num2str(val1); end
+                            fprintf(fid,'<td>%s</td>', val1);
                         end
+                        if ~strcmp(fc2,'All')
+                            val2 = operCond(r).FlightCondition.(fc2);
+                            if isnumeric(val2); val2 = num2str(val2); end
+                            fprintf(fid,'<td>%s</td>', val2);
+                        end
+                        color = round(operCond(r).Color);
+                        colorHex = sprintf('#%02X%02X%02X', color(1), color(2), color(3));
+                        fprintf(fid,'<td style="background-color:%s"></td>', colorHex);
                         fprintf(fid,'</tr>\n');
                     end
                     fprintf(fid,'</table>\n');
