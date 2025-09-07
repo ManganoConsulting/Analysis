@@ -1994,49 +1994,47 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
                     
-                if 1%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    
-                     
+                if obj.UseExistingTrimState && ...
+                        ~isempty(obj.OperCondCollObj(ind).OperatingCondition)
+                    % Use previously computed operating conditions
+                    operCond = obj.OperCondCollObj(ind).OperatingCondition;
+                else
                     % ******Run trims *******
-                    %if obj.UseExistingTrimState
-                        operCond = lacm.OperatingCondition( taskObjs, obj.TrimSettings);
-                        resetSaveFormat( saveFormat );                   
-                        % Get Logged Signal Data for trim
-                        if obj.RunSignalLog
-                            %--------------------------------------------------------------
-                            %    Display Log Message
-                            %--------------------------------------------------------------
-                            notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData(['Running Signal Logging.'],'info'));
-                            %--------------------------------------------------------------
-                            releaseAllTrimMdls(obj, [], []);
-                            setSignalLoggingData( operCond );
+                    operCond = lacm.OperatingCondition( taskObjs, obj.TrimSettings);
+                    resetSaveFormat( saveFormat );
+                    % Get Logged Signal Data for trim
+                    if obj.RunSignalLog
+                        %--------------------------------------------------------------
+                        %    Display Log Message
+                        %--------------------------------------------------------------
+                        notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData(['Running Signal Logging.'],'info'));
+                        %--------------------------------------------------------------
+                        releaseAllTrimMdls(obj, [], []);
+                        setSignalLoggingData( operCond );
+                    end
+
+                    % Check and display message for bad trims
+                    logArray  = [operCond.SuccessfulTrim];
+                    TotalTrims= length(operCond);
+                    BadTrimsID= find(logArray==0);
+                    BadTrims  = length(BadTrimsID);
+
+                    notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData(['Total Trims: ' num2str(TotalTrims)],'info'));
+                    if isempty(BadTrimsID)
+                        notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData(['Succesful Trims: ' num2str(TotalTrims)],'info'));
+                    else
+                        notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData(['Succesful Trims: ' num2str(TotalTrims-BadTrims)],'info'));
+                        notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData(['Incorrect Trims: '  num2str(BadTrims) ],'warn'));
+                        notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData(['Incorrect Trim #: '  strjoin(arrayfun(@(x) num2str(x),BadTrimsID,'UniformOutput',false),',') ],'warn'));
+
+                        unTrimErrors = unique({operCond.IncorrectTrimText});
+                        for i = 1:length(unTrimErrors)
+                            notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData(['Trim Error: ' unTrimErrors{i} ],'warn'));
                         end
-    
-                        % Check and display message for bad trims
-                        logArray  = [operCond.SuccessfulTrim];
-                        TotalTrims= length(operCond);
-                        BadTrimsID= find(logArray==0);
-                        BadTrims  = length(BadTrimsID);
-    
-                        notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData(['Total Trims: ' num2str(TotalTrims)],'info'));
-                        if isempty(BadTrimsID)
-                            notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData(['Succesful Trims: ' num2str(TotalTrims)],'info'));
-                        else
-                            notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData(['Succesful Trims: ' num2str(TotalTrims-BadTrims)],'info'));
-                            notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData(['Incorrect Trims: '  num2str(BadTrims) ],'warn'));
-                            %notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData(['Incorrect Trim #: '  strrep(num2str(BadTrimsID),'  ',',') ],'warn'));
-                            notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData(['Incorrect Trim #: '  strjoin(arrayfun(@(x) num2str(x),BadTrimsID,'UniformOutput',false),',') ],'warn'));
-    
-                            unTrimErrors = unique({operCond.IncorrectTrimText});
-                            for i = 1:length(unTrimErrors)
-                                notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData(['Trim Error: ' unTrimErrors{i} ],'warn'));
-                            end    
-                        end
-    
-    %                     newFunction( obj.OperCondCollObj(ind).OperCondColumnFilterObj );
-                        obj.OperCondCollObj(ind).add(operCond);
-                        newFunction( obj.OperCondCollObj(ind).OperCondColumnFilterObj );
-                    %end
+                    end
+
+                    obj.OperCondCollObj(ind).add(operCond);
+                    newFunction( obj.OperCondCollObj(ind).OperCondColumnFilterObj );
                 end%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     %********************* Run Methods ************************
                     methodObjs = analysisObjs(ind).Requirement(selObjLogic(ind).Requirement); %getSelectedMethodObjs( obj.Tree );  
