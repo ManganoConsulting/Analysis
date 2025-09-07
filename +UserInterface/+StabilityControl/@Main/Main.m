@@ -1332,7 +1332,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             fullName = fullfile(path,file);
 
             try
-                rpt = Report.Report(fullName);
+                rpt = Report(fullName);
             catch
                 warndlg('Microsoft Word is required to export reports.', 'Report');
                 return;
