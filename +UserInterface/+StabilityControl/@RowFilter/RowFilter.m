@@ -310,7 +310,10 @@ classdef RowFilter < UserInterface.tree
                 if obj.NodeSelectionCache.isKey(key)
                     selected = obj.NodeSelectionCache(key);
                 else
-                    selected = true; % New node, select by default
+                    % New nodes should start unchecked so that additional
+                    % inputs/outputs do not automatically appear in the
+                    % results table.
+                    selected = false;
                 end
 
                 if selected
