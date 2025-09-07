@@ -2472,7 +2472,7 @@ function tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , selLinMdl
             maxLen = max(valueLengths(nonScalarIdx));
             mismatchIdx = nonScalarIdx(valueLengths(nonScalarIdx) ~= maxLen);
             if ~isempty(mismatchIdx)
-                error('FCOND:SIZE', '%s value array length mismatch', valueNames{mismatchIdx(1)});
+                error('FCOND:SIZE', 'All array sizes must match.');
             end
         end
 
