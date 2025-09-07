@@ -1321,51 +1321,111 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
         function generateReportLegacy(obj)
             %GENERATEREPORTLEGACY Export a report using Microsoft Word.
-            %   This retains the previous ActiveX based implementation
-            %   for backwards compatibility.
+            %   Implements new, template, and append report generation
+            %   similar to the ControlDesign tool.
 
-            [file,path] = uiputfile({'*.docx';'*.pdf'}, 'Export Report', 'AnalysisReport.docx');
-            if isequal(file,0)
-                return;
+            rptType = questdlg('Select report type', 'Export Report', ...
+                'New', 'Template', 'Append', 'New');
+            if isempty(rptType); return; end
+
+            switch rptType
+                case 'Append'
+                    [file,path] = uigetfile({'*.docx','Word Document (*.docx)'}, ...
+                        'Select Report to Append');
+                    if isequal(file,0); return; end
+                    fullName = fullfile(path,file);
+                    try
+                        rpt = Report(fullName,'Visible',true);
+                    catch
+                        warndlg('Microsoft Word is required to export reports.', 'Report');
+                        return;
+                    end
+                    appendContent(rpt);
+                    updateTOC(rpt);
+                    updateTOF(rpt);
+                    saveAs(rpt, fullName);
+                    closeWord(rpt);
+
+                otherwise % 'New' or 'Template'
+                    if strcmp(rptType,'Template')
+                        [tmplFile,tmplPath] = uigetfile({'*.docx','Word Document (*.docx)'}, ...
+                            'Select Template');
+                        if isequal(tmplFile,0); return; end
+                        fullName = fullfile(tmplPath,tmplFile);
+                        outName = fullfile(tmplPath,[erase(tmplFile,'.docx'),'_NEW.docx']);
+                        try
+                            rpt = Report(fullName,'Visible',true);
+                        catch
+                            warndlg('Microsoft Word is required to export reports.', 'Report');
+                            return;
+                        end
+                        appendContent(rpt);
+                        updateTOC(rpt);
+                        updateTOF(rpt);
+                        saveAs(rpt,outName);
+                        closeWord(rpt);
+                    else % New report
+                        [file,path] = uiputfile({'*.docx';'*.pdf'}, ...
+                            'Export Report', 'AnalysisReport.docx');
+                        if isequal(file,0); return; end
+                        fullName = fullfile(path,file);
+                        try
+                            rpt = Report(fullName);
+                        catch
+                            warndlg('Microsoft Word is required to export reports.', 'Report');
+                            return;
+                        end
+                        % Title page
+                        rpt.ActX_word.Selection.TypeText('Flight Dynamics Report');
+                        rpt.ActX_word.Selection.Style = 'Title';
+                        rpt.ActX_word.Selection.TypeParagraph;
+
+                        % Table of contents and figures placeholders
+                        rpt.ActX_word.Selection.TypeText('Table of Contents');
+                        rpt.ActX_word.Selection.Style = 'Heading 1';
+                        rpt.ActX_word.Selection.TypeParagraph;
+                        addTOC(rpt);
+                        rpt.ActX_word.Selection.InsertBreak;
+                        rpt.ActX_word.Selection.TypeText('Table of Figures');
+                        rpt.ActX_word.Selection.Style = 'Heading 1';
+                        rpt.ActX_word.Selection.TypeParagraph;
+                        addTOF(rpt);
+                        rpt.ActX_word.Selection.InsertBreak;
+
+                        addContent(rpt);
+                        updateTOC(rpt);
+                        updateTOF(rpt);
+                        saveAs(rpt, fullName);
+                        closeWord(rpt);
+                    end
             end
 
-            fullName = fullfile(path,file);
-
-            try
-                rpt = Report.Report(fullName);
-            catch
-                warndlg('Microsoft Word is required to export reports.', 'Report');
-                return;
-            end
-
-            % Title page
-            rpt.ActX_word.Selection.TypeText('Flight Dynamics Report');
-            rpt.ActX_word.Selection.Style = 'Title';
-            rpt.ActX_word.Selection.TypeParagraph;
-
-            addTOC(rpt);
-
-            % Add operating condition history table
-            if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
-                rpt.ActX_word.Selection.TypeText('Operating Conditions');
+            function appendContent(rpt)
+                rpt.ActX_word.ActiveDocument.Characters.Last.Select;
+                rpt.ActX_word.Selection.InsertBreak;
+                titleStr = datestr(now,'yyyy-mm-dd HH:MM:SS');
+                rpt.ActX_word.Selection.TypeText(titleStr);
                 rpt.ActX_word.Selection.Style = 'Heading 1';
                 rpt.ActX_word.Selection.TypeParagraph;
-
-                addOperCondTable(rpt, obj.OperCondCollObj.OperatingCondition, obj.OperCondCollObj.TableColumnNames);
+                addContent(rpt);
             end
 
-            % Add plots from current views
-            rpt.ActX_word.Selection.TypeText('Plots');
-            rpt.ActX_word.Selection.Style = 'Heading 1';
-            rpt.ActX_word.Selection.TypeParagraph;
+            function addContent(rpt)
+                if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
+                    rpt.ActX_word.Selection.TypeText('Operating Conditions');
+                    rpt.ActX_word.Selection.Style = 'Heading 1';
+                    rpt.ActX_word.Selection.TypeParagraph;
+                    addOperCondTable(rpt, obj.OperCondCollObj.OperatingCondition, ...
+                        obj.OperCondCollObj.TableColumnNames);
+                end
 
-            addAxisCollectionPlots(obj.AxisColl);
-            addAxisCollectionPlots(obj.PostSimAxisColl);
-            addSimAxisPlots(obj.SimAxisColl);
-
-            updateTOC(rpt);
-            saveAs(rpt, fullName);
-            closeWord(rpt);
+                rpt.ActX_word.Selection.TypeText('Plots');
+                rpt.ActX_word.Selection.Style = 'Heading 1';
+                rpt.ActX_word.Selection.TypeParagraph;
+                addAxisCollectionPlots(obj.AxisColl);
+                addAxisCollectionPlots(obj.PostSimAxisColl);
+                addSimAxisPlots(obj.SimAxisColl);
+            end
 
             function addAxisCollectionPlots(coll)
                 if isempty(coll); return; end
@@ -1378,7 +1438,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         else
                             axType = '';
                         end
-                        if isgraphics(ax) && any(strcmp(axType, {'axes','polaraxes','uiaxes'})) && ~isempty(get(ax,'Children'))
+                        if isgraphics(ax) && any(strcmp(axType, {'axes','polaraxes','uiaxes'})) && ...
+                                ~isempty(get(ax,'Children'))
                             imgFile = [tempname '.png'];
                             try
                                 if exist('exportgraphics','file')
@@ -1393,7 +1454,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                 end
                                 addFigure(rpt, struct('Filename', imgFile, 'Title', titleStr));
                             catch
-                                % If exporting the graphic fails, continue without it
+                                % Continue without this figure on failure
                             end
                         end
                     end
@@ -1409,14 +1470,12 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         panels = coll.Panel;
                         visStates = arrayfun(@(p) p.Visible, panels);
                         for p = 1:numel(panels)
-                            % Show only this panel while capturing
                             for j = 1:numel(panels)
                                 panels(j).Visible = (j == p);
                             end
                             drawnow();
                             panelHandle = panels(p).Panel;
 
-                            % Determine if any axes on this page contain data
                             hasData = false;
                             for k = 1:length(panels(p).Axis)
                                 ax = panels(p).Axis(k);
@@ -1442,7 +1501,6 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                 % Ignore failures for this panel
                             end
                         end
-                        % Restore original visibility
                         for j = 1:numel(panels)
                             panels(j).Visible = visStates(j);
                         end
