@@ -1335,7 +1335,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     if isequal(file,0); return; end
                     fullName = fullfile(path,file);
                     try
-                        rpt = Report.Report(fullName,'Visible',true);
+                        rpt = Report(fullName,'Visible',true);
                     catch
                         warndlg('Microsoft Word is required to export reports.', 'Report');
                         return;
@@ -1354,7 +1354,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         fullName = fullfile(tmplPath,tmplFile);
                         outName = fullfile(tmplPath,[erase(tmplFile,'.docx'),'_NEW.docx']);
                         try
-                            rpt = Report.Report(fullName,'Visible',true);
+                            rpt = Report(fullName,'Visible',true);
                         catch
                             warndlg('Microsoft Word is required to export reports.', 'Report');
                             return;
@@ -1370,7 +1370,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         if isequal(file,0); return; end
                         fullName = fullfile(path,file);
                         try
-                            rpt = Report.Report(fullName);
+                            rpt = Report(fullName);
                         catch
                             warndlg('Microsoft Word is required to export reports.', 'Report');
                             return;
