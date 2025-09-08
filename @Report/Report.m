@@ -379,7 +379,8 @@ classdef Report < handle
                 end
                 col = firstCol - 1;
             end
-            for nn = 1:newTable1.Columns.Count
+            headerCells = newTable1.Rows.Item(1).Cells.Count;
+            for nn = 1:headerCells
                 newTable1.Cell(1,nn).Range.ParagraphFormat.SpaceBefore = spaceBefore;
                 newTable1.Cell(1,nn).Range.ParagraphFormat.LineSpacing = 12;
                 newTable1.Cell(1,nn).Range.ParagraphFormat.SpaceAfter = spaceAfter;
