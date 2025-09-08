@@ -259,13 +259,18 @@ classdef Report < handle
         end % addReqTable
         
         function addOperCondTable( obj , operCond , header )
-
             % Build list of columns starting with selected flight conditions
             baseHeaders = header(2:min(3,end));
-            selFields = struct('name',{},'type',{});
+            hdrStruct = operCond(1).getHeaderStructureData();
+            keyFcn = @(t,n) [t '|' n];
+            keyList = arrayfun(@(s) keyFcn(s.Type,s.Name), hdrStruct, 'UniformOutput', false);
+            unitMap = containers.Map(keyList,{hdrStruct.Units});
+            selFields = struct('name',{},'type',{},'unit',{});
             for k = 1:numel(baseHeaders)
                 if ~strcmp(baseHeaders{k},'All')
-                    selFields(end+1) = struct('name',baseHeaders{k},'type','FlightCondition'); %#ok<AGROW>
+                    key = keyFcn('Flight Condition',baseHeaders{k});
+                    unit = unitMap(key);
+                    selFields(end+1) = struct('name',baseHeaders{k},'type','Flight Condition','unit',unit); %#ok<AGROW>
                 end
             end
 
@@ -275,7 +280,9 @@ classdef Report < handle
                 for n = 1:numel(inNames)
                     vals = arrayfun(@(oc) oc.Inputs.get(inNames{n}).Value, operCond);
                     if any(abs(vals - vals(1)) > 1e-6)
-                        selFields(end+1) = struct('name',inNames{n},'type','Inputs'); %#ok<AGROW>
+                        key = keyFcn('Inputs',inNames{n});
+                        unit = unitMap(key);
+                        selFields(end+1) = struct('name',inNames{n},'type','Inputs','unit',unit); %#ok<AGROW>
                     end
                 end
                 % Outputs
@@ -283,7 +290,9 @@ classdef Report < handle
                 for n = 1:numel(outNames)
                     vals = arrayfun(@(oc) oc.Outputs.get(outNames{n}).Value, operCond);
                     if any(abs(vals - vals(1)) > 1e-6)
-                        selFields(end+1) = struct('name',outNames{n},'type','Outputs'); %#ok<AGROW>
+                        key = keyFcn('Outputs',outNames{n});
+                        unit = unitMap(key);
+                        selFields(end+1) = struct('name',outNames{n},'type','Outputs','unit',unit); %#ok<AGROW>
                     end
                 end
                 % States
@@ -291,7 +300,9 @@ classdef Report < handle
                 for n = 1:numel(stNames)
                     vals = arrayfun(@(oc) oc.States.get(stNames{n}).Value, operCond);
                     if any(abs(vals - vals(1)) > 1e-6)
-                        selFields(end+1) = struct('name',stNames{n},'type','States'); %#ok<AGROW>
+                        key = keyFcn('States',stNames{n});
+                        unit = unitMap(key);
+                        selFields(end+1) = struct('name',stNames{n},'type','States','unit',unit); %#ok<AGROW>
                     end
                 end
                 % State derivatives
@@ -299,7 +310,9 @@ classdef Report < handle
                 for n = 1:numel(sdNames)
                     vals = arrayfun(@(oc) oc.StateDerivs.get(sdNames{n}).Value, operCond);
                     if any(abs(vals - vals(1)) > 1e-6)
-                        selFields(end+1) = struct('name',sdNames{n},'type','StateDerivs'); %#ok<AGROW>
+                        key = keyFcn('State Derivatives',sdNames{n});
+                        unit = unitMap(key);
+                        selFields(end+1) = struct('name',sdNames{n},'type','State Derivatives','unit',unit); %#ok<AGROW>
                     end
                 end
                 % Mass properties
@@ -310,22 +323,24 @@ classdef Report < handle
                     if isnumeric(firstVal)
                         valsNum = cell2mat(vals);
                         if any(abs(valsNum - valsNum(1)) > 1e-6)
-                            selFields(end+1) = struct('name',mpNames{n},'type','MassProperties'); %#ok<AGROW>
+                            key = keyFcn('Mass Property',mpNames{n});
+                            unit = unitMap(key);
+                            selFields(end+1) = struct('name',mpNames{n},'type','Mass Property','unit',unit); %#ok<AGROW>
                         end
                     else
                         if ~all(strcmp(firstVal,vals))
-                            selFields(end+1) = struct('name',mpNames{n},'type','MassProperties'); %#ok<AGROW>
+                            key = keyFcn('Mass Property',mpNames{n});
+                            unit = unitMap(key);
+                            selFields(end+1) = struct('name',mpNames{n},'type','Mass Property','unit',unit); %#ok<AGROW>
                         end
                     end
                 end
             end
 
-            headerDisplay = [ {selFields.name}, ' '];
-
             range = obj.ActX_word.Selection.Range;
 
-            nr_rows = length(operCond) + 1;
-            nr_cols = length(headerDisplay);
+            nr_rows = length(operCond) + 2;
+            nr_cols = numel(selFields);
 
             rowSpacing = 4;
             spaceBefore = 6;
@@ -333,26 +348,61 @@ classdef Report < handle
 
             % Add Table
             newTable1 = obj.ActX_word.ActiveDocument.Tables.Add(range,nr_rows,nr_cols,1,1);
+            newTable1.Style = 'Table Grid';
+            newTable1.AutoFitBehavior(1); % wdAutoFitContent
+            newTable1.Range.Font.Size = 10;
+            newTable1.Borders.InsideLineStyle = 1;  % wdLineStyleSingle
+            newTable1.Borders.OutsideLineStyle = 1; % wdLineStyleSingle
+            newTable1.Borders.InsideLineWidth = 2;  % wdLineWidth025pt
+            newTable1.Borders.OutsideLineWidth = 2; % wdLineWidth025pt
+            newTable1.Columns.PreferredWidthType = 2; % wdPreferredWidthPoints
+            for c = 1:nr_cols
+                newTable1.Columns.Item(c).PreferredWidth = 55;
+            end
 
-            % Populate Header
+            % Header rows
+            categories = unique({selFields.type},'stable');
+            colorMap = containers.Map({'Flight Condition','Inputs','Outputs','States','State Derivatives','Mass Property'},...
+                                      {15,7,9,11,13,14});
+            col = nr_cols;
+            for catIdx = numel(categories):-1:1
+                cat = categories{catIdx};
+                colsInCat = sum(strcmp({selFields.type},cat));
+                firstCol = col - colsInCat + 1;
+                lastCol = col;
+                if colsInCat > 1
+                    newTable1.Cell(1,firstCol).Merge(newTable1.Cell(1,lastCol));
+                end
+                newTable1.Cell(1,firstCol).Range.InsertAfter(cat);
+                newTable1.Cell(1,firstCol).Range.Bold = 1;
+                newTable1.Cell(1,firstCol).Range.ParagraphFormat.Alignment = 1;
+                if isKey(colorMap,cat)
+                    newTable1.Cell(1,firstCol).Shading.BackgroundPatternColorIndex = colorMap(cat);
+                end
+                col = firstCol - 1;
+            end
+            headerCells = newTable1.Rows.Item(1).Cells.Count;
+            for nn = 1:headerCells
+                newTable1.Cell(1,nn).Range.ParagraphFormat.SpaceBefore = spaceBefore;
+                newTable1.Cell(1,nn).Range.ParagraphFormat.LineSpacing = 12;
+                newTable1.Cell(1,nn).Range.ParagraphFormat.SpaceAfter = spaceAfter;
+            end
             for i = 1:nr_cols
-                newTable1.Cell(1,i).Range.InsertAfter(headerDisplay{i});
-                newTable1.Cell(1,i).Range.Bold = 1;
+                hdrTxt = sprintf('%s (%s)',selFields(i).name,selFields(i).unit);
+                newTable1.Cell(2,i).Range.InsertAfter(hdrTxt);
+                newTable1.Cell(2,i).Range.Bold = 1;
+                newTable1.Cell(2,i).Range.ParagraphFormat.Alignment = 1;
+                newTable1.Cell(2,i).Range.ParagraphFormat.SpaceBefore = spaceBefore;
+                newTable1.Cell(2,i).Range.ParagraphFormat.LineSpacing = 12;
+                newTable1.Cell(2,i).Range.ParagraphFormat.SpaceAfter = spaceAfter;
             end
 
-            % Set Header Spacing
-            for nn = 1:newTable1.Columns.Count
-                 newTable1.Cell(1,nn).Range.ParagraphFormat.SpaceBefore = spaceBefore;
-                 newTable1.Cell(1,nn).Range.ParagraphFormat.LineSpacing = 12;
-                 newTable1.Cell(1,nn).Range.ParagraphFormat.SpaceAfter = spaceAfter;
-            end
-
-            % Populate rows and color column
+            % Populate rows
             for i = 1:length(operCond)
                 for c = 1:numel(selFields)
                     fld = selFields(c);
                     switch fld.type
-                        case 'FlightCondition'
+                        case 'Flight Condition'
                             val = operCond(i).FlightCondition.(fld.name);
                         case 'Inputs'
                             val = operCond(i).Inputs.get(fld.name).Value;
@@ -360,25 +410,39 @@ classdef Report < handle
                             val = operCond(i).Outputs.get(fld.name).Value;
                         case 'States'
                             val = operCond(i).States.get(fld.name).Value;
-                        case 'StateDerivs'
+                        case 'State Derivatives'
                             val = operCond(i).StateDerivs.get(fld.name).Value;
-                        case 'MassProperties'
+                        case 'Mass Property'
                             val = operCond(i).MassProperties.get(fld.name);
                     end
-                    if isnumeric(val)
-                        val = num2str(val);
+                    isNum = isnumeric(val);
+                    if isNum
+                        valStr = sprintf('%.3f', val);
+                    else
+                        valStr = char(val);
                     end
-                    if ~ischar(val) || isempty(val)
-                        val = ' ';
+                    if ~ischar(valStr) || isempty(valStr)
+                        valStr = ' ';
                     end
-                    newTable1.Cell(i + 1,c).Range.InsertAfter(val);
+                    newTable1.Cell(i + 2,c).Range.InsertAfter(valStr);
+                    if isNum
+                        newTable1.Cell(i + 2,c).Range.ParagraphFormat.Alignment = 2; % Right
+                    else
+                        newTable1.Cell(i + 2,c).Range.ParagraphFormat.Alignment = 0; % Left
+                    end
                 end
-                % Color column
-                newTable1.Cell(i + 1,numel(selFields)+1).Shading.BackgroundPatternColor = Utilities.DHX(operCond(i).Color);
             end
 
-            % Set first Row as the table header
-            newTable1.Rows.Item(1).set('HeadingFormat',-1);
+            % Alternate row shading for readability
+            for r = 3:nr_rows
+                if mod(r,2) == 1
+                    newTable1.Rows.Item(r).Shading.BackgroundPatternColorIndex = 16; % wdGray25
+                end
+            end
+
+            % Set header rows
+            newTable1.Rows.Item(1).HeadingFormat = -1;
+            newTable1.Rows.Item(2).HeadingFormat = -1;
 
             % Step out of table
             set( obj.ActX_word.Selection, 'Start', newTable1.Range.get('End') );
