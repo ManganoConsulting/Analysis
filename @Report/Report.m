@@ -256,26 +256,53 @@ classdef Report < handle
 %             obj.ActX_word.Selection.TypeParagraph; %enter
         end % addReqTable
         
-        function addOperCondTable( obj , operCond , header )
-            
+        function addOperCondTable( obj , operCond , header , trimTaskColl )
+
+            if nargin < 4
+                trimTaskColl = [];
+            end
 
             header = header(2:5);
             headerLogArray = ~strcmp(header,'All');
 
-            % Identify vector trim setting variables across operating conditions
-            trimFields = {'Inputs','Outputs','States','StateDerivs'};
+            % Identify vector trim setting variables
             vecNames = {};
             vecSrc   = {};
-            for oc = 1:length(operCond)
-                for tf = 1:length(trimFields)
-                    condArr = operCond(oc).(trimFields{tf});
+            if ~isempty(trimTaskColl)
+                vecGroups = {
+                    trimTaskColl.VectorParameterInput1, 'Inputs';
+                    trimTaskColl.VectorParameterInput2, 'Inputs';
+                    trimTaskColl.VectorParameterOutput1, 'Outputs';
+                    trimTaskColl.VectorParameterOutput2, 'Outputs';
+                    trimTaskColl.VectorParameterState1, 'States';
+                    trimTaskColl.VectorParameterState2, 'States';
+                    trimTaskColl.VectorParameterStateDerivs1, 'StateDerivs';
+                    trimTaskColl.VectorParameterStateDerivs2, 'StateDerivs'
+                    };
+                for g = 1:size(vecGroups,1)
+                    condArr = vecGroups{g,1};
+                    src     = vecGroups{g,2};
                     for cc = 1:length(condArr)
-                        val = condArr(cc).Value;
-                        if isnumeric(val) && numel(val) > 1
-                            name = condArr(cc).Name;
-                            if ~ismember(name,vecNames)
-                                vecNames{end+1} = name; %#ok<AGROW>
-                                vecSrc{end+1}   = trimFields{tf}; %#ok<AGROW>
+                        name = condArr(cc).Name;
+                        if ~ismember(name,vecNames)
+                            vecNames{end+1} = name; %#ok<AGROW>
+                            vecSrc{end+1}   = src;  %#ok<AGROW>
+                        end
+                    end
+                end
+            else
+                trimFields = {'Inputs','Outputs','States','StateDerivs'};
+                for oc = 1:length(operCond)
+                    for tf = 1:length(trimFields)
+                        condArr = operCond(oc).(trimFields{tf});
+                        for cc = 1:length(condArr)
+                            val = condArr(cc).Value;
+                            if isnumeric(val) && numel(val) > 1
+                                name = condArr(cc).Name;
+                                if ~ismember(name,vecNames)
+                                    vecNames{end+1} = name; %#ok<AGROW>
+                                    vecSrc{end+1}   = trimFields{tf}; %#ok<AGROW>
+                                end
                             end
                         end
                     end

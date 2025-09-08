@@ -263,31 +263,10 @@ classdef Report < handle
 
             header = header(2:5);
             headerLogArray = ~strcmp(header,'All');
-
-            % Identify vector trim setting variables across operating conditions
-            trimFields = {'Inputs','Outputs','States','StateDerivs'};
-            vecNames = {};
-            vecSrc   = {};
-            for oc = 1:length(operCond)
-                for tf = 1:length(trimFields)
-                    condArr = operCond(oc).(trimFields{tf});
-                    for cc = 1:length(condArr)
-                        val = condArr(cc).Value;
-                        if isnumeric(val) && numel(val) > 1
-                            name = condArr(cc).Name;
-                            if ~ismember(name,vecNames)
-                                vecNames{end+1} = name; %#ok<AGROW>
-                                vecSrc{end+1}   = trimFields{tf}; %#ok<AGROW>
-                            end
-                        end
-                    end
-                end
-            end
-
-            headerDisplay = [header(headerLogArray), vecNames, ' '];
-
+            headerDisplay = [header(headerLogArray), ' '];
+            
             range = obj.ActX_word.Selection.Range;
-
+            
             nr_rows = length(operCond) + 1;
             nr_cols = length(headerDisplay);
 
@@ -297,7 +276,7 @@ classdef Report < handle
 
             % Add Table
             newTable1 = obj.ActX_word.ActiveDocument.Tables.Add(range,nr_rows,nr_cols,1,1);
-
+            
             % Populate Header
             for i = 1:nr_cols
                 newTable1.Cell(1,i).Range.InsertAfter(headerDisplay{i});
@@ -311,7 +290,7 @@ classdef Report < handle
                  newTable1.Cell(1,nn).Range.ParagraphFormat.LineSpacing = 12;
                  newTable1.Cell(1,nn).Range.ParagraphFormat.SpaceAfter = spaceAfter;
             end
-
+            
             for i=1:length(operCond)
                 curRow = 1;
                 if headerLogArray(1)
@@ -320,20 +299,20 @@ classdef Report < handle
                         fc1 = ' ';
                     end
                     newTable1.Cell(i + 1,curRow).Range.InsertAfter(fc1);
-    %                 newTable1.Cell(i + 1,curRow).Range.Font.Size = 10;
+    %                 newTable1.Cell(i + 1,curRow).Range.Font.Size = 10; 
                     curRow = curRow + 1;
                 end
-
+                
                 if headerLogArray(2)
                     fc2 = num2str(operCond(i).FlightCondition.(header{2}));
                     if ~ischar(fc2) || isempty(fc2)
                         fc2 = ' ';
                     end
                     newTable1.Cell(i + 1,curRow).Range.InsertAfter(fc2);
-    %                 newTable1.Cell(i + 1,curRow).Range.Font.Size = 10;
+    %                 newTable1.Cell(i + 1,curRow).Range.Font.Size = 10; 
                     curRow = curRow + 1;
                 end
-
+                
                 if headerLogArray(3)
                     try
                         fc3 = num2str(operCond(i).Inputs.get(header{3}).Value);
@@ -348,54 +327,31 @@ classdef Report < handle
                         end
                         newTable1.Cell(i + 1,curRow).Range.InsertAfter(fc3);
                     end
-    %                 newTable1.Cell(i + 1,curRow).Range.Font.Size = 10;
+    %                 newTable1.Cell(i + 1,curRow).Range.Font.Size = 10; 
                     curRow = curRow + 1;
                 end
-
+                
                 if headerLogArray(4)
                     fc4 = operCond(i).MassProperties.get(header{4});
                     if ~ischar(fc4) || isempty(fc4)
                         fc4 = ' ';
-                    end
+                    end 
                     newTable1.Cell(i + 1,curRow).Range.InsertAfter(fc4);
-    %                 newTable1.Cell(i + 1,curRow).Range.Font.Size = 10;
+    %                 newTable1.Cell(i + 1,curRow).Range.Font.Size = 10; 
                     curRow = curRow + 1;
-                end
-
-                % Add vector trim settings
-                for v = 1:length(vecNames)
-                    condObj = operCond(i).(vecSrc{v}).get(vecNames{v});
-                    if ~isempty(condObj)
-                        val = condObj.Value;
-                        if isnumeric(val) || islogical(val)
-                            if isscalar(val)
-                                fcVal = num2str(val);
-                            else
-                                fcVal = mat2str(val);
-                            end
-                        elseif ischar(val)
-                            fcVal = val;
-                        else
-                            fcVal = ' ';
-                        end
-                    else
-                        fcVal = ' ';
-                    end
-                    newTable1.Cell(i + 1,curRow).Range.InsertAfter(fcVal);
-                    curRow = curRow + 1;
-                end
-
+                end  
+                
                 newTable1.Cell(i + 1,curRow).Shading.BackgroundPatternColor = Utilities.DHX(operCond(i).Color);
-
+                
             end
-
+            
 
             % Set first Row as the table header
             newTable1.Rows.Item(1).set('HeadingFormat',-1);
 
 %             % Left Justify Table
-%             newTable1.Rows.Alignment = 0;
-
+%             newTable1.Rows.Alignment = 0;            
+            
             % Step out of table
             set( obj.ActX_word.Selection, 'Start', newTable1.Range.get('End') );
             obj.ActX_word.Selection.TypeParagraph; %enter
