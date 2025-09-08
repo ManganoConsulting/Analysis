@@ -1540,8 +1540,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
         function generateReportOpenSource(obj)
             %GENERATEREPORTOPENSOURCE Export report using open-source tools.
-            %   Generates an HTML report and optionally converts it to PDF
-            %   using Pandoc if available.
+            %   Creates an HTML (or optional PDF) report mirroring the
+            %   legacy Microsoft Word output without requiring Word.
 
             [file,path] = uiputfile({'*.pdf';'*.html'}, 'Export Report', 'AnalysisReport.pdf');
             if isequal(file,0)
@@ -1584,6 +1584,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 cleanup = onCleanup(@() fclose(fid));
                 fprintf(fid,'<html><head><title>Flight Dynamics Report</title></head><body>\n');
                 fprintf(fid,'<h1>Flight Dynamics Report</h1>\n');
+                fprintf(fid,'<h2>%s</h2>\n', datestr(now,'yyyy-mm-dd HH:MM:SS'));
 
                 if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
                     fprintf(fid,'<h2>Operating Conditions</h2>\n<table border="1">\n<tr>');
