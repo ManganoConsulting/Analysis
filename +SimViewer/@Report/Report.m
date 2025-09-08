@@ -364,12 +364,12 @@ classdef Report < handle
             categories = unique({selFields.type},'stable');
             colorMap = containers.Map({'Flight Condition','Inputs','Outputs','States','State Derivatives','Mass Property'},...
                                       {15,7,9,11,13,14});
-            col = 1;
-            for catIdx = 1:numel(categories)
+            col = nr_cols;
+            for catIdx = numel(categories):-1:1
                 cat = categories{catIdx};
                 colsInCat = sum(strcmp({selFields.type},cat));
-                firstCol = col;
-                lastCol = col + colsInCat - 1;
+                firstCol = col - colsInCat + 1;
+                lastCol = col;
                 if colsInCat > 1
                     newTable1.Cell(1,firstCol).Merge(newTable1.Cell(1,lastCol));
                 end
@@ -379,7 +379,7 @@ classdef Report < handle
                 if isKey(colorMap,cat)
                     newTable1.Cell(1,firstCol).Shading.BackgroundPatternColorIndex = colorMap(cat);
                 end
-                col = lastCol + 1;
+                col = firstCol - 1;
             end
             for nn = 1:newTable1.Columns.Count
                 newTable1.Cell(1,nn).Range.ParagraphFormat.SpaceBefore = spaceBefore;
