@@ -333,11 +333,17 @@ classdef Report < handle
 
             % Add Table
             newTable1 = obj.ActX_word.ActiveDocument.Tables.Add(range,nr_rows,nr_cols,1,1);
+            newTable1.Style = 'Table Grid';
+            newTable1.AutoFitBehavior(1); % wdAutoFitContent
+            newTable1.Range.Font.Size = 10;
+            newTable1.Borders.InsideLineStyle = 1;  % wdLineStyleSingle
+            newTable1.Borders.OutsideLineStyle = 1; % wdLineStyleSingle
 
             % Populate Header
             for i = 1:nr_cols
                 newTable1.Cell(1,i).Range.InsertAfter(headerDisplay{i});
                 newTable1.Cell(1,i).Range.Bold = 1;
+                newTable1.Cell(1,i).Range.ParagraphFormat.Alignment = 1; % Center
             end
 
             % Set Header Spacing
@@ -347,7 +353,7 @@ classdef Report < handle
                  newTable1.Cell(1,nn).Range.ParagraphFormat.SpaceAfter = spaceAfter;
             end
 
-            % Populate rows and color column
+            % Populate rows
             for i = 1:length(operCond)
                 for c = 1:numel(selFields)
                     fld = selFields(c);
@@ -365,15 +371,33 @@ classdef Report < handle
                         case 'MassProperties'
                             val = operCond(i).MassProperties.get(fld.name);
                     end
-                    if isnumeric(val)
-                        val = num2str(val);
+                    isNum = isnumeric(val);
+                    if isNum
+                        valStr = sprintf('%.3f', val);
+                    else
+                        valStr = char(val);
                     end
-                    if ~ischar(val) || isempty(val)
-                        val = ' ';
+                    if ~ischar(valStr) || isempty(valStr)
+                        valStr = ' ';
                     end
-                    newTable1.Cell(i + 1,c).Range.InsertAfter(val);
+                    newTable1.Cell(i + 1,c).Range.InsertAfter(valStr);
+                    if isNum
+                        newTable1.Cell(i + 1,c).Range.ParagraphFormat.Alignment = 2; % Right
+                    else
+                        newTable1.Cell(i + 1,c).Range.ParagraphFormat.Alignment = 0; % Left
+                    end
                 end
-                % Color column
+            end
+
+            % Alternate row shading for readability
+            for r = 2:nr_rows
+                if mod(r,2) == 0
+                    newTable1.Rows.Item(r).Shading.BackgroundPatternColorIndex = 16; % wdGray25
+                end
+            end
+
+            % Color column shading
+            for i = 1:length(operCond)
                 newTable1.Cell(i + 1,numel(selFields)+1).Shading.BackgroundPatternColor = Utilities.DHX(operCond(i).Color);
             end
 
