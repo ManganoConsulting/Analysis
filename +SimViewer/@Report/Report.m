@@ -388,15 +388,16 @@ classdef Report < handle
                               'States',[255 242 204], ...
                               'StateDerivs',[217 210 233], ...
                               'MassProperties',[222 235 247]);
-            c = 1;
-            while c <= numel(selFields)
-                startIdx = c;
+            c = numel(selFields);
+            while c >= 1
+                endIdx = c;
                 curType = cats{c};
-                while c < numel(selFields) && strcmp(cats{c+1},curType)
-                    c = c + 1;
+                while c > 1 && strcmp(cats{c-1},curType)
+                    c = c - 1;
                 end
-                if startIdx ~= c
-                    newTable1.Cell(1,startIdx).Merge(newTable1.Cell(1,c));
+                startIdx = c;
+                if endIdx > startIdx
+                    newTable1.Cell(1,startIdx).Merge(newTable1.Cell(1,endIdx));
                 end
                 newTable1.Cell(1,startIdx).Range.InsertAfter(curType);
                 newTable1.Cell(1,startIdx).Range.Bold = 1;
@@ -406,10 +407,10 @@ classdef Report < handle
                     col = Utilities.DHX([200 200 200]);
                 end
                 newTable1.Cell(1,startIdx).Shading.BackgroundPatternColor = col;
-                for j = startIdx:c
+                for j = startIdx:endIdx
                     newTable1.Cell(2,j).Shading.BackgroundPatternColor = col;
                 end
-                c = c + 1;
+                c = c - 1;
             end
 
             % Adjust header alignment
