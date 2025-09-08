@@ -351,8 +351,8 @@ classdef Report < handle
             newTable1.Range.Font.Size = 10;
             newTable1.Borders.InsideLineStyle = 1;  % wdLineStyleSingle
             newTable1.Borders.OutsideLineStyle = 1; % wdLineStyleSingle
-            newTable1.Borders.InsideLineWidth = 1;
-            newTable1.Borders.OutsideLineWidth = 1;
+            newTable1.Borders.InsideLineWidth = 2;  % wdLineWidth025pt
+            newTable1.Borders.OutsideLineWidth = 2; % wdLineWidth025pt
             newTable1.Columns.PreferredWidthType = 2; % wdPreferredWidthPoints
             for c = 1:nr_cols
                 newTable1.Columns.Item(c).PreferredWidth = 55;
