@@ -415,8 +415,6 @@ classdef Report < handle
                     curRow = curRow + 1;
                 end
 
-                newTable1.Cell(i + 1,curRow).Shading.BackgroundPatternColor = Utilities.DHX(operCond(i).Color);
-
             end
 
 
