@@ -275,46 +275,54 @@ classdef Report < handle
             end
 
             if ~isempty(operCond)
-                % Inputs
-                inNames = {operCond(1).Inputs.Name};
-                for n = 1:numel(inNames)
-                    vals = arrayfun(@(oc) oc.Inputs.get(inNames{n}).Value, operCond);
-                    if any(abs(vals - vals(1)) > 1e-6)
-                        key = keyFcn('Inputs',inNames{n});
-                        unit = unitMap(key);
-                        selFields(end+1) = struct('name',inNames{n},'type','Inputs','unit',unit); %#ok<AGROW>
+                ts = operCond(1).TrimSettings;
+                if ~isempty(ts)
+                    % Inputs
+                    vecInputs = ts.Inputs(~cellfun(@isscalar,{ts.Inputs.Value}));
+                    for n = 1:numel(vecInputs)
+                        name = vecInputs(n).Name;
+                        key = keyFcn('Inputs',name);
+                        unit = '';
+                        if isKey(unitMap,key)
+                            unit = unitMap(key);
+                        end
+                        selFields(end+1) = struct('name',name,'type','Inputs','unit',unit); %#ok<AGROW>
+                    end
+                    % Outputs
+                    vecOutputs = ts.Outputs(~cellfun(@isscalar,{ts.Outputs.Value}));
+                    for n = 1:numel(vecOutputs)
+                        name = vecOutputs(n).Name;
+                        key = keyFcn('Outputs',name);
+                        unit = '';
+                        if isKey(unitMap,key)
+                            unit = unitMap(key);
+                        end
+                        selFields(end+1) = struct('name',name,'type','Outputs','unit',unit); %#ok<AGROW>
+                    end
+                    % States
+                    vecStates = ts.States(~cellfun(@isscalar,{ts.States.Value}));
+                    for n = 1:numel(vecStates)
+                        name = vecStates(n).Name;
+                        key = keyFcn('States',name);
+                        unit = '';
+                        if isKey(unitMap,key)
+                            unit = unitMap(key);
+                        end
+                        selFields(end+1) = struct('name',name,'type','States','unit',unit); %#ok<AGROW>
+                    end
+                    % State derivatives
+                    vecStateDerivs = ts.StateDerivatives(~cellfun(@isscalar,{ts.StateDerivatives.Value}));
+                    for n = 1:numel(vecStateDerivs)
+                        name = vecStateDerivs(n).Name;
+                        key = keyFcn('State Derivatives',name);
+                        unit = '';
+                        if isKey(unitMap,key)
+                            unit = unitMap(key);
+                        end
+                        selFields(end+1) = struct('name',name,'type','State Derivatives','unit',unit); %#ok<AGROW>
                     end
                 end
-                % Outputs
-                outNames = {operCond(1).Outputs.Name};
-                for n = 1:numel(outNames)
-                    vals = arrayfun(@(oc) oc.Outputs.get(outNames{n}).Value, operCond);
-                    if any(abs(vals - vals(1)) > 1e-6)
-                        key = keyFcn('Outputs',outNames{n});
-                        unit = unitMap(key);
-                        selFields(end+1) = struct('name',outNames{n},'type','Outputs','unit',unit); %#ok<AGROW>
-                    end
-                end
-                % States
-                stNames = {operCond(1).States.Name};
-                for n = 1:numel(stNames)
-                    vals = arrayfun(@(oc) oc.States.get(stNames{n}).Value, operCond);
-                    if any(abs(vals - vals(1)) > 1e-6)
-                        key = keyFcn('States',stNames{n});
-                        unit = unitMap(key);
-                        selFields(end+1) = struct('name',stNames{n},'type','States','unit',unit); %#ok<AGROW>
-                    end
-                end
-                % State derivatives
-                sdNames = {operCond(1).StateDerivs.Name};
-                for n = 1:numel(sdNames)
-                    vals = arrayfun(@(oc) oc.StateDerivs.get(sdNames{n}).Value, operCond);
-                    if any(abs(vals - vals(1)) > 1e-6)
-                        key = keyFcn('State Derivatives',sdNames{n});
-                        unit = unitMap(key);
-                        selFields(end+1) = struct('name',sdNames{n},'type','State Derivatives','unit',unit); %#ok<AGROW>
-                    end
-                end
+
                 % Mass properties
                 mpNames = [{operCond(1).MassProperties.Parameter.Name}, 'WeightCode'];
                 for n = 1:numel(mpNames)
@@ -324,13 +332,19 @@ classdef Report < handle
                         valsNum = cell2mat(vals);
                         if any(abs(valsNum - valsNum(1)) > 1e-6)
                             key = keyFcn('Mass Property',mpNames{n});
-                            unit = unitMap(key);
+                            unit = '';
+                            if isKey(unitMap,key)
+                                unit = unitMap(key);
+                            end
                             selFields(end+1) = struct('name',mpNames{n},'type','Mass Property','unit',unit); %#ok<AGROW>
                         end
                     else
                         if ~all(strcmp(firstVal,vals))
                             key = keyFcn('Mass Property',mpNames{n});
-                            unit = unitMap(key);
+                            unit = '';
+                            if isKey(unitMap,key)
+                                unit = unitMap(key);
+                            end
                             selFields(end+1) = struct('name',mpNames{n},'type','Mass Property','unit',unit); %#ok<AGROW>
                         end
                     end
