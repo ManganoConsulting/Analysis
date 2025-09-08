@@ -412,8 +412,11 @@ classdef Report < handle
             end
 
             % Adjust header spacing
-            for nn = 1:newTable1.Columns.Count
+            % Row 1 has merged cells, so iterate over existing cells only
+            for nn = 1:newTable1.Rows.Item(1).Cells.Count
                 newTable1.Cell(1,nn).Range.ParagraphFormat.Alignment = 1; % center
+            end
+            for nn = 1:nr_cols
                 newTable1.Cell(2,nn).Range.ParagraphFormat.Alignment = 1; % center
             end
 

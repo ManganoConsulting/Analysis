@@ -414,8 +414,11 @@ classdef Report < handle
             end
 
             % Adjust header alignment
-            for nn = 1:nr_cols
+            % Row 1 may have merged cells; iterate over existing cells only
+            for nn = 1:newTable1.Rows.Item(1).Cells.Count
                 newTable1.Cell(1,nn).Range.ParagraphFormat.Alignment = 1; % center
+            end
+            for nn = 1:nr_cols
                 newTable1.Cell(2,nn).Range.ParagraphFormat.Alignment = 1; % center
             end
 
