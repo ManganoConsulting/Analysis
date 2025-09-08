@@ -1312,6 +1312,10 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
         function generateReport(obj)
             %GENERATEREPORT Dispatch to the selected report generator.
+            % Notify user that report generation has begun
+            notify(obj,'ShowLogMessageMain', ...
+                UserInterface.LogMessageEventData('Generating report...','info'));
+
             if obj.UseLegacyReport
                 obj.generateReportLegacy();
             else
@@ -1345,6 +1349,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     updateTOF(rpt);
                     saveAs(rpt, fullName);
                     closeWord(rpt);
+                    notify(obj,'ShowLogMessageMain', ...
+                        UserInterface.LogMessageEventData(['Report generation complete: ' fullName],'info'));
 
                 otherwise % 'New' or 'Template'
                     if strcmp(rptType,'Template')
@@ -1364,6 +1370,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         updateTOF(rpt);
                         saveAs(rpt,outName);
                         closeWord(rpt);
+                        notify(obj,'ShowLogMessageMain', ...
+                            UserInterface.LogMessageEventData(['Report generation complete: ' outName],'info'));
                     else % New report
                         [file,path] = uiputfile({'*.docx';'*.pdf'}, ...
                             'Export Report', 'AnalysisReport.docx');
@@ -1397,6 +1405,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         updateTOF(rpt);
                         saveAs(rpt, fullName);
                         closeWord(rpt);
+                        notify(obj,'ShowLogMessageMain', ...
+                            UserInterface.LogMessageEventData(['Report generation complete: ' fullName],'info'));
                     end
             end
 
@@ -1540,6 +1550,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
             fullName = fullfile(path,file);
             [~,~,ext] = fileparts(fullName);
+            success = true;
 
             if strcmpi(ext,'.pdf')
                 htmlFile = [tempname '.html'];
@@ -1549,12 +1560,19 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     [status,~] = system(cmd);
                     if status ~= 0
                         errordlg('Failed to create PDF using pandoc/wkhtmltopdf.','Report');
+                        success = false;
                     end
                 else
                     errordlg('Pandoc and wkhtmltopdf are required to export PDF reports.','Report');
+                    success = false;
                 end
             else
                 writeHtmlReport(fullName);
+            end
+
+            if success
+                notify(obj,'ShowLogMessageMain', ...
+                    UserInterface.LogMessageEventData(['Report generation complete: ' fullName],'info'));
             end
 
             function writeHtmlReport(filename)
