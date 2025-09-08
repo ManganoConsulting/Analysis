@@ -1432,18 +1432,23 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     fc1 = 'All';
                     fc2 = 'All';
                     if ~isempty(obj.TaskCollectionObj)
-                        fc1 = obj.TaskCollectionObj.FC1_PM_String{obj.TaskCollectionObj.FC1_PM_SelValue};
-                        fc2 = obj.TaskCollectionObj.FC2_PM_String{obj.TaskCollectionObj.FC2_PM_SelValue};
+                        tcObj = obj.TaskCollectionObj;
+                        fc1 = tcObj.FC1_PM_String{tcObj.FC1_PM_SelValue};
+                        fc2 = tcObj.FC2_PM_String{tcObj.FC2_PM_SelValue};
                     elseif ~isempty(obj.TaskCollectionObjBatch)
                         idx = min(obj.AnalysisTabSelIndex, length(obj.TaskCollectionObjBatch));
                         if ~isempty(obj.TaskCollectionObjBatch(idx).TrimTaskCollObj)
                             tcObj = obj.TaskCollectionObjBatch(idx).TrimTaskCollObj(1);
                             fc1 = tcObj.FC1_PM_String{tcObj.FC1_PM_SelValue};
                             fc2 = tcObj.FC2_PM_String{tcObj.FC2_PM_SelValue};
+                        else
+                            tcObj = [];
                         end
+                    else
+                        tcObj = [];
                     end
                     header = {'', fc1, fc2, 'All', 'All'};
-                    addOperCondTable(rpt, obj.OperCondCollObj.OperatingCondition, header);
+                    addOperCondTable(rpt, obj.OperCondCollObj.OperatingCondition, header, tcObj);
                 end
 
                 rpt.ActX_word.Selection.TypeText('Plots');
