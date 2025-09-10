@@ -1539,82 +1539,137 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
         end % generateReportLegacy
 
         function generateReportOpenSource(obj)
-            %GENERATEREPORTOPENSOURCE Export report using open-source tools.
-            %   Generates an HTML report and optionally converts it to PDF
-            %   using Pandoc if available.
+            %GENERATEREPORTOPENSOURCE Export a report and save as PDF.
+            %   Mirrors generateReportLegacy but always writes a PDF file.
 
-            [file,path] = uiputfile({'*.pdf';'*.html'}, 'Export Report', 'AnalysisReport.pdf');
-            if isequal(file,0)
-                return;
-            end
+            rptType = questdlg('Select report type', 'Export Report', ...
+                'New', 'Template', 'Append', 'New');
+            if isempty(rptType); return; end
 
-            fullName = fullfile(path,file);
-            [~,~,ext] = fileparts(fullName);
-            success = true;
-
-            if strcmpi(ext,'.pdf')
-                htmlFile = [tempname '.html'];
-                writeHtmlReport(htmlFile);
-                if ensurePandoc() && ensureWkhtmltopdf()
-                    cmd = sprintf('pandoc "%s" -o "%s" --pdf-engine=wkhtmltopdf', htmlFile, fullName);
-                    [status,~] = system(cmd);
-                    if status ~= 0
-                        errordlg('Failed to create PDF using pandoc/wkhtmltopdf.','Report');
-                        success = false;
+            switch rptType
+                case 'Append'
+                    [file,path] = uigetfile({'*.docx','Word Document (*.docx)'}, ...
+                        'Select Report to Append');
+                    if isequal(file,0); return; end
+                    fullName = fullfile(path,file);
+                    outName = fullfile(path,[erase(file,'.docx'),'.pdf']);
+                    try
+                        rpt = Report(fullName,'Visible',true);
+                    catch
+                        warndlg('Microsoft Word is required to export reports.', 'Report');
+                        return;
                     end
-                else
-                    errordlg('Pandoc and wkhtmltopdf are required to export PDF reports.','Report');
-                    success = false;
-                end
-            else
-                writeHtmlReport(fullName);
-            end
+                    appendContent(rpt);
+                    updateTOC(rpt);
+                    updateTOF(rpt);
+                    saveAs(rpt, outName);
+                    closeWord(rpt);
+                    notify(obj,'ShowLogMessageMain', ...
+                        UserInterface.LogMessageEventData(['Report generation complete: ' outName],'info'));
 
-            if success
-                notify(obj,'ShowLogMessageMain', ...
-                    UserInterface.LogMessageEventData(['Report generation complete: ' fullName],'info'));
-            end
-
-            function writeHtmlReport(filename)
-                fid = fopen(filename,'w');
-                if fid == -1
-                    errordlg('Unable to create report file.','Report');
-                    return;
-                end
-                cleanup = onCleanup(@() fclose(fid));
-                fprintf(fid,'<html><head><title>Flight Dynamics Report</title></head><body>\n');
-                fprintf(fid,'<h1>Flight Dynamics Report</h1>\n');
-
-                if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
-                    fprintf(fid,'<h2>Operating Conditions</h2>\n<table border="1">\n<tr>');
-                    for i = 1:length(obj.OperCondCollObj.TableColumnNames)
-                        fprintf(fid,'<th>%s</th>', obj.OperCondCollObj.TableColumnNames{i});
-                    end
-                    fprintf(fid,'</tr>\n');
-                    data = obj.OperCondCollObj.TableData;
-                    for r = 1:size(data,1)
-                        fprintf(fid,'<tr>');
-                        for c = 1:size(data,2)
-                            val = data{r,c};
-                            if isnumeric(val)
-                                val = num2str(val);
-                            end
-                            fprintf(fid,'<td>%s</td>', val);
+                otherwise % 'New' or 'Template'
+                    if strcmp(rptType,'Template')
+                        [tmplFile,tmplPath] = uigetfile({'*.docx','Word Document (*.docx)'}, ...
+                            'Select Template');
+                        if isequal(tmplFile,0); return; end
+                        fullName = fullfile(tmplPath,tmplFile);
+                        outName = fullfile(tmplPath,[erase(tmplFile,'.docx'),'_NEW.pdf']);
+                        try
+                            rpt = Report(fullName,'Visible',true);
+                        catch
+                            warndlg('Microsoft Word is required to export reports.', 'Report');
+                            return;
                         end
-                        fprintf(fid,'</tr>\n');
+                        appendContent(rpt);
+                        updateTOC(rpt);
+                        updateTOF(rpt);
+                        saveAs(rpt,outName);
+                        closeWord(rpt);
+                        notify(obj,'ShowLogMessageMain', ...
+                            UserInterface.LogMessageEventData(['Report generation complete: ' outName],'info'));
+                    else % New report
+                        [file,path] = uiputfile({'*.pdf'}, ...
+                            'Export Report', 'AnalysisReport.pdf');
+                        if isequal(file,0); return; end
+                        fullName = fullfile(path,file);
+                        try
+                            rpt = Report(fullName);
+                        catch
+                            warndlg('Microsoft Word is required to export reports.', 'Report');
+                            return;
+                        end
+                        % Title page
+                        rpt.ActX_word.Selection.TypeText('Flight Dynamics Report');
+                        rpt.ActX_word.Selection.Style = 'Title';
+                        rpt.ActX_word.Selection.TypeParagraph;
+
+                        % Table of contents and figures placeholders
+                        rpt.ActX_word.Selection.TypeText('Table of Contents');
+                        rpt.ActX_word.Selection.Style = 'Heading 1';
+                        rpt.ActX_word.Selection.TypeParagraph;
+                        addTOC(rpt);
+                        rpt.ActX_word.Selection.InsertBreak;
+                        rpt.ActX_word.Selection.TypeText('Table of Figures');
+                        rpt.ActX_word.Selection.Style = 'Heading 1';
+                        rpt.ActX_word.Selection.TypeParagraph;
+                        addTOF(rpt);
+                        rpt.ActX_word.Selection.InsertBreak;
+
+                        addContent(rpt);
+                        updateTOC(rpt);
+                        updateTOF(rpt);
+                        saveAs(rpt, fullName);
+                        closeWord(rpt);
+                        notify(obj,'ShowLogMessageMain', ...
+                            UserInterface.LogMessageEventData(['Report generation complete: ' fullName],'info'));
                     end
-                    fprintf(fid,'</table>\n');
-                end
-
-                fprintf(fid,'<h2>Plots</h2>\n');
-                addAxisCollectionPlots(fid, obj.AxisColl);
-                addAxisCollectionPlots(fid, obj.PostSimAxisColl);
-                addSimAxisPlots(fid, obj.SimAxisColl);
-
-                fprintf(fid,'</body></html>');
             end
 
-            function addAxisCollectionPlots(fid, coll)
+            function appendContent(rpt)
+                rpt.ActX_word.ActiveDocument.Characters.Last.Select;
+                rpt.ActX_word.Selection.InsertBreak;
+                titleStr = datestr(now,'yyyy-mm-dd HH:MM:SS');
+                rpt.ActX_word.Selection.TypeText(titleStr);
+                rpt.ActX_word.Selection.Style = 'Heading 1';
+                rpt.ActX_word.Selection.TypeParagraph;
+                addContent(rpt);
+            end
+
+            function addContent(rpt)
+                if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
+                    rpt.ActX_word.Selection.TypeText('Operating Conditions');
+                    rpt.ActX_word.Selection.Style = 'Heading 1';
+                    rpt.ActX_word.Selection.TypeParagraph;
+                    % Determine the flight condition headers from the trim
+                    % task selection. The TrimTaskCollection stores the
+                    % user-selected parameters in the FC?_PM_String cell
+                    % arrays along with FC?_PM_SelValue indices.
+                    fc1 = 'All';
+                    fc2 = 'All';
+                    if ~isempty(obj.TaskCollectionObj)
+                        fc1 = obj.TaskCollectionObj.FC1_PM_String{obj.TaskCollectionObj.FC1_PM_SelValue};
+                        fc2 = obj.TaskCollectionObj.FC2_PM_String{obj.TaskCollectionObj.FC2_PM_SelValue};
+                    elseif ~isempty(obj.TaskCollectionObjBatch)
+                        idx = min(obj.AnalysisTabSelIndex, length(obj.TaskCollectionObjBatch));
+                        if ~isempty(obj.TaskCollectionObjBatch(idx).TrimTaskCollObj)
+                            tcObj = obj.TaskCollectionObjBatch(idx).TrimTaskCollObj(1);
+                            fc1 = tcObj.FC1_PM_String{tcObj.FC1_PM_SelValue};
+                            fc2 = tcObj.FC2_PM_String{tcObj.FC2_PM_SelValue};
+                        end
+                    end
+                    header = {'', fc1, fc2, 'All', 'All'};
+                    addOperCondTable(rpt, obj.OperCondCollObj.OperatingCondition, header);
+                end
+
+                rpt.ActX_word.Selection.TypeText('Plots');
+                rpt.ActX_word.Selection.Style = 'Heading 1';
+                rpt.ActX_word.Selection.TypeParagraph;
+                addAxisCollectionPlots(obj.AxisColl);
+                addAxisCollectionPlots(obj.PostSimAxisColl);
+                addSimAxisPlots(obj.SimAxisColl);
+            end
+
+            function addAxisCollectionPlots(coll)
                 if isempty(coll); return; end
                 for p = 1:length(coll.Panel)
                     panel = coll.Panel(p);
@@ -1625,7 +1680,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         else
                             axType = '';
                         end
-                        if isgraphics(ax) && any(strcmp(axType, {'axes','polaraxes','uiaxes'})) && ~isempty(get(ax,'Children'))
+                        if isgraphics(ax) && any(strcmp(axType, {'axes','polaraxes','uiaxes'})) && ...
+                                ~isempty(get(ax,'Children'))
                             imgFile = [tempname '.png'];
                             try
                                 if exist('exportgraphics','file')
@@ -1638,8 +1694,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                 if isempty(titleStr)
                                     titleStr = 'Plot';
                                 end
-                                fprintf(fid,'<figure><img src="%s" alt="%s"><figcaption>%s</figcaption></figure>\n',...
-                                    imgFile,titleStr,titleStr);
+                                addFigure(rpt, struct('Filename', imgFile, 'Title', titleStr));
                             catch
                                 % Continue without this figure on failure
                             end
@@ -1648,7 +1703,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 end
             end
 
-            function addSimAxisPlots(fid, simColl)
+            function addSimAxisPlots(simColl)
                 if isempty(simColl); return; end
                 for s = 1:numel(simColl)
                     try
@@ -1657,14 +1712,12 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         panels = coll.Panel;
                         visStates = arrayfun(@(p) p.Visible, panels);
                         for p = 1:numel(panels)
-                            % Show only this panel
                             for j = 1:numel(panels)
                                 panels(j).Visible = (j == p);
                             end
                             drawnow();
                             panelHandle = panels(p).Panel;
 
-                            % Check that at least one axis has plotted data
                             hasData = false;
                             for k = 1:length(panels(p).Axis)
                                 ax = panels(p).Axis(k);
@@ -1685,93 +1738,16 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                     imwrite(fr.cdata, imgFile);
                                 end
                                 titleStr = sprintf('Simulation Page %d', p);
-                                fprintf(fid,'<figure><img src="%s" alt="%s"><figcaption>%s</figcaption></figure>\n', ...
-                                    imgFile,titleStr,titleStr);
+                                addFigure(rpt, struct('Filename', imgFile, 'Title', titleStr));
                             catch
-                                % Continue without this panel on failure
+                                % Ignore failures for this panel
                             end
                         end
-                        % Restore visibility
                         for j = 1:numel(panels)
                             panels(j).Visible = visStates(j);
                         end
                     catch
                         % Ignore invalid simulation viewers
-                    end
-                end
-            end
-
-            function isPandocAvailable = ensurePandoc()
-                % Ensure pandoc is available, attempt install if missing
-                [exitCode,~] = system('pandoc -v');
-                isPandocAvailable = (exitCode == 0); % exit code 0 indicates success
-                if ~isPandocAvailable
-                    choice = questdlg('Pandoc is required to export PDF reports. Install now?', ...
-                        'Missing Dependency', 'Install','Cancel','Install');
-                    if strcmp(choice,'Install')
-                        if ispc
-                            system('winget install -e --id JohnMacFarlane.Pandoc');
-                        else
-                            system('sudo apt-get install -y pandoc');
-                        end
-                        refreshPandocPath();
-                        [exitCode,~] = system('pandoc -v');
-                        isPandocAvailable = (exitCode == 0); % exit code 0 indicates success
-                    end
-                end
-
-                function refreshPandocPath()
-                    % Add common pandoc install locations to MATLAB's PATH
-                    if ispc
-                        candidates = { ...
-                            'C:\\Program Files\\Pandoc', ...
-                            fullfile(getenv('LOCALAPPDATA'),'Pandoc')};
-                        for c = 1:numel(candidates)
-                            binDir = candidates{c};
-                            if exist(fullfile(binDir,'pandoc.exe'),'file')
-                                setenv('PATH',[getenv('PATH'), pathsep, binDir]);
-                                break;
-                            end
-                        end
-                    else
-                        setenv('PATH',[getenv('PATH'), pathsep, '/usr/local/bin', pathsep, '/usr/bin']);
-                    end
-                end
-            end
-
-            function isWkhtmltopdfAvailable = ensureWkhtmltopdf()
-                % Ensure wkhtmltopdf is available, attempt install if missing
-                [exitCode,~] = system('wkhtmltopdf -V');
-                isWkhtmltopdfAvailable = (exitCode == 0);
-                if ~isWkhtmltopdfAvailable
-                    choice = questdlg('wkhtmltopdf is required to export PDF reports. Install now?', ...
-                        'Missing Dependency', 'Install','Cancel','Install');
-                    if strcmp(choice,'Install')
-                        if ispc
-                            system('winget install -e --id wkhtmltopdf.wkhtmltox');
-                        else
-                            system('sudo apt-get install -y wkhtmltopdf');
-                        end
-                        refreshWkhtmltopdfPath();
-                        [exitCode,~] = system('wkhtmltopdf -V');
-                        isWkhtmltopdfAvailable = (exitCode == 0);
-                    end
-                end
-
-                function refreshWkhtmltopdfPath()
-                    % Add common wkhtmltopdf install locations to MATLAB's PATH
-                    if ispc
-                        candidates = { ...
-                            'C:\\Program Files\\wkhtmltopdf\\bin'};
-                        for c = 1:numel(candidates)
-                            binDir = candidates{c};
-                            if exist(fullfile(binDir,'wkhtmltopdf.exe'),'file')
-                                setenv('PATH',[getenv('PATH'), pathsep, binDir]);
-                                break;
-                            end
-                        end
-                    else
-                        setenv('PATH',[getenv('PATH'), pathsep, '/usr/local/bin', pathsep, '/usr/bin']);
                     end
                 end
             end
