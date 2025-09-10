@@ -447,8 +447,9 @@ classdef Report < handle
                 end
                 if ~isempty(operCond(i).Color)
                     rowCol = operCond(i).Color;
-                    rgbVal = rowCol(1) + rowCol(2)*256 + rowCol(3)*65536;
-                    set(newTable1.Rows.Item(i + 2).Range.Font, 'Color', rgbVal);
+                    rgbVal = int32(rowCol(1) + rowCol(2)*256 + rowCol(3)*65536);
+                    fontObj = newTable1.Rows.Item(i + 2).Range.Font;
+                    fontObj.TextColor.RGB = rgbVal;
                 end
             end
 
