@@ -2082,6 +2082,12 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 else
                     % ******Run trims *******
                     operCond = lacm.OperatingCondition( taskObjs, obj.TrimSettings);
+                    % Assign a unique color to each new operating condition
+                    existingCount = length(obj.OperCondCollObj(ind).OperatingCondition);
+                    colorMap = round(255*lines(existingCount + length(operCond)));
+                    for ocIdx = 1:length(operCond)
+                        operCond(ocIdx).Color = colorMap(existingCount + ocIdx,:);
+                    end
                     resetSaveFormat( saveFormat );
                     % Get Logged Signal Data for trim
                     if obj.RunSignalLog

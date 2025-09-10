@@ -443,6 +443,11 @@ classdef Report < handle
                         newTable1.Cell(i + 2,c).Range.ParagraphFormat.Alignment = 0; % Left
                     end
                 end
+                if ~isempty(operCond(i).Color)
+                    rowCol = operCond(i).Color;
+                    rgbVal = rowCol(1) + rowCol(2)*256 + rowCol(3)*65536;
+                    newTable1.Rows.Item(i + 2).Range.Font.Color = rgbVal;
+                end
             end
 
             % Alternate row shading for readability
