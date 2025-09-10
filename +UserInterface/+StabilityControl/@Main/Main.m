@@ -2067,6 +2067,18 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         ~isempty(obj.OperCondCollObj(ind).OperatingCondition)
                     % Use previously computed operating conditions
                     operCond = obj.OperCondCollObj(ind).OperatingCondition;
+                    linMdlSel = selObjLogic(ind).LinearModel;
+                    if any(linMdlSel)
+                        notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData( ...
+                            'Running linearization on existing operating condition.','info'));
+                        linMdlObj = analysisObjs(ind).LinearModelDef(linMdlSel);
+                        for k = 1:numel(operCond)
+                            runLinearization(operCond(k), linMdlObj);
+                        end
+                    else
+                        notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData( ...
+                            'Linearization not run - no linear model selected.','info'));
+                    end
                 else
                     % ******Run trims *******
                     operCond = lacm.OperatingCondition( taskObjs, obj.TrimSettings);

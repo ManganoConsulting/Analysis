@@ -927,50 +927,54 @@ classdef OperatingCondition < matlab.mixin.Copyable%< matlab.mixin.CustomDisplay
             end
 
         end % copyConditions
-        
-         function initializeConditions2Task( obj , task )
-             obj.States      = copy(task.StateConditions);
-             obj.Inputs      = copy(task.InputConditions);
-             obj.Outputs     = copy(task.OutputConditions);
-             obj.StateDerivs = copy(task.StateDerivativeConditions);
-         end % initializeConditions2Task
 
-         function runLinearization(obj, linMdlObj)
-             %RUNLINEARIZATION Run linearization on an existing operating condition.
-             %   runLinearization(operCond, linMdlObj) uses the current
-             %   state of the operating condition to linearize the model
-             %   described by the supplied lacm.LinearModel object.
-             %
-             %   linMdlObj should be a lacm.LinearModel or array of such.
-             %
-             if nargin < 2 || ~isa(linMdlObj,'lacm.LinearModel')
-                 error('Input must be a lacm.LinearModel object');
-             end
+        function initializeConditions2Task( obj , task )
+            obj.States      = copy(task.StateConditions);
+            obj.Inputs      = copy(task.InputConditions);
+            obj.Outputs     = copy(task.OutputConditions);
+            obj.StateDerivs = copy(task.StateDerivativeConditions);
+        end % initializeConditions2Task
 
-             % Compile model if needed
-             if ~strcmp('paused', get_param(obj.ModelName, 'SimulationStatus'))
-                 try
-                     feval(obj.ModelName, [], [], [], 'compile');
-                 catch
-                     error('Unable to compile model');
-                 end
-             end
+    end % methods (Access = protected)
 
-             % Gather names and values
-             stateNames   = getNames(obj,'States');
-             inportNames  = getNames(obj,'Inputs');
-             outportNames = getNames(obj,'Outputs');
-             X0_trim      = getValues(obj,'States');
-             U0_trim      = getValues(obj,'Inputs');
-             Y0_trim      = getValues(obj,'Outputs');
-             CStateIDs    = obj.TrimSettings.CStateID;
+    methods
 
-             % Run the linearization
-             for i = 1:length(linMdlObj)
-                 run(linMdlObj(i), obj.ModelName, stateNames, inportNames, ...
-                     outportNames, X0_trim, U0_trim, Y0_trim, CStateIDs);
-             end
-         end % runLinearization
+        function runLinearization(obj, linMdlObj)
+            %RUNLINEARIZATION Run linearization on an existing operating condition.
+            %   runLinearization(operCond, linMdlObj) uses the current
+            %   state of the operating condition to linearize the model
+            %   described by the supplied lacm.LinearModel object.
+            %
+            %   linMdlObj should be a lacm.LinearModel or array of such.
+            %
+            if nargin < 2 || ~isa(linMdlObj,'lacm.LinearModel')
+                error('Input must be a lacm.LinearModel object');
+            end
+
+            % Compile model if needed
+            if ~strcmp('paused', get_param(obj.ModelName, 'SimulationStatus'))
+                try
+                    feval(obj.ModelName, [], [], [], 'compile');
+                catch
+                    error('Unable to compile model');
+                end
+            end
+
+            % Gather names and values
+            stateNames   = getNames(obj,'States');
+            inportNames  = getNames(obj,'Inputs');
+            outportNames = getNames(obj,'Outputs');
+            X0_trim      = getValues(obj,'States');
+            U0_trim      = getValues(obj,'Inputs');
+            Y0_trim      = getValues(obj,'Outputs');
+            CStateIDs    = obj.TrimSettings.CStateID;
+
+            % Run the linearization
+            for i = 1:length(linMdlObj)
+                run(linMdlObj(i), obj.ModelName, stateNames, inportNames, ...
+                    outportNames, X0_trim, U0_trim, Y0_trim, CStateIDs);
+            end
+        end % runLinearization
 
     end
     
