@@ -635,8 +635,9 @@ classdef SimulationCollection < Requirements.Requirement
             runColors       = cell(1,length(runLabels));
             runLabelColors  = cell(1,length(runLabels));
             for i = 1:length(runLabels)
-                runColors{i}        = getSimViewerColor(i);
-                runLabelColors{i}   = ['<html><font color="rgb(',int2str(runColors{i}(1)),',',int2str(runColors{i}(2)),',',int2str(runColors{i}(3)),')">',runLabels{i},'</font></html>']; 
+                ocIdx = mod(i-1,length(OperConds)) + 1;
+                runColors{i}        = OperConds(ocIdx).Color;
+                runLabelColors{i}   = ['<html><font color="rgb(',int2str(runColors{i}(1)),',',int2str(runColors{i}(2)),',',int2str(runColors{i}(3)),')">',runLabels{i},'</font></html>'];
             end
             updateNewData(simViewH ,simOutputSV , false , 1, runLabelColors, runColors); % Replace Data and update plots with new data with Run Labels
             
@@ -1117,16 +1118,4 @@ else
 end
 
 end % getColor
-
-function y = getSimViewerColor(ind)
-
-color = {[0 0 1],[1 0 0],[0 1 0],[0 0 0],[1 0 1],[0 1 1],[0.5,0.5,0]};
-color = cellfun(@(x) x*255,color,'UniformOutput',false);
-if ind <= 7
-    y = color{ind};
-else
-    y = [rand(1),rand(1),rand(1)];
-end
-
-end % getSimViewerColor
 
