@@ -1480,7 +1480,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
                         axesList = panel.Axis;
                         for k = 1:numel(axesList)
-                            ax = axesList(k);
+                            ax = handle(axesList(k));
                             if ~isgraphics(ax)
                                 continue;
                             end
