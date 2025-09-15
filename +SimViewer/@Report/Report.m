@@ -324,7 +324,14 @@ classdef Report < handle
                 end
 
                 % Mass properties
-                mpNames = [{operCond(1).MassProperties.Parameter.Name}, 'WeightCode'];
+                mpNames = {};
+                massProps = operCond(1).MassProperties;
+                if ~isempty(massProps)
+                    mpParams = massProps.Parameter;
+                    if ~isempty(mpParams)
+                        mpNames = {mpParams.Name};
+                    end
+                end
                 for n = 1:numel(mpNames)
                     vals = arrayfun(@(oc) oc.MassProperties.get(mpNames{n}), operCond, 'UniformOutput', false);
                     firstVal = vals{1};
@@ -348,6 +355,21 @@ classdef Report < handle
                             selFields(end+1) = struct('name',mpNames{n},'type','Mass Property','unit',unit); %#ok<AGROW>
                         end
                     end
+                end
+
+                % Always include the WeightCode mass property column
+                weightFieldName = 'WeightCode';
+                if ~any(strcmp({selFields.name}, weightFieldName))
+                    weightKeyCandidates = {keyFcn('Mass Property','Weight Code'), keyFcn('Mass Property','WeightCode')};
+                    unit = '';
+                    for keyIdx = 1:numel(weightKeyCandidates)
+                        key = weightKeyCandidates{keyIdx};
+                        if isKey(unitMap,key)
+                            unit = unitMap(key);
+                            break;
+                        end
+                    end
+                    selFields(end+1) = struct('name',weightFieldName,'type','Mass Property','unit',unit,'displayName','Weight Code'); %#ok<AGROW>
                 end
             end
 
@@ -407,7 +429,11 @@ classdef Report < handle
                 newTable1.Cell(1,nn).Range.ParagraphFormat.SpaceAfter = spaceAfter;
             end
             for i = 1:numel(selFields)
-                hdrTxt = sprintf('%s (%s)',selFields(i).name,selFields(i).unit);
+                fieldName = selFields(i).name;
+                if isfield(selFields,'displayName') && ~isempty(selFields(i).displayName)
+                    fieldName = selFields(i).displayName;
+                end
+                hdrTxt = sprintf('%s (%s)',fieldName,selFields(i).unit);
                 newTable1.Cell(2,i + 1).Range.InsertAfter(hdrTxt);
                 newTable1.Cell(2,i + 1).Range.Bold = 1;
                 newTable1.Cell(2,i + 1).Range.ParagraphFormat.Alignment = 1;
