@@ -450,11 +450,12 @@ classdef Report < handle
                         newTable1.Cell(i + 2,c + 1).Range.ParagraphFormat.Alignment = 0; % Left
                     end
                 end
+                for c = 2:nr_cols
+                    newTable1.Cell(i + 2,c).Range.Font.ColorIndex = 0; % wdAuto (default text color)
+                end
                 if ~isempty(operCond(i).Color)
                     rowCol = operCond(i).Color;
                     rgbVal = int32(rowCol(1) + rowCol(2)*256 + rowCol(3)*65536);
-                    fontObj = newTable1.Rows.Item(i + 2).Range.Font;
-                    fontObj.TextColor.RGB = rgbVal;
                     shade = newTable1.Cell(i + 2,1).Shading;
                     shade.BackgroundPatternColor = rgbVal;
                     shade.ForegroundPatternColor = rgbVal;
