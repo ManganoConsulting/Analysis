@@ -354,7 +354,8 @@ classdef Report < handle
             range = obj.ActX_word.Selection.Range;
 
             nr_rows = length(operCond) + 2;
-            nr_cols = numel(selFields);
+            % Add a leading swatch column for each operating condition color.
+            nr_cols = numel(selFields) + 1;
 
             rowSpacing = 4;
             spaceBefore = 6;
@@ -371,7 +372,11 @@ classdef Report < handle
             newTable1.Borders.OutsideLineWidth = 2; % wdLineWidth025pt
             newTable1.Columns.PreferredWidthType = 2; % wdPreferredWidthPoints
             for c = 1:nr_cols
-                newTable1.Columns.Item(c).PreferredWidth = 55;
+                if c == 1
+                    newTable1.Columns.Item(c).PreferredWidth = 12;
+                else
+                    newTable1.Columns.Item(c).PreferredWidth = 55;
+                end
             end
 
             % Header rows
@@ -401,14 +406,14 @@ classdef Report < handle
                 newTable1.Cell(1,nn).Range.ParagraphFormat.LineSpacing = 12;
                 newTable1.Cell(1,nn).Range.ParagraphFormat.SpaceAfter = spaceAfter;
             end
-            for i = 1:nr_cols
+            for i = 1:numel(selFields)
                 hdrTxt = sprintf('%s (%s)',selFields(i).name,selFields(i).unit);
-                newTable1.Cell(2,i).Range.InsertAfter(hdrTxt);
-                newTable1.Cell(2,i).Range.Bold = 1;
-                newTable1.Cell(2,i).Range.ParagraphFormat.Alignment = 1;
-                newTable1.Cell(2,i).Range.ParagraphFormat.SpaceBefore = spaceBefore;
-                newTable1.Cell(2,i).Range.ParagraphFormat.LineSpacing = 12;
-                newTable1.Cell(2,i).Range.ParagraphFormat.SpaceAfter = spaceAfter;
+                newTable1.Cell(2,i + 1).Range.InsertAfter(hdrTxt);
+                newTable1.Cell(2,i + 1).Range.Bold = 1;
+                newTable1.Cell(2,i + 1).Range.ParagraphFormat.Alignment = 1;
+                newTable1.Cell(2,i + 1).Range.ParagraphFormat.SpaceBefore = spaceBefore;
+                newTable1.Cell(2,i + 1).Range.ParagraphFormat.LineSpacing = 12;
+                newTable1.Cell(2,i + 1).Range.ParagraphFormat.SpaceAfter = spaceAfter;
             end
 
             % Populate rows
@@ -438,11 +443,11 @@ classdef Report < handle
                     if ~ischar(valStr) || isempty(valStr)
                         valStr = ' ';
                     end
-                    newTable1.Cell(i + 2,c).Range.InsertAfter(valStr);
+                    newTable1.Cell(i + 2,c + 1).Range.InsertAfter(valStr);
                     if isNum
-                        newTable1.Cell(i + 2,c).Range.ParagraphFormat.Alignment = 2; % Right
+                        newTable1.Cell(i + 2,c + 1).Range.ParagraphFormat.Alignment = 2; % Right
                     else
-                        newTable1.Cell(i + 2,c).Range.ParagraphFormat.Alignment = 0; % Left
+                        newTable1.Cell(i + 2,c + 1).Range.ParagraphFormat.Alignment = 0; % Left
                     end
                 end
                 if ~isempty(operCond(i).Color)
@@ -450,13 +455,19 @@ classdef Report < handle
                     rgbVal = int32(rowCol(1) + rowCol(2)*256 + rowCol(3)*65536);
                     fontObj = newTable1.Rows.Item(i + 2).Range.Font;
                     fontObj.TextColor.RGB = rgbVal;
+                    shade = newTable1.Cell(i + 2,1).Shading;
+                    shade.BackgroundPatternColor = rgbVal;
+                    shade.ForegroundPatternColor = rgbVal;
+                    shade.Texture = 0; % wdTextureNone
                 end
             end
 
             % Alternate row shading for readability
             for r = 3:nr_rows
                 if mod(r,2) == 1
-                    newTable1.Rows.Item(r).Shading.BackgroundPatternColorIndex = 16; % wdGray25
+                    for c = 2:nr_cols
+                        newTable1.Cell(r,c).Shading.BackgroundPatternColorIndex = 16; % wdGray25
+                    end
                 end
             end
 
