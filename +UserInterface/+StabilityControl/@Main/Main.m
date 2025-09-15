@@ -1449,25 +1449,53 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 rpt.ActX_word.Selection.TypeText('Plots');
                 rpt.ActX_word.Selection.Style = 'Heading 1';
                 rpt.ActX_word.Selection.TypeParagraph;
-                addAxisCollectionPlots(obj.AxisColl);
-                addAxisCollectionPlots(obj.PostSimAxisColl);
-                addSimAxisPlots(obj.SimAxisColl);
+                addAxisCollectionPlots(obj.AxisColl, 'Analysis Plots');
+                addAxisCollectionPlots(obj.PostSimAxisColl, 'Post-Simulation Plots');
+                addSimAxisPlots(obj.SimAxisColl, 'Simulation Plots');
             end
 
-            function addAxisCollectionPlots(coll)
+            function addAxisCollectionPlots(coll, heading)
+                if nargin < 2
+                    heading = '';
+                end
                 if isempty(coll); return; end
-                for p = 1:length(coll.Panel)
-                    panel = coll.Panel(p);
-                    for k = 1:length(panel.Axis)
-                        ax = panel.Axis(k);
-                        if isgraphics(ax)
-                            axType = get(ax,'Type');
-                        else
-                            axType = '';
+
+                headingShown = false;
+                for idx = 1:numel(coll)
+                    axisColl = coll(idx);
+                    if isempty(axisColl) || ~isvalid(axisColl)
+                        continue;
+                    end
+
+                    panels = axisColl.Panel;
+                    if isempty(panels)
+                        continue;
+                    end
+
+                    for p = 1:numel(panels)
+                        panel = panels(p);
+                        if isempty(panel) || ~isvalid(panel)
+                            continue;
                         end
-                        if isgraphics(ax) && any(strcmp(axType, {'axes','polaraxes','uiaxes'})) && ...
-                                ~isempty(get(ax,'Children'))
+
+                        axesList = panel.Axis;
+                        for k = 1:numel(axesList)
+                            ax = axesList(k);
+                            if ~isgraphics(ax)
+                                continue;
+                            end
+
+                            axType = get(ax,'Type');
+                            if ~any(strcmp(axType, {'axes','polaraxes','uiaxes'}))
+                                continue;
+                            end
+
+                            if isempty(get(ax,'Children'))
+                                continue;
+                            end
+
                             imgFile = [tempname '.png'];
+                            success = false;
                             try
                                 if exist('exportgraphics','file')
                                     exportgraphics(ax, imgFile, 'Resolution', 150);
@@ -1475,10 +1503,41 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                     fig = ancestor(ax, 'figure');
                                     saveas(fig, imgFile);
                                 end
-                                titleStr = get(get(ax,'Title'),'String');
-                                if isempty(titleStr)
-                                    titleStr = 'Plot';
+                                success = true;
+                            catch
+                                success = false;
+                            end
+
+                            if ~success
+                                continue;
+                            end
+
+                            if ~headingShown
+                                if ~isempty(heading)
+                                    rpt.ActX_word.Selection.TypeText(heading);
+                                    rpt.ActX_word.Selection.Style = 'Heading 2';
+                                    rpt.ActX_word.Selection.TypeParagraph;
                                 end
+                                headingShown = true;
+                            end
+
+                            titleObj = get(ax,'Title');
+                            titleStr = '';
+                            if ~isempty(titleObj)
+                                titleStr = get(titleObj,'String');
+                            end
+                            if iscell(titleStr)
+                                titleStr = strjoin(titleStr,' ');
+                            elseif isa(titleStr,'string')
+                                titleStr = strjoin(cellstr(titleStr));
+                            elseif isnumeric(titleStr)
+                                titleStr = num2str(titleStr);
+                            end
+                            if isempty(titleStr)
+                                titleStr = 'Plot';
+                            end
+
+                            try
                                 addFigure(rpt, struct('Filename', imgFile, 'Title', titleStr));
                             catch
                                 % Continue without this figure on failure
@@ -1488,8 +1547,12 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 end
             end
 
-            function addSimAxisPlots(simColl)
+            function addSimAxisPlots(simColl, heading)
+                if nargin < 2
+                    heading = '';
+                end
                 if isempty(simColl); return; end
+                headingShown = false;
                 for s = 1:numel(simColl)
                     try
                         coll = simColl(s).AxisPanelCollObj;
@@ -1515,6 +1578,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                             end
 
                             imgFile = [tempname '.png'];
+                            success = false;
                             try
                                 if exist('exportgraphics','file')
                                     exportgraphics(panelHandle, imgFile, 'Resolution', 150);
@@ -1522,7 +1586,26 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                     fr = getframe(panelHandle);
                                     imwrite(fr.cdata, imgFile);
                                 end
-                                titleStr = sprintf('Simulation Page %d', p);
+                                success = true;
+                            catch
+                                success = false;
+                            end
+
+                            if ~success
+                                continue;
+                            end
+
+                            if ~headingShown
+                                if ~isempty(heading)
+                                    rpt.ActX_word.Selection.TypeText(heading);
+                                    rpt.ActX_word.Selection.Style = 'Heading 2';
+                                    rpt.ActX_word.Selection.TypeParagraph;
+                                end
+                                headingShown = true;
+                            end
+
+                            titleStr = sprintf('Simulation Page %d', p);
+                            try
                                 addFigure(rpt, struct('Filename', imgFile, 'Title', titleStr));
                             catch
                                 % Ignore failures for this panel
@@ -1664,25 +1747,53 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 rpt.ActX_word.Selection.TypeText('Plots');
                 rpt.ActX_word.Selection.Style = 'Heading 1';
                 rpt.ActX_word.Selection.TypeParagraph;
-                addAxisCollectionPlots(obj.AxisColl);
-                addAxisCollectionPlots(obj.PostSimAxisColl);
-                addSimAxisPlots(obj.SimAxisColl);
+                addAxisCollectionPlots(obj.AxisColl, 'Analysis Plots');
+                addAxisCollectionPlots(obj.PostSimAxisColl, 'Post-Simulation Plots');
+                addSimAxisPlots(obj.SimAxisColl, 'Simulation Plots');
             end
 
-            function addAxisCollectionPlots(coll)
+            function addAxisCollectionPlots(coll, heading)
+                if nargin < 2
+                    heading = '';
+                end
                 if isempty(coll); return; end
-                for p = 1:length(coll.Panel)
-                    panel = coll.Panel(p);
-                    for k = 1:length(panel.Axis)
-                        ax = panel.Axis(k);
-                        if isgraphics(ax)
-                            axType = get(ax,'Type');
-                        else
-                            axType = '';
+
+                headingShown = false;
+                for idx = 1:numel(coll)
+                    axisColl = coll(idx);
+                    if isempty(axisColl) || ~isvalid(axisColl)
+                        continue;
+                    end
+
+                    panels = axisColl.Panel;
+                    if isempty(panels)
+                        continue;
+                    end
+
+                    for p = 1:numel(panels)
+                        panel = panels(p);
+                        if isempty(panel) || ~isvalid(panel)
+                            continue;
                         end
-                        if isgraphics(ax) && any(strcmp(axType, {'axes','polaraxes','uiaxes'})) && ...
-                                ~isempty(get(ax,'Children'))
+
+                        axesList = panel.Axis;
+                        for k = 1:numel(axesList)
+                            ax = axesList(k);
+                            if ~isgraphics(ax)
+                                continue;
+                            end
+
+                            axType = get(ax,'Type');
+                            if ~any(strcmp(axType, {'axes','polaraxes','uiaxes'}))
+                                continue;
+                            end
+
+                            if isempty(get(ax,'Children'))
+                                continue;
+                            end
+
                             imgFile = [tempname '.png'];
+                            success = false;
                             try
                                 if exist('exportgraphics','file')
                                     exportgraphics(ax, imgFile, 'Resolution', 150);
@@ -1690,10 +1801,41 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                     fig = ancestor(ax, 'figure');
                                     saveas(fig, imgFile);
                                 end
-                                titleStr = get(get(ax,'Title'),'String');
-                                if isempty(titleStr)
-                                    titleStr = 'Plot';
+                                success = true;
+                            catch
+                                success = false;
+                            end
+
+                            if ~success
+                                continue;
+                            end
+
+                            if ~headingShown
+                                if ~isempty(heading)
+                                    rpt.ActX_word.Selection.TypeText(heading);
+                                    rpt.ActX_word.Selection.Style = 'Heading 2';
+                                    rpt.ActX_word.Selection.TypeParagraph;
                                 end
+                                headingShown = true;
+                            end
+
+                            titleObj = get(ax,'Title');
+                            titleStr = '';
+                            if ~isempty(titleObj)
+                                titleStr = get(titleObj,'String');
+                            end
+                            if iscell(titleStr)
+                                titleStr = strjoin(titleStr,' ');
+                            elseif isa(titleStr,'string')
+                                titleStr = strjoin(cellstr(titleStr));
+                            elseif isnumeric(titleStr)
+                                titleStr = num2str(titleStr);
+                            end
+                            if isempty(titleStr)
+                                titleStr = 'Plot';
+                            end
+
+                            try
                                 addFigure(rpt, struct('Filename', imgFile, 'Title', titleStr));
                             catch
                                 % Continue without this figure on failure
@@ -1703,8 +1845,12 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 end
             end
 
-            function addSimAxisPlots(simColl)
+            function addSimAxisPlots(simColl, heading)
+                if nargin < 2
+                    heading = '';
+                end
                 if isempty(simColl); return; end
+                headingShown = false;
                 for s = 1:numel(simColl)
                     try
                         coll = simColl(s).AxisPanelCollObj;
@@ -1730,6 +1876,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                             end
 
                             imgFile = [tempname '.png'];
+                            success = false;
                             try
                                 if exist('exportgraphics','file')
                                     exportgraphics(panelHandle, imgFile, 'Resolution', 150);
@@ -1737,7 +1884,26 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                     fr = getframe(panelHandle);
                                     imwrite(fr.cdata, imgFile);
                                 end
-                                titleStr = sprintf('Simulation Page %d', p);
+                                success = true;
+                            catch
+                                success = false;
+                            end
+
+                            if ~success
+                                continue;
+                            end
+
+                            if ~headingShown
+                                if ~isempty(heading)
+                                    rpt.ActX_word.Selection.TypeText(heading);
+                                    rpt.ActX_word.Selection.Style = 'Heading 2';
+                                    rpt.ActX_word.Selection.TypeParagraph;
+                                end
+                                headingShown = true;
+                            end
+
+                            titleStr = sprintf('Simulation Page %d', p);
+                            try
                                 addFigure(rpt, struct('Filename', imgFile, 'Title', titleStr));
                             catch
                                 % Ignore failures for this panel
