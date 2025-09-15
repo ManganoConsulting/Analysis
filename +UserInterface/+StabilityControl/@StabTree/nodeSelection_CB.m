@@ -9,15 +9,18 @@ function nodeSelection_CB( obj , node )
                 node.setValue('unselected');
                 node.setIcon(obj.JavaImage_unchecked);
                 jtree.treeDidChange();
+                if strcmp(node.getName,'Trim Definition')
+                    obj.syncTrimDefinitionGeneralNode(node,false);
+                end
                 if any(strcmp(node.getName,{'Linear Model Definition','Mass Properties','Requirement'}))
                     count = node.getChildCount;
                     for i = 0:(count-1)
                         currNode = node.getChildAt(i);
-                        currNode.setIcon(obj.JavaImage_unchecked); 
+                        currNode.setIcon(obj.JavaImage_unchecked);
                         currNode.setValue('unselected');
                     end
 
-                elseif any(strcmp(char(node.getParent.getName),{'Linear Model Definition','Mass Properties','Requirement'}))
+                elseif any(strcmp(char(node.getParent.getName),{'Trim Definition','Linear Model Definition','Mass Properties','Requirement'}))
                     count = node.getParent.getChildCount;
                     for i = 0:(count-1)
                         currNode = node.getParent.getChildAt(i);
@@ -37,11 +40,14 @@ function nodeSelection_CB( obj , node )
                 node.setValue('selected');
                 node.setIcon(obj.JavaImage_checked);
                 jtree.treeDidChange();
+                if strcmp(node.getName,'Trim Definition')
+                    obj.syncTrimDefinitionGeneralNode(node,true);
+                end
                 if any(strcmp(node.getName,{'Linear Model Definition','Mass Properties','Requirement'}))
                     count = node.getChildCount;
                     for i = 0:(count-1)
                         currNode = node.getChildAt(i);
-                        currNode.setIcon(obj.JavaImage_checked); 
+                        currNode.setIcon(obj.JavaImage_checked);
                         currNode.setValue('selected');
                     end
                 elseif any(strcmp(node.getParent.getName,{'Trim Definition','Output'}))
@@ -55,7 +61,7 @@ function nodeSelection_CB( obj , node )
                     node.setValue('selected');
                     node.setIcon(obj.JavaImage_checked);
                     jtree.treeDidChange();
-                elseif any(strcmp(char(node.getParent.getName),{'Linear Model Definition','Mass Properties','Requirement'}))
+                elseif any(strcmp(char(node.getParent.getName),{'Trim Definition','Linear Model Definition','Mass Properties','Requirement'}))
                     count = node.getParent.getChildCount;
                     for i = 0:(count-1)
                         currNode = node.getParent.getChildAt(i);
