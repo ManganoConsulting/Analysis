@@ -265,12 +265,12 @@ classdef Report < handle
             keyFcn = @(t,n) [t '|' n];
             keyList = arrayfun(@(s) keyFcn(s.Type,s.Name), hdrStruct, 'UniformOutput', false);
             unitMap = containers.Map(keyList,{hdrStruct.Units});
-            selFields = struct('name',{},'type',{},'unit',{});
+            selFields = struct('name',{},'type',{},'unit',{},'displayName',{});
             for k = 1:numel(baseHeaders)
                 if ~strcmp(baseHeaders{k},'All')
                     key = keyFcn('Flight Condition',baseHeaders{k});
                     unit = unitMap(key);
-                    selFields(end+1) = struct('name',baseHeaders{k},'type','Flight Condition','unit',unit); %#ok<AGROW>
+                    selFields(end+1) = struct('name',baseHeaders{k},'type','Flight Condition','unit',unit,'displayName',''); %#ok<AGROW>
                 end
             end
 
@@ -286,7 +286,7 @@ classdef Report < handle
                         if isKey(unitMap,key)
                             unit = unitMap(key);
                         end
-                        selFields(end+1) = struct('name',name,'type','Inputs','unit',unit); %#ok<AGROW>
+                        selFields(end+1) = struct('name',name,'type','Inputs','unit',unit,'displayName',''); %#ok<AGROW>
                     end
                     % Outputs
                     vecOutputs = ts.Outputs(~cellfun(@isscalar,{ts.Outputs.Value}));
@@ -297,7 +297,7 @@ classdef Report < handle
                         if isKey(unitMap,key)
                             unit = unitMap(key);
                         end
-                        selFields(end+1) = struct('name',name,'type','Outputs','unit',unit); %#ok<AGROW>
+                        selFields(end+1) = struct('name',name,'type','Outputs','unit',unit,'displayName',''); %#ok<AGROW>
                     end
                     % States
                     vecStates = ts.States(~cellfun(@isscalar,{ts.States.Value}));
@@ -308,7 +308,7 @@ classdef Report < handle
                         if isKey(unitMap,key)
                             unit = unitMap(key);
                         end
-                        selFields(end+1) = struct('name',name,'type','States','unit',unit); %#ok<AGROW>
+                        selFields(end+1) = struct('name',name,'type','States','unit',unit,'displayName',''); %#ok<AGROW>
                     end
                     % State derivatives
                     vecStateDerivs = ts.StateDerivatives(~cellfun(@isscalar,{ts.StateDerivatives.Value}));
@@ -319,7 +319,7 @@ classdef Report < handle
                         if isKey(unitMap,key)
                             unit = unitMap(key);
                         end
-                        selFields(end+1) = struct('name',name,'type','State Derivatives','unit',unit); %#ok<AGROW>
+                        selFields(end+1) = struct('name',name,'type','State Derivatives','unit',unit,'displayName',''); %#ok<AGROW>
                     end
                 end
 
@@ -343,7 +343,7 @@ classdef Report < handle
                             if isKey(unitMap,key)
                                 unit = unitMap(key);
                             end
-                            selFields(end+1) = struct('name',mpNames{n},'type','Mass Property','unit',unit); %#ok<AGROW>
+                            selFields(end+1) = struct('name',mpNames{n},'type','Mass Property','unit',unit,'displayName',''); %#ok<AGROW>
                         end
                     else
                         if ~all(strcmp(firstVal,vals))
@@ -352,7 +352,7 @@ classdef Report < handle
                             if isKey(unitMap,key)
                                 unit = unitMap(key);
                             end
-                            selFields(end+1) = struct('name',mpNames{n},'type','Mass Property','unit',unit); %#ok<AGROW>
+                            selFields(end+1) = struct('name',mpNames{n},'type','Mass Property','unit',unit,'displayName',''); %#ok<AGROW>
                         end
                     end
                 end
