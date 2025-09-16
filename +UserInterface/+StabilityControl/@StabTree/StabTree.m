@@ -1918,6 +1918,7 @@ classdef StabTree < UserInterface.tree
                 % Mark the parent trim definition group as selected
                 parentNode.setIcon(obj.JavaImage_checked);
                 parentNode.setUserObject('JavaImage_checked');
+                parentNode.setValue('selected');
                 % Insert Model Name
                 
 %                 newMdlName = getModelCompiledStateName(newObj(index).SimulinkModelName);
@@ -1934,7 +1935,57 @@ classdef StabTree < UserInterface.tree
                 mdlNode.setValue('Model');
                 mdlNode.UserData = newObj(index).SimulinkModelName;
 
-        end % insertTrimObj_Private  
+        end % insertTrimObj_Private
+
+        function syncTrimDefinitionGeneralNode(obj, trimNode, isSelected)
+            % Keep the "General" trim definition child in sync with the parent node
+            if nargin < 3 || ~strcmp(char(trimNode.getName), 'Trim Definition')
+                return;
+            end
+
+            generalNode = [];
+            childCount = trimNode.getChildCount();
+            stateChanged = false;
+
+            for idx = 0:(childCount-1)
+                childNode = trimNode.getChildAt(idx);
+                childName = char(childNode.getName);
+                if strcmp(childName, 'General')
+                    generalNode = childNode;
+                elseif strcmp(char(childNode.getValue), 'selected')
+                    childNode.setValue('unselected');
+                    childNode.setIcon(obj.JavaImage_unchecked);
+                    stateChanged = true;
+                end
+            end
+
+            if isempty(generalNode)
+                if stateChanged
+                    obj.JTree.treeDidChange();
+                end
+                return;
+            end
+
+            childWasSelected = strcmp(char(generalNode.getValue), 'selected');
+
+            if isSelected && ~childWasSelected
+                generalNode.setValue('selected');
+                generalNode.setIcon(obj.JavaImage_checked);
+                stateChanged = true;
+            elseif ~isSelected && childWasSelected
+                generalNode.setValue('unselected');
+                generalNode.setIcon(obj.JavaImage_unchecked);
+                stateChanged = true;
+            end
+
+            if stateChanged
+                obj.JTree.treeDidChange();
+            end
+
+            if childWasSelected ~= isSelected
+                notify(obj,'UseExistingTrim',GeneralEventData(isSelected));
+            end
+        end % syncTrimDefinitionGeneralNode
         
         function insertReqObj_Private( obj , parentNode , reqObj)
 %             this_dir = fileparts( mfilename( 'fullpath' ) );
