@@ -407,13 +407,18 @@ classdef Report < handle
             col = nr_cols;
             for catIdx = numel(categories):-1:1
                 cat = categories{catIdx};
+                if strcmp(cat,'Mass Property')
+                    displayCat = 'Mass Properties';
+                else
+                    displayCat = cat;
+                end
                 colsInCat = sum(strcmp({selFields.type},cat));
                 firstCol = col - colsInCat + 1;
                 lastCol = col;
                 if colsInCat > 1
                     newTable1.Cell(1,firstCol).Merge(newTable1.Cell(1,lastCol));
                 end
-                newTable1.Cell(1,firstCol).Range.InsertAfter(cat);
+                newTable1.Cell(1,firstCol).Range.InsertAfter(displayCat);
                 newTable1.Cell(1,firstCol).Range.Bold = 1;
                 newTable1.Cell(1,firstCol).Range.ParagraphFormat.Alignment = 1;
                 col = firstCol - 1;
@@ -486,10 +491,14 @@ classdef Report < handle
             end
 
             % Alternate row shading for readability
+            lightGray = int32(230 + 230*256 + 230*65536);
             for r = 3:nr_rows
                 if mod(r,2) == 1
                     for c = 2:nr_cols
-                        newTable1.Cell(r,c).Shading.BackgroundPatternColorIndex = 16; % wdGray25
+                        shade = newTable1.Cell(r,c).Shading;
+                        shade.BackgroundPatternColor = lightGray;
+                        shade.ForegroundPatternColor = lightGray;
+                        shade.Texture = 0; % wdTextureNone
                     end
                 end
             end
