@@ -974,6 +974,7 @@ classdef OperatingCondition < matlab.mixin.Copyable%< matlab.mixin.CustomDisplay
                 run(linMdlObj(i), obj.ModelName, stateNames, inportNames, ...
                     outportNames, X0_trim, U0_trim, Y0_trim, CStateIDs);
             end
+            obj.LinearModel = linMdlObj;
         end % runLinearization
 
     end
