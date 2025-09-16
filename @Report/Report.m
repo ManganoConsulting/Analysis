@@ -404,8 +404,6 @@ classdef Report < handle
 
             % Header rows
             categories = unique({selFields.type},'stable');
-            colorMap = containers.Map({'Flight Condition','Inputs','Outputs','States','State Derivatives','Mass Property'},...
-                                      {15,7,9,11,13,14});
             col = nr_cols;
             for catIdx = numel(categories):-1:1
                 cat = categories{catIdx};
@@ -418,9 +416,6 @@ classdef Report < handle
                 newTable1.Cell(1,firstCol).Range.InsertAfter(cat);
                 newTable1.Cell(1,firstCol).Range.Bold = 1;
                 newTable1.Cell(1,firstCol).Range.ParagraphFormat.Alignment = 1;
-                if isKey(colorMap,cat)
-                    newTable1.Cell(1,firstCol).Shading.BackgroundPatternColorIndex = colorMap(cat);
-                end
                 col = firstCol - 1;
             end
             headerCells = newTable1.Rows.Item(1).Cells.Count;
