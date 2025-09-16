@@ -272,8 +272,60 @@ classdef Report < handle
                 end
             end
 
-            % Determine additional parameters specified as vectors by the user
             if ~isempty(operCond)
+                % Mass properties (parameters)
+                mpFields = struct('name',{},'type',{},'unit',{},'displayName',{});
+                mpNames = {};
+                massProps = operCond(1).MassProperties;
+                if ~isempty(massProps)
+                    mpParams = massProps.Parameter;
+                    if ~isempty(mpParams)
+                        mpNames = {mpParams.Name};
+                    end
+                end
+                for n = 1:numel(mpNames)
+                    vals = arrayfun(@(oc) oc.MassProperties.get(mpNames{n}), operCond, 'UniformOutput', false);
+                    firstVal = vals{1};
+                    if isnumeric(firstVal)
+                        valsNum = cell2mat(vals);
+                        if any(abs(valsNum - valsNum(1)) > 1e-6)
+                            key = keyFcn('Mass Property',mpNames{n});
+                            unit = '';
+                            if isKey(unitMap,key)
+                                unit = unitMap(key);
+                            end
+                            mpFields(end+1) = struct('name',mpNames{n},'type','Mass Property','unit',unit,'displayName',''); %#ok<AGROW>
+                        end
+                    else
+                        if ~all(strcmp(firstVal,vals))
+                            key = keyFcn('Mass Property',mpNames{n});
+                            unit = '';
+                            if isKey(unitMap,key)
+                                unit = unitMap(key);
+                            end
+                            mpFields(end+1) = struct('name',mpNames{n},'type','Mass Property','unit',unit,'displayName',''); %#ok<AGROW>
+                        end
+                    end
+                end
+
+                % Always include the WeightCode mass property column
+                weightFieldName = 'WeightCode';
+                existingNames = [{selFields.name},{mpFields.name}];
+                if ~any(strcmp(existingNames, weightFieldName))
+                    weightKeyCandidates = {keyFcn('Mass Property','Weight Code'), keyFcn('Mass Property','WeightCode')};
+                    unit = '';
+                    for keyIdx = 1:numel(weightKeyCandidates)
+                        key = weightKeyCandidates{keyIdx};
+                        if isKey(unitMap,key)
+                            unit = unitMap(key);
+                            break;
+                        end
+                    end
+                    mpFields(end+1) = struct('name',weightFieldName,'type','Mass Property','unit',unit,'displayName','Weight Code'); %#ok<AGROW>
+                end
+
+                selFields = [selFields, mpFields];
+
                 ts = operCond(1).TrimSettings;
                 if ~isempty(ts)
                     % Inputs
@@ -320,55 +372,6 @@ classdef Report < handle
                         end
                         selFields(end+1) = struct('name',name,'type','State Derivatives','unit',unit,'displayName',''); %#ok<AGROW>
                     end
-                end
-
-                % Mass properties (parameters)
-                mpNames = {};
-                massProps = operCond(1).MassProperties;
-                if ~isempty(massProps)
-                    mpParams = massProps.Parameter;
-                    if ~isempty(mpParams)
-                        mpNames = {mpParams.Name};
-                    end
-                end
-                for n = 1:numel(mpNames)
-                    vals = arrayfun(@(oc) oc.MassProperties.get(mpNames{n}), operCond, 'UniformOutput', false);
-                    firstVal = vals{1};
-                    if isnumeric(firstVal)
-                        valsNum = cell2mat(vals);
-                        if any(abs(valsNum - valsNum(1)) > 1e-6)
-                            key = keyFcn('Mass Property',mpNames{n});
-                            unit = '';
-                            if isKey(unitMap,key)
-                                unit = unitMap(key);
-                            end
-                            selFields(end+1) = struct('name',mpNames{n},'type','Mass Property','unit',unit,'displayName',''); %#ok<AGROW>
-                        end
-                    else
-                        if ~all(strcmp(firstVal,vals))
-                            key = keyFcn('Mass Property',mpNames{n});
-                            unit = '';
-                            if isKey(unitMap,key)
-                                unit = unitMap(key);
-                            end
-                            selFields(end+1) = struct('name',mpNames{n},'type','Mass Property','unit',unit,'displayName',''); %#ok<AGROW>
-                        end
-                    end
-                end
-
-                % Always include the WeightCode mass property column
-                weightFieldName = 'WeightCode';
-                if ~any(strcmp({selFields.name}, weightFieldName))
-                    weightKeyCandidates = {keyFcn('Mass Property','Weight Code'), keyFcn('Mass Property','WeightCode')};
-                    unit = '';
-                    for keyIdx = 1:numel(weightKeyCandidates)
-                        key = weightKeyCandidates{keyIdx};
-                        if isKey(unitMap,key)
-                            unit = unitMap(key);
-                            break;
-                        end
-                    end
-                    selFields(end+1) = struct('name',weightFieldName,'type','Mass Property','unit',unit,'displayName','Weight Code'); %#ok<AGROW>
                 end
             end
 
