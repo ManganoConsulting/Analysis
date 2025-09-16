@@ -1579,6 +1579,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         coll = simColl(s).AxisPanelCollObj;
                         if isempty(coll) || isempty(coll.Panel); continue; end
                         panels = coll.Panel;
+                        simTitle = obj.getSimulationPageTitle(simColl(s), s);
+                        simTitleSafe = strrep(simTitle, '%', '%%');
                         visStates = arrayfun(@(p) p.Visible, panels);
                         for p = 1:numel(panels)
                             for j = 1:numel(panels)
@@ -1625,7 +1627,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                 headingShown = true;
                             end
 
-                            titleStr = sprintf('Simulation Page %d', p);
+                            titleStr = sprintf('%s - Page %d', simTitleSafe, p);
                             try
                                 addFigure(rpt, struct('Filename', imgFile, 'Title', titleStr));
                             catch
@@ -1899,6 +1901,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         coll = simColl(s).AxisPanelCollObj;
                         if isempty(coll) || isempty(coll.Panel); continue; end
                         panels = coll.Panel;
+                        simTitle = obj.getSimulationPageTitle(simColl(s), s);
+                        simTitleSafe = strrep(simTitle, '%', '%%');
                         visStates = arrayfun(@(p) p.Visible, panels);
                         for p = 1:numel(panels)
                             for j = 1:numel(panels)
@@ -1945,7 +1949,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                 headingShown = true;
                             end
 
-                            titleStr = sprintf('Simulation Page %d', p);
+                            titleStr = sprintf('%s - Page %d', simTitleSafe, p);
                             try
                                 addFigure(rpt, struct('Filename', imgFile, 'Title', titleStr));
                             catch
@@ -2821,9 +2825,168 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             end
             
         end % readModel
-        
+
+        function simTitle = getSimulationPageTitle(obj, simViewer, analysisIndex)
+            simTitle = '';
+            names = {};
+            if nargin >= 2 && ~isempty(simViewer)
+                try
+                    if isa(simViewer, 'handle') && isvalid(simViewer) && isprop(simViewer,'RunLabel')
+                        runLabels = simViewer.RunLabel;
+                        names = parseRunLabels(runLabels);
+                    end
+                catch
+                    names = {};
+                end
+            end
+
+            if ~isempty(names)
+                names = uniqueStable(names);
+                simTitle = joinWithComma(names);
+            elseif nargin >= 3 && ~isempty(obj.AnalysisObjects) && ...
+                    analysisIndex >= 1 && analysisIndex <= numel(obj.AnalysisObjects)
+                try
+                    analysisObj = obj.AnalysisObjects(analysisIndex);
+                    if ~isempty(analysisObj)
+                        simReqs = analysisObj.SimulationRequirment;
+                        if ~isempty(simReqs)
+                            titles = arrayfun(@extractTitle, simReqs, 'UniformOutput', false);
+                            titles = titles(~cellfun(@isempty, titles));
+                            titles = uniqueStable(titles);
+                            if ~isempty(titles)
+                                simTitle = joinWithComma(titles);
+                            end
+                        end
+                    end
+                catch
+                    % Ignore errors when gathering titles
+                end
+            end
+
+            if isempty(simTitle)
+                simTitle = 'Simulation';
+            end
+
+            if iscell(simTitle)
+                simTitle = joinWithComma(simTitle);
+            end
+
+            if ~ischar(simTitle)
+                try
+                    simTitle = char(simTitle);
+                catch
+                    simTitle = 'Simulation';
+                end
+            end
+
+            function namesOut = parseRunLabels(runLabels)
+                namesOut = {};
+                if isempty(runLabels)
+                    return;
+                end
+                if ischar(runLabels)
+                    runLabels = {runLabels};
+                elseif ~iscell(runLabels)
+                    return;
+                end
+                cleaned = cellfun(@cleanRunLabel, runLabels, 'UniformOutput', false);
+                cleaned = cleaned(~cellfun(@isempty, cleaned));
+                if isempty(cleaned)
+                    return;
+                end
+                namesOut = cleaned;
+            end
+
+            function nameOut = cleanRunLabel(label)
+                nameOut = '';
+                if isempty(label)
+                    return;
+                end
+                if iscell(label)
+                    label = label{1};
+                end
+                if ~ischar(label)
+                    return;
+                end
+                try
+                    label = regexprep(label, '<[^>]*>', '');
+                catch
+                    % Ignore regex errors
+                end
+                label = strtrim(label);
+                if isempty(label)
+                    return;
+                end
+                try
+                    label = regexprep(label, '\s+', ' ');
+                catch
+                    % Ignore regex errors
+                end
+                pipeIdx = find(label == '|', 1, 'first');
+                if ~isempty(pipeIdx)
+                    label = strtrim(label(1:pipeIdx-1));
+                end
+                if isempty(label)
+                    return;
+                end
+                nameOut = label;
+            end
+
+            function titleText = extractTitle(simReq)
+                titleText = '';
+                if isempty(simReq)
+                    return;
+                end
+                try
+                    titleText = simReq.Title;
+                catch
+                    titleText = '';
+                    return;
+                end
+                if isempty(titleText)
+                    return;
+                end
+                if iscell(titleText)
+                    titleText = titleText{1};
+                end
+                if ~ischar(titleText)
+                    try
+                        titleText = char(titleText);
+                    catch
+                        titleText = '';
+                        return;
+                    end
+                end
+                titleText = strtrim(titleText);
+            end
+
+            function listOut = uniqueStable(listIn)
+                listOut = {};
+                for idx = 1:numel(listIn)
+                    value = listIn{idx};
+                    if isempty(value)
+                        continue;
+                    end
+                    if ~any(strcmp(listOut, value))
+                        listOut{end+1} = value; %#ok<AGROW>
+                    end
+                end
+            end
+
+            function joined = joinWithComma(listIn)
+                if isempty(listIn)
+                    joined = '';
+                    return;
+                end
+                joined = listIn{1};
+                for idx = 2:numel(listIn)
+                    joined = [joined ', ' listIn{idx}]; %#ok<AGROW>
+                end
+            end
+        end % getSimulationPageTitle
+
     end
-    
+
     %% Methods - Figure Callbacks
     methods
         
