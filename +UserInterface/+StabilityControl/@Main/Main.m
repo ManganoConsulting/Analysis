@@ -1450,8 +1450,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 rpt.ActX_word.Selection.Style = 'Heading 1';
                 rpt.ActX_word.Selection.TypeParagraph;
                 addAxisCollectionPlots(obj.AxisColl, 'Analysis Plots');
-                addAxisCollectionPlots(obj.PostSimAxisColl, 'Post-Simulation Plots');
                 addSimAxisPlots(obj.SimAxisColl, 'Simulation Plots');
+                addAxisCollectionPlots(obj.PostSimAxisColl, 'Post-Simulation Plots');
             end
 
             function addAxisCollectionPlots(coll, heading)
@@ -1748,8 +1748,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 rpt.ActX_word.Selection.Style = 'Heading 1';
                 rpt.ActX_word.Selection.TypeParagraph;
                 addAxisCollectionPlots(obj.AxisColl, 'Analysis Plots');
-                addAxisCollectionPlots(obj.PostSimAxisColl, 'Post-Simulation Plots');
                 addSimAxisPlots(obj.SimAxisColl, 'Simulation Plots');
+                addAxisCollectionPlots(obj.PostSimAxisColl, 'Post-Simulation Plots');
             end
 
             function addAxisCollectionPlots(coll, heading)
