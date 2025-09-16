@@ -1444,20 +1444,39 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     end
                     header = {'', fc1, fc2, 'All', 'All'};
                     addOperCondTable(rpt, obj.OperCondCollObj.OperatingCondition, header);
+                    addPageBreak(rpt);
                 end
 
                 rpt.ActX_word.Selection.TypeText('Plots');
                 rpt.ActX_word.Selection.Style = 'Heading 1';
                 rpt.ActX_word.Selection.TypeParagraph;
-                addAxisCollectionPlots(obj.AxisColl, 'Analysis Plots');
-                addSimAxisPlots(obj.SimAxisColl, 'Simulation Plots');
-                addAxisCollectionPlots(obj.PostSimAxisColl, 'Post-Simulation Plots');
+                analysisAdded = addAxisCollectionPlots(obj.AxisColl, 'Analysis Plots');
+                addPageBreak(rpt, analysisAdded);
+                simAdded = addSimAxisPlots(obj.SimAxisColl, 'Simulation Plots');
+                addPageBreak(rpt, simAdded);
+                postSimAdded = addAxisCollectionPlots(obj.PostSimAxisColl, 'Post-Simulation Plots');
+                addPageBreak(rpt, postSimAdded);
             end
 
-            function addAxisCollectionPlots(coll, heading)
+            function addPageBreak(rpt, shouldInsert)
+                if nargin < 2
+                    shouldInsert = true;
+                end
+                if nargin < 1 || isempty(rpt) || ~shouldInsert
+                    return;
+                end
+                try
+                    rpt.ActX_word.Selection.InsertBreak;
+                catch
+                    % If Word is unavailable, skip the break.
+                end
+            end
+
+            function contentAdded = addAxisCollectionPlots(coll, heading)
                 if nargin < 2
                     heading = '';
                 end
+                contentAdded = false;
                 if isempty(coll); return; end
 
                 headingShown = false;
@@ -1545,12 +1564,14 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         end
                     end
                 end
+                contentAdded = headingShown;
             end
 
-            function addSimAxisPlots(simColl, heading)
+            function contentAdded = addSimAxisPlots(simColl, heading)
                 if nargin < 2
                     heading = '';
                 end
+                contentAdded = false;
                 if isempty(simColl); return; end
                 headingShown = false;
                 for s = 1:numel(simColl)
@@ -1618,6 +1639,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         % Ignore invalid simulation viewers
                     end
                 end
+                contentAdded = headingShown;
             end
         end % generateReportLegacy
 
@@ -1742,20 +1764,39 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     end
                     header = {'', fc1, fc2, 'All', 'All'};
                     addOperCondTable(rpt, obj.OperCondCollObj.OperatingCondition, header);
+                    addPageBreak(rpt);
                 end
 
                 rpt.ActX_word.Selection.TypeText('Plots');
                 rpt.ActX_word.Selection.Style = 'Heading 1';
                 rpt.ActX_word.Selection.TypeParagraph;
-                addAxisCollectionPlots(obj.AxisColl, 'Analysis Plots');
-                addSimAxisPlots(obj.SimAxisColl, 'Simulation Plots');
-                addAxisCollectionPlots(obj.PostSimAxisColl, 'Post-Simulation Plots');
+                analysisAdded = addAxisCollectionPlots(obj.AxisColl, 'Analysis Plots');
+                addPageBreak(rpt, analysisAdded);
+                simAdded = addSimAxisPlots(obj.SimAxisColl, 'Simulation Plots');
+                addPageBreak(rpt, simAdded);
+                postSimAdded = addAxisCollectionPlots(obj.PostSimAxisColl, 'Post-Simulation Plots');
+                addPageBreak(rpt, postSimAdded);
             end
 
-            function addAxisCollectionPlots(coll, heading)
+            function addPageBreak(rpt, shouldInsert)
+                if nargin < 2
+                    shouldInsert = true;
+                end
+                if nargin < 1 || isempty(rpt) || ~shouldInsert
+                    return;
+                end
+                try
+                    rpt.ActX_word.Selection.InsertBreak;
+                catch
+                    % If Word is unavailable, skip the break.
+                end
+            end
+
+            function contentAdded = addAxisCollectionPlots(coll, heading)
                 if nargin < 2
                     heading = '';
                 end
+                contentAdded = false;
                 if isempty(coll); return; end
 
                 headingShown = false;
@@ -1843,12 +1884,14 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         end
                     end
                 end
+                contentAdded = headingShown;
             end
 
-            function addSimAxisPlots(simColl, heading)
+            function contentAdded = addSimAxisPlots(simColl, heading)
                 if nargin < 2
                     heading = '';
                 end
+                contentAdded = false;
                 if isempty(simColl); return; end
                 headingShown = false;
                 for s = 1:numel(simColl)
@@ -1916,6 +1959,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         % Ignore invalid simulation viewers
                     end
                 end
+                contentAdded = headingShown;
             end
         end % generateReportOpenSource
 
