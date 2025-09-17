@@ -12,7 +12,9 @@ function nodeSelection_CB( obj , node )
                 if strcmp(node.getName,'Trim Definition')
                     obj.syncTrimDefinitionGeneralNode(node,false);
                 end
-                if any(strcmp(node.getName,{'Linear Model Definition','Mass Properties','Requirement'}))
+                if strcmp(node.getName,'General') && strcmp(char(node.getParent.getName),'Trim Definition')
+                    obj.syncTrimDefinitionGeneralNode(node.getParent,false);
+                elseif any(strcmp(node.getName,{'Linear Model Definition','Mass Properties','Requirement'}))
                     count = node.getChildCount;
                     for i = 0:(count-1)
                         currNode = node.getChildAt(i);
@@ -55,12 +57,15 @@ function nodeSelection_CB( obj , node )
                     count = parentNode.getChildCount;
                     for i = 0:(count-1)
                         currNode = parentNode.getChildAt(i);
-                        currNode.setIcon(obj.JavaImage_unchecked); 
+                        currNode.setIcon(obj.JavaImage_unchecked);
                         currNode.setValue('unselected');
                     end
                     node.setValue('selected');
                     node.setIcon(obj.JavaImage_checked);
                     jtree.treeDidChange();
+                    if strcmp(char(parentNode.getName),'Trim Definition') && strcmp(node.getName,'General')
+                        obj.syncTrimDefinitionGeneralNode(parentNode,true);
+                    end
                 elseif any(strcmp(char(node.getParent.getName),{'Trim Definition','Linear Model Definition','Mass Properties','Requirement'}))
                     count = node.getParent.getChildCount;
                     for i = 0:(count-1)
