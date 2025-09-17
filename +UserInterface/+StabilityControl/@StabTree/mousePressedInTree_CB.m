@@ -201,14 +201,15 @@ icon_dir = fullfile( this_dir,'..','..','Resources' );
                             if strcmp(node.getName,'Trim Definition')
                                 obj.syncTrimDefinitionGeneralNode(node,false);
                             end
-                            if any(strcmp(node.getName,{'Linear Model Definition','Mass Properties','Requirement','Simulation'}))
+                            if strcmp(node.getName,'General') && strcmp(char(node.getParent.getName),'Trim Definition')
+                                obj.syncTrimDefinitionGeneralNode(node.getParent,false);
+                            elseif any(strcmp(node.getName,{'Linear Model Definition','Mass Properties','Requirement','Simulation'}))
                                 count = node.getChildCount;
                                 for i = 0:(count-1)
                                     currNode = node.getChildAt(i);
                                     currNode.setIcon(obj.JavaImage_unchecked);
                                     currNode.setValue('unselected');
                                 end
-
                             elseif any(strcmp(char(node.getParent.getName),{'Trim Definition','Linear Model Definition','Mass Properties','Requirement','Simulation'}))
                                 count = node.getParent.getChildCount;
                                 for i = 0:(count-1)
@@ -252,6 +253,9 @@ icon_dir = fullfile( this_dir,'..','..','Resources' );
                                 node.setValue('selected');
                                 node.setIcon(obj.JavaImage_checked);
                                 jtree.treeDidChange();
+                                if strcmp(char(parentNode.getName),'Trim Definition') && strcmp(node.getName,'General')
+                                    obj.syncTrimDefinitionGeneralNode(parentNode,true);
+                                end
                             elseif any(strcmp(char(node.getParent.getName),{'Trim Definition','Linear Model Definition','Mass Properties','Requirement','Simulation'}))
                                 count = node.getParent.getChildCount;
                                 for i = 0:(count-1)

@@ -1947,6 +1947,21 @@ classdef StabTree < UserInterface.tree
             childCount = trimNode.getChildCount();
             stateChanged = false;
 
+            % Ensure the parent node reflects the requested state
+            parentValue = char(trimNode.getValue);
+            parentIsSelected = strcmp(parentValue, 'selected');
+            parentIsUnselected = strcmp(parentValue, 'unselected');
+
+            if isSelected && ~parentIsSelected
+                trimNode.setValue('selected');
+                trimNode.setIcon(obj.JavaImage_checked);
+                stateChanged = true;
+            elseif ~isSelected && ~parentIsUnselected
+                trimNode.setValue('unselected');
+                trimNode.setIcon(obj.JavaImage_unchecked);
+                stateChanged = true;
+            end
+
             for idx = 0:(childCount-1)
                 childNode = trimNode.getChildAt(idx);
                 childName = char(childNode.getName);
