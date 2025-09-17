@@ -280,6 +280,15 @@ classdef RowFilter < UserInterface.tree
             % Logic array describing which rows of the table should be shown
             logicArray = false(length(struct),1);
 
+            % When initializing for the very first time we want all rows to be
+            % visible so that the operating condition table is populated.
+            % Subsequent calls should preserve the existing cache values and
+            % only auto-select new nodes when explicitly requested by the
+            % cache.  Capture the empty-cache state before nodes are added so
+            % that newly discovered variables remain visible during the first
+            % initialization but can still default to unchecked later on.
+            firstInitialization = length(obj.NodeSelectionCache) == 0;
+
             % Add nodes for the new data, restoring previous selections when
             % possible and selecting any new nodes by default
             for i = 1:length(struct)
@@ -309,6 +318,10 @@ classdef RowFilter < UserInterface.tree
                 key = [struct(i).Type ':' struct(i).Name];
                 if obj.NodeSelectionCache.isKey(key)
                     selected = obj.NodeSelectionCache(key);
+                elseif firstInitialization
+                    % Display all rows during the first initialization so the
+                    % table populates with data for a new project.
+                    selected = true;
                 else
                     % New nodes should start unchecked so that additional
                     % inputs/outputs do not automatically appear in the
