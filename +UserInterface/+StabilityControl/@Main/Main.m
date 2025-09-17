@@ -1455,7 +1455,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 simAdded = addSimAxisPlots(obj.SimAxisColl, 'Simulation Plots');
                 addPageBreak(rpt, simAdded);
                 postSimAdded = addAxisCollectionPlots(obj.PostSimAxisColl, 'Post-Simulation Plots');
-                addPageBreak(rpt, postSimAdded);
+%                 addPageBreak(rpt, postSimAdded);
             end
 
             function addPageBreak(rpt, shouldInsert)
@@ -1777,7 +1777,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 simAdded = addSimAxisPlots(obj.SimAxisColl, 'Simulation Plots');
                 addPageBreak(rpt, simAdded);
                 postSimAdded = addAxisCollectionPlots(obj.PostSimAxisColl, 'Post-Simulation Plots');
-                addPageBreak(rpt, postSimAdded);
+%                 addPageBreak(rpt, postSimAdded);
             end
 
             function addPageBreak(rpt, shouldInsert)
