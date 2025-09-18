@@ -1915,12 +1915,8 @@ classdef StabTree < UserInterface.tree
                     parentNode.getChildCount());
                 node.UserData = newObj(index);
 
-                % Mark the parent trim definition group as selected
-                parentNode.setIcon(obj.JavaImage_checked);
-                parentNode.setUserObject('JavaImage_checked');
-                parentNode.setValue('selected');
                 % Insert Model Name
-                
+
 %                 newMdlName = getModelCompiledStateName(newObj(index).SimulinkModelName);
                 newMdlName = newObj(index).SimulinkModelName;
                 
@@ -1946,21 +1942,6 @@ classdef StabTree < UserInterface.tree
             generalNode = [];
             childCount = trimNode.getChildCount();
             stateChanged = false;
-
-            % Ensure the parent node reflects the requested state
-            parentValue = char(trimNode.getValue);
-            parentIsSelected = strcmp(parentValue, 'selected');
-            parentIsUnselected = strcmp(parentValue, 'unselected');
-
-            if isSelected && ~parentIsSelected
-                trimNode.setValue('selected');
-                trimNode.setIcon(obj.JavaImage_checked);
-                stateChanged = true;
-            elseif ~isSelected && ~parentIsUnselected
-                trimNode.setValue('unselected');
-                trimNode.setIcon(obj.JavaImage_unchecked);
-                stateChanged = true;
-            end
 
             for idx = 0:(childCount-1)
                 childNode = trimNode.getChildAt(idx);
