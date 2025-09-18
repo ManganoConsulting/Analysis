@@ -210,7 +210,7 @@ icon_dir = fullfile( this_dir,'..','..','Resources' );
                                     currNode.setIcon(obj.JavaImage_unchecked);
                                     currNode.setValue('unselected');
                                 end
-                            elseif any(strcmp(char(node.getParent.getName),{'Trim Definition','Linear Model Definition','Mass Properties','Requirement','Simulation'}))
+                            elseif any(strcmp(char(node.getParent.getName),{'Linear Model Definition','Mass Properties','Requirement','Simulation'}))
                                 count = node.getParent.getChildCount;
                                 for i = 0:(count-1)
                                     currNode = node.getParent.getChildAt(i);
@@ -256,7 +256,7 @@ icon_dir = fullfile( this_dir,'..','..','Resources' );
                                 if strcmp(char(parentNode.getName),'Trim Definition') && strcmp(node.getName,'General')
                                     obj.syncTrimDefinitionGeneralNode(parentNode,true);
                                 end
-                            elseif any(strcmp(char(node.getParent.getName),{'Trim Definition','Linear Model Definition','Mass Properties','Requirement','Simulation'}))
+                            elseif any(strcmp(char(node.getParent.getName),{'Linear Model Definition','Mass Properties','Requirement','Simulation'}))
                                 count = node.getParent.getChildCount;
                                 for i = 0:(count-1)
                                     currNode = node.getParent.getChildAt(i);

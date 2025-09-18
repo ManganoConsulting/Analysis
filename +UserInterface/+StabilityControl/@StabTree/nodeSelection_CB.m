@@ -22,7 +22,7 @@ function nodeSelection_CB( obj , node )
                         currNode.setValue('unselected');
                     end
 
-                elseif any(strcmp(char(node.getParent.getName),{'Trim Definition','Linear Model Definition','Mass Properties','Requirement'}))
+                elseif any(strcmp(char(node.getParent.getName),{'Linear Model Definition','Mass Properties','Requirement'}))
                     count = node.getParent.getChildCount;
                     for i = 0:(count-1)
                         currNode = node.getParent.getChildAt(i);
@@ -66,7 +66,7 @@ function nodeSelection_CB( obj , node )
                     if strcmp(char(parentNode.getName),'Trim Definition') && strcmp(node.getName,'General')
                         obj.syncTrimDefinitionGeneralNode(parentNode,true);
                     end
-                elseif any(strcmp(char(node.getParent.getName),{'Trim Definition','Linear Model Definition','Mass Properties','Requirement'}))
+                elseif any(strcmp(char(node.getParent.getName),{'Linear Model Definition','Mass Properties','Requirement'}))
                     count = node.getParent.getChildCount;
                     for i = 0:(count-1)
                         currNode = node.getParent.getChildAt(i);
