@@ -2776,7 +2776,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                             set(obj.AxisColl(ind).AxisHandleQueue.get(i),'Visible','off');
                         end
                         if ~isempty(methodObjs)
-                            notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData('Running Requierments...','info'));
+                            notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData('Running Requirements...','info'));
                             runDynamics( methodObjs , obj.AxisColl(ind).AxisHandleQueue , operCond ); 
                         end
 
