@@ -529,7 +529,7 @@ classdef Report < handle
 
             count = obj.ActX_word.ActiveDocument.TablesOfContents.Count;
             for i = 1:length(count)   
-                obj.ActX_word.ActiveDocument.TablesOfContents.Item(i).UpdatePageNumbers;   
+                obj.ActX_word.ActiveDocument.TablesOfContents.Item(i).Update;   
             end
 
         end % updateTOC

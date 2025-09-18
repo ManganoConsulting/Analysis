@@ -1368,6 +1368,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         appendContent(rpt);
                         updateTOC(rpt);
                         updateTOF(rpt);
+                        updateTOC(rpt);
                         saveAs(rpt,outName);
                         closeWord(rpt);
                         notify(obj,'ShowLogMessageMain', ...
@@ -1403,6 +1404,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                         addContent(rpt);
                         updateTOC(rpt);
                         updateTOF(rpt);
+                        updateTOC(rpt);
                         saveAs(rpt, fullName);
                         closeWord(rpt);
                         notify(obj,'ShowLogMessageMain', ...
