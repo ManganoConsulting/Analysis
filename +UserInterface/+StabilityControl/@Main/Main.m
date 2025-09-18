@@ -1421,41 +1421,77 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             end
 
             function addContent(rpt)
-                if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
-                    rpt.ActX_word.Selection.TypeText('Operating Conditions');
-                    rpt.ActX_word.Selection.Style = 'Heading 1';
-                    rpt.ActX_word.Selection.TypeParagraph;
-                    % Determine the flight condition headers from the trim
-                    % task selection. The TrimTaskCollection stores the
-                    % user-selected parameters in the FC?_PM_String cell
-                    % arrays along with FC?_PM_SelValue indices.
-                    fc1 = 'All';
-                    fc2 = 'All';
-                    if ~isempty(obj.TaskCollectionObj)
-                        fc1 = obj.TaskCollectionObj.FC1_PM_String{obj.TaskCollectionObj.FC1_PM_SelValue};
-                        fc2 = obj.TaskCollectionObj.FC2_PM_String{obj.TaskCollectionObj.FC2_PM_SelValue};
-                    elseif ~isempty(obj.TaskCollectionObjBatch)
-                        idx = min(obj.AnalysisTabSelIndex, length(obj.TaskCollectionObjBatch));
-                        if ~isempty(obj.TaskCollectionObjBatch(idx).TrimTaskCollObj)
-                            tcObj = obj.TaskCollectionObjBatch(idx).TrimTaskCollObj(1);
-                            fc1 = tcObj.FC1_PM_String{tcObj.FC1_PM_SelValue};
-                            fc2 = tcObj.FC2_PM_String{tcObj.FC2_PM_SelValue};
-                        end
-                    end
-                    header = {'', fc1, fc2, 'All', 'All'};
-                    addOperCondTable(rpt, obj.OperCondCollObj.OperatingCondition, header);
-                    addPageBreak(rpt);
+                [analysisObjs, selObjLogic] = getSelectedAnalysisData();
+                if isempty(analysisObjs) || isempty(selObjLogic)
+                    return;
                 end
 
-                rpt.ActX_word.Selection.TypeText('Plots');
-                rpt.ActX_word.Selection.Style = 'Heading 1';
-                rpt.ActX_word.Selection.TypeParagraph;
-                analysisAdded = addAxisCollectionPlots(obj.AxisColl, 'Analysis Plots');
-                addPageBreak(rpt, analysisAdded);
-                simAdded = addSimAxisPlots(obj.SimAxisColl, 'Simulation Plots');
-                addPageBreak(rpt, simAdded);
-                postSimAdded = addAxisCollectionPlots(obj.PostSimAxisColl, 'Post-Simulation Plots');
-%                 addPageBreak(rpt, postSimAdded);
+                if ~isfield(selObjLogic, 'Selected')
+                    return;
+                end
+
+                selectedMask = [selObjLogic.Selected];
+                if isempty(selectedMask)
+                    return;
+                end
+
+                selectedIdx = find(selectedMask);
+                if isempty(selectedIdx)
+                    return;
+                end
+
+                for n = 1:numel(selectedIdx)
+                    analysisIdx = selectedIdx(n);
+                    if analysisIdx > numel(analysisObjs)
+                        continue;
+                    end
+
+                    analysisTitle = analysisObjs(analysisIdx).Title;
+                    if isa(analysisTitle,'string')
+                        analysisTitle = strjoin(cellstr(analysisTitle));
+                    elseif iscell(analysisTitle)
+                        analysisTitle = strjoin(cellfun(@(c) char(c), analysisTitle, 'UniformOutput', false), ' ');
+                    end
+                    if isempty(analysisTitle)
+                        analysisTitle = sprintf('Analysis Task %d', analysisIdx);
+                    end
+                    analysisTitle = char(analysisTitle);
+
+                    rpt.ActX_word.Selection.TypeText(analysisTitle);
+                    rpt.ActX_word.Selection.Style = 'Heading 1';
+                    rpt.ActX_word.Selection.TypeParagraph;
+
+                    analysisHasContent = false;
+                    analysisBreakInsertedAtEnd = false;
+
+                    [operAdded, breakAfterOper] = addAnalysisOperatingConditionsSection(rpt, analysisIdx);
+                    if operAdded
+                        analysisHasContent = true;
+                        analysisBreakInsertedAtEnd = breakAfterOper;
+                    end
+
+                    [analysisPlotsAdded, breakAfterAnalysisPlots] = addAnalysisPlotSection(rpt, analysisIdx);
+                    if analysisPlotsAdded
+                        analysisHasContent = true;
+                        analysisBreakInsertedAtEnd = breakAfterAnalysisPlots;
+                    end
+
+                    [simPlotsAdded, breakAfterSimPlots] = addAnalysisSimulationSection(rpt, analysisIdx);
+                    if simPlotsAdded
+                        analysisHasContent = true;
+                        analysisBreakInsertedAtEnd = breakAfterSimPlots;
+                    end
+
+                    postSimAdded = addAnalysisPostSimulationSection(rpt, analysisIdx);
+                    if postSimAdded
+                        analysisHasContent = true;
+                        analysisBreakInsertedAtEnd = false;
+                    end
+
+                    if n ~= numel(selectedIdx) && analysisHasContent && ~analysisBreakInsertedAtEnd
+                        addPageBreak(rpt);
+                    end
+                end
             end
 
             function addPageBreak(rpt, shouldInsert)
@@ -1643,6 +1679,185 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 end
                 contentAdded = headingShown;
             end
+
+            function [analysisObjs, selObjLogic] = getSelectedAnalysisData()
+                analysisObjs = lacm.AnalysisTask.empty;
+                selObjLogic = struct('Selected', {});
+                if isempty(obj.Tree)
+                    return;
+                end
+                if isa(obj.Tree,'handle') && ~isvalid(obj.Tree)
+                    return;
+                end
+                try
+                    [analysisObjs, selObjLogic] = getAnalysisObjs(obj.Tree, false);
+                catch
+                    analysisObjs = lacm.AnalysisTask.empty;
+                    selObjLogic = struct('Selected', {});
+                end
+            end
+
+            function occ = getOperCondCollectionForIndex(index)
+                occ = [];
+                if isempty(obj.OperCondCollObj) || index > numel(obj.OperCondCollObj)
+                    return;
+                end
+                candidate = obj.OperCondCollObj(index);
+                if isValidHandleObject(candidate)
+                    occ = candidate;
+                end
+            end
+
+            function header = getOperCondHeaderForIndex(index)
+                fc1 = getFlightConditionSelection(index, 'FC1');
+                fc2 = getFlightConditionSelection(index, 'FC2');
+                header = {'', fc1, fc2, 'All', 'All'};
+            end
+
+            function value = getFlightConditionSelection(index, prefix)
+                value = 'All';
+                tcObj = getTrimTaskCollectionForIndex(index);
+                if isempty(tcObj)
+                    return;
+                end
+                fcCandidate = getFlightConditionValue(tcObj, prefix);
+                if ~isempty(fcCandidate)
+                    value = fcCandidate;
+                end
+            end
+
+            function value = getFlightConditionValue(tcObj, prefix)
+                value = 'All';
+                strProp = sprintf('%s_PM_String', prefix);
+                selProp = sprintf('%s_PM_SelValue', prefix);
+                if ~isprop(tcObj, strProp) || ~isprop(tcObj, selProp)
+                    return;
+                end
+                fcStrings = tcObj.(strProp);
+                selValue = tcObj.(selProp);
+                if isempty(fcStrings) || isempty(selValue)
+                    return;
+                end
+                idx = double(selValue(1));
+                if idx < 1 || idx > numel(fcStrings)
+                    return;
+                end
+                fcCandidate = fcStrings{idx};
+                if ~isempty(fcCandidate)
+                    value = fcCandidate;
+                end
+            end
+
+            function tcObj = getTrimTaskCollectionForIndex(index)
+                tcObj = [];
+                if ~isempty(obj.TaskCollectionObj) && index <= numel(obj.TaskCollectionObj)
+                    candidate = obj.TaskCollectionObj(index);
+                    if isValidHandleObject(candidate)
+                        tcObj = candidate;
+                        return;
+                    end
+                end
+                if ~isempty(obj.TaskCollectionObjBatch) && index <= numel(obj.TaskCollectionObjBatch)
+                    batchCandidate = obj.TaskCollectionObjBatch(index);
+                    if isValidHandleObject(batchCandidate)
+                        trimList = batchCandidate.TrimTaskCollObj;
+                        if ~isempty(trimList)
+                            candidate = trimList(1);
+                            if isValidHandleObject(candidate)
+                                tcObj = candidate;
+                                return;
+                            end
+                        end
+                    end
+                end
+            end
+
+            function tf = isValidHandleObject(objCandidate)
+                tf = ~isempty(objCandidate);
+                if ~tf
+                    return;
+                end
+                if isa(objCandidate,'handle')
+                    tf = isvalid(objCandidate);
+                end
+            end
+
+            function coll = getAxisCollectionForIndex(collArray, index)
+                coll = [];
+                if isempty(collArray) || index > numel(collArray)
+                    return;
+                end
+                candidate = collArray(index);
+                if isValidHandleObject(candidate)
+                    coll = candidate;
+                end
+            end
+
+            function [added, breakInserted] = addAnalysisOperatingConditionsSection(rpt, analysisIdx)
+                added = false;
+                breakInserted = false;
+                occ = getOperCondCollectionForIndex(analysisIdx);
+                if isempty(occ)
+                    return;
+                end
+                try
+                    tableData = occ.TableData;
+                catch
+                    tableData = [];
+                end
+                if isempty(tableData)
+                    return;
+                end
+                header = getOperCondHeaderForIndex(analysisIdx);
+                rpt.ActX_word.Selection.TypeText('Operating Conditions');
+                rpt.ActX_word.Selection.Style = 'Heading 2';
+                rpt.ActX_word.Selection.TypeParagraph;
+                try
+                    addOperCondTable(rpt, occ.OperatingCondition, header);
+                catch
+                    return;
+                end
+                addPageBreak(rpt);
+                added = true;
+                breakInserted = true;
+            end
+
+            function [added, breakInserted] = addAnalysisPlotSection(rpt, analysisIdx)
+                added = false;
+                breakInserted = false;
+                coll = getAxisCollectionForIndex(obj.AxisColl, analysisIdx);
+                if isempty(coll)
+                    return;
+                end
+                added = addAxisCollectionPlots(coll, 'Analysis Plots');
+                if added
+                    addPageBreak(rpt, true);
+                    breakInserted = true;
+                end
+            end
+
+            function [added, breakInserted] = addAnalysisSimulationSection(rpt, analysisIdx)
+                added = false;
+                breakInserted = false;
+                coll = getAxisCollectionForIndex(obj.SimAxisColl, analysisIdx);
+                if isempty(coll)
+                    return;
+                end
+                added = addSimAxisPlots(coll, 'Simulation Plots');
+                if added
+                    addPageBreak(rpt, true);
+                    breakInserted = true;
+                end
+            end
+
+            function added = addAnalysisPostSimulationSection(rpt, analysisIdx)
+                coll = getAxisCollectionForIndex(obj.PostSimAxisColl, analysisIdx);
+                if isempty(coll)
+                    added = false;
+                    return;
+                end
+                added = addAxisCollectionPlots(coll, 'Post-Simulation Plots');
+            end
         end % generateReportLegacy
 
         function generateReportOpenSource(obj)
@@ -1743,41 +1958,77 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             end
 
             function addContent(rpt)
-                if ~isempty(obj.OperCondCollObj) && ~isempty(obj.OperCondCollObj.TableData)
-                    rpt.ActX_word.Selection.TypeText('Operating Conditions');
-                    rpt.ActX_word.Selection.Style = 'Heading 1';
-                    rpt.ActX_word.Selection.TypeParagraph;
-                    % Determine the flight condition headers from the trim
-                    % task selection. The TrimTaskCollection stores the
-                    % user-selected parameters in the FC?_PM_String cell
-                    % arrays along with FC?_PM_SelValue indices.
-                    fc1 = 'All';
-                    fc2 = 'All';
-                    if ~isempty(obj.TaskCollectionObj)
-                        fc1 = obj.TaskCollectionObj.FC1_PM_String{obj.TaskCollectionObj.FC1_PM_SelValue};
-                        fc2 = obj.TaskCollectionObj.FC2_PM_String{obj.TaskCollectionObj.FC2_PM_SelValue};
-                    elseif ~isempty(obj.TaskCollectionObjBatch)
-                        idx = min(obj.AnalysisTabSelIndex, length(obj.TaskCollectionObjBatch));
-                        if ~isempty(obj.TaskCollectionObjBatch(idx).TrimTaskCollObj)
-                            tcObj = obj.TaskCollectionObjBatch(idx).TrimTaskCollObj(1);
-                            fc1 = tcObj.FC1_PM_String{tcObj.FC1_PM_SelValue};
-                            fc2 = tcObj.FC2_PM_String{tcObj.FC2_PM_SelValue};
-                        end
-                    end
-                    header = {'', fc1, fc2, 'All', 'All'};
-                    addOperCondTable(rpt, obj.OperCondCollObj.OperatingCondition, header);
-                    addPageBreak(rpt);
+                [analysisObjs, selObjLogic] = getSelectedAnalysisData();
+                if isempty(analysisObjs) || isempty(selObjLogic)
+                    return;
                 end
 
-                rpt.ActX_word.Selection.TypeText('Plots');
-                rpt.ActX_word.Selection.Style = 'Heading 1';
-                rpt.ActX_word.Selection.TypeParagraph;
-                analysisAdded = addAxisCollectionPlots(obj.AxisColl, 'Analysis Plots');
-                addPageBreak(rpt, analysisAdded);
-                simAdded = addSimAxisPlots(obj.SimAxisColl, 'Simulation Plots');
-                addPageBreak(rpt, simAdded);
-                postSimAdded = addAxisCollectionPlots(obj.PostSimAxisColl, 'Post-Simulation Plots');
-%                 addPageBreak(rpt, postSimAdded);
+                if ~isfield(selObjLogic, 'Selected')
+                    return;
+                end
+
+                selectedMask = [selObjLogic.Selected];
+                if isempty(selectedMask)
+                    return;
+                end
+
+                selectedIdx = find(selectedMask);
+                if isempty(selectedIdx)
+                    return;
+                end
+
+                for n = 1:numel(selectedIdx)
+                    analysisIdx = selectedIdx(n);
+                    if analysisIdx > numel(analysisObjs)
+                        continue;
+                    end
+
+                    analysisTitle = analysisObjs(analysisIdx).Title;
+                    if isa(analysisTitle,'string')
+                        analysisTitle = strjoin(cellstr(analysisTitle));
+                    elseif iscell(analysisTitle)
+                        analysisTitle = strjoin(cellfun(@(c) char(c), analysisTitle, 'UniformOutput', false), ' ');
+                    end
+                    if isempty(analysisTitle)
+                        analysisTitle = sprintf('Analysis Task %d', analysisIdx);
+                    end
+                    analysisTitle = char(analysisTitle);
+
+                    rpt.ActX_word.Selection.TypeText(analysisTitle);
+                    rpt.ActX_word.Selection.Style = 'Heading 1';
+                    rpt.ActX_word.Selection.TypeParagraph;
+
+                    analysisHasContent = false;
+                    analysisBreakInsertedAtEnd = false;
+
+                    [operAdded, breakAfterOper] = addAnalysisOperatingConditionsSection(rpt, analysisIdx);
+                    if operAdded
+                        analysisHasContent = true;
+                        analysisBreakInsertedAtEnd = breakAfterOper;
+                    end
+
+                    [analysisPlotsAdded, breakAfterAnalysisPlots] = addAnalysisPlotSection(rpt, analysisIdx);
+                    if analysisPlotsAdded
+                        analysisHasContent = true;
+                        analysisBreakInsertedAtEnd = breakAfterAnalysisPlots;
+                    end
+
+                    [simPlotsAdded, breakAfterSimPlots] = addAnalysisSimulationSection(rpt, analysisIdx);
+                    if simPlotsAdded
+                        analysisHasContent = true;
+                        analysisBreakInsertedAtEnd = breakAfterSimPlots;
+                    end
+
+                    postSimAdded = addAnalysisPostSimulationSection(rpt, analysisIdx);
+                    if postSimAdded
+                        analysisHasContent = true;
+                        analysisBreakInsertedAtEnd = false;
+                    end
+
+                    if n ~= numel(selectedIdx) && analysisHasContent && ~analysisBreakInsertedAtEnd
+                        addPageBreak(rpt);
+                    end
+                end
             end
 
             function addPageBreak(rpt, shouldInsert)
@@ -1964,6 +2215,185 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     end
                 end
                 contentAdded = headingShown;
+            end
+
+            function [analysisObjs, selObjLogic] = getSelectedAnalysisData()
+                analysisObjs = lacm.AnalysisTask.empty;
+                selObjLogic = struct('Selected', {});
+                if isempty(obj.Tree)
+                    return;
+                end
+                if isa(obj.Tree,'handle') && ~isvalid(obj.Tree)
+                    return;
+                end
+                try
+                    [analysisObjs, selObjLogic] = getAnalysisObjs(obj.Tree, false);
+                catch
+                    analysisObjs = lacm.AnalysisTask.empty;
+                    selObjLogic = struct('Selected', {});
+                end
+            end
+
+            function occ = getOperCondCollectionForIndex(index)
+                occ = [];
+                if isempty(obj.OperCondCollObj) || index > numel(obj.OperCondCollObj)
+                    return;
+                end
+                candidate = obj.OperCondCollObj(index);
+                if isValidHandleObject(candidate)
+                    occ = candidate;
+                end
+            end
+
+            function header = getOperCondHeaderForIndex(index)
+                fc1 = getFlightConditionSelection(index, 'FC1');
+                fc2 = getFlightConditionSelection(index, 'FC2');
+                header = {'', fc1, fc2, 'All', 'All'};
+            end
+
+            function value = getFlightConditionSelection(index, prefix)
+                value = 'All';
+                tcObj = getTrimTaskCollectionForIndex(index);
+                if isempty(tcObj)
+                    return;
+                end
+                fcCandidate = getFlightConditionValue(tcObj, prefix);
+                if ~isempty(fcCandidate)
+                    value = fcCandidate;
+                end
+            end
+
+            function value = getFlightConditionValue(tcObj, prefix)
+                value = 'All';
+                strProp = sprintf('%s_PM_String', prefix);
+                selProp = sprintf('%s_PM_SelValue', prefix);
+                if ~isprop(tcObj, strProp) || ~isprop(tcObj, selProp)
+                    return;
+                end
+                fcStrings = tcObj.(strProp);
+                selValue = tcObj.(selProp);
+                if isempty(fcStrings) || isempty(selValue)
+                    return;
+                end
+                idx = double(selValue(1));
+                if idx < 1 || idx > numel(fcStrings)
+                    return;
+                end
+                fcCandidate = fcStrings{idx};
+                if ~isempty(fcCandidate)
+                    value = fcCandidate;
+                end
+            end
+
+            function tcObj = getTrimTaskCollectionForIndex(index)
+                tcObj = [];
+                if ~isempty(obj.TaskCollectionObj) && index <= numel(obj.TaskCollectionObj)
+                    candidate = obj.TaskCollectionObj(index);
+                    if isValidHandleObject(candidate)
+                        tcObj = candidate;
+                        return;
+                    end
+                end
+                if ~isempty(obj.TaskCollectionObjBatch) && index <= numel(obj.TaskCollectionObjBatch)
+                    batchCandidate = obj.TaskCollectionObjBatch(index);
+                    if isValidHandleObject(batchCandidate)
+                        trimList = batchCandidate.TrimTaskCollObj;
+                        if ~isempty(trimList)
+                            candidate = trimList(1);
+                            if isValidHandleObject(candidate)
+                                tcObj = candidate;
+                                return;
+                            end
+                        end
+                    end
+                end
+            end
+
+            function tf = isValidHandleObject(objCandidate)
+                tf = ~isempty(objCandidate);
+                if ~tf
+                    return;
+                end
+                if isa(objCandidate,'handle')
+                    tf = isvalid(objCandidate);
+                end
+            end
+
+            function coll = getAxisCollectionForIndex(collArray, index)
+                coll = [];
+                if isempty(collArray) || index > numel(collArray)
+                    return;
+                end
+                candidate = collArray(index);
+                if isValidHandleObject(candidate)
+                    coll = candidate;
+                end
+            end
+
+            function [added, breakInserted] = addAnalysisOperatingConditionsSection(rpt, analysisIdx)
+                added = false;
+                breakInserted = false;
+                occ = getOperCondCollectionForIndex(analysisIdx);
+                if isempty(occ)
+                    return;
+                end
+                try
+                    tableData = occ.TableData;
+                catch
+                    tableData = [];
+                end
+                if isempty(tableData)
+                    return;
+                end
+                header = getOperCondHeaderForIndex(analysisIdx);
+                rpt.ActX_word.Selection.TypeText('Operating Conditions');
+                rpt.ActX_word.Selection.Style = 'Heading 2';
+                rpt.ActX_word.Selection.TypeParagraph;
+                try
+                    addOperCondTable(rpt, occ.OperatingCondition, header);
+                catch
+                    return;
+                end
+                addPageBreak(rpt);
+                added = true;
+                breakInserted = true;
+            end
+
+            function [added, breakInserted] = addAnalysisPlotSection(rpt, analysisIdx)
+                added = false;
+                breakInserted = false;
+                coll = getAxisCollectionForIndex(obj.AxisColl, analysisIdx);
+                if isempty(coll)
+                    return;
+                end
+                added = addAxisCollectionPlots(coll, 'Analysis Plots');
+                if added
+                    addPageBreak(rpt, true);
+                    breakInserted = true;
+                end
+            end
+
+            function [added, breakInserted] = addAnalysisSimulationSection(rpt, analysisIdx)
+                added = false;
+                breakInserted = false;
+                coll = getAxisCollectionForIndex(obj.SimAxisColl, analysisIdx);
+                if isempty(coll)
+                    return;
+                end
+                added = addSimAxisPlots(coll, 'Simulation Plots');
+                if added
+                    addPageBreak(rpt, true);
+                    breakInserted = true;
+                end
+            end
+
+            function added = addAnalysisPostSimulationSection(rpt, analysisIdx)
+                coll = getAxisCollectionForIndex(obj.PostSimAxisColl, analysisIdx);
+                if isempty(coll)
+                    added = false;
+                    return;
+                end
+                added = addAxisCollectionPlots(coll, 'Post-Simulation Plots');
             end
         end % generateReportOpenSource
 
