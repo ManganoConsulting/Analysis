@@ -240,9 +240,9 @@ classdef RequirementTypeOne < Requirements.Requirement
                 set(axisH,'XScale',obj.XScale);
                 set(axisH,'YScale',obj.YScale);
                 set(axisH,'yaxislocation',obj.yAxisLocation);
-                set(get(axisH,'Title'),'String',obj.Title); 
-                set(get(axisH,'XLabel'),'String',obj.XLabel);   
-                set(get(axisH,'YLabel'),'String',obj.YLabel);
+                set(get(axisH,'Title'),'String',obj.Title, 'Interpreter', 'none'); 
+                set(get(axisH,'XLabel'),'String',obj.XLabel, 'Interpreter', 'none');   
+                set(get(axisH,'YLabel'),'String',obj.YLabel, 'Interpreter', 'none');
 
                 if obj.Grid
                     grid(axisH,'on');
@@ -268,7 +268,7 @@ classdef RequirementTypeOne < Requirements.Requirement
                 try
                     funHandle = str2func(obj.RequiermentPlot);
                     funHandle(axisH);
-                    set(get(axisH,'Title'),'String',obj.Title); 
+                    set(get(axisH,'Title'),'String',obj.Title, 'Interpreter', 'none'); 
                 catch
                     msgbox([obj.RequiermentPlot, ' does not exist on the path or contains an error.']);
                 end
@@ -359,7 +359,7 @@ classdef RequirementTypeOne < Requirements.Requirement
                     modelParams = {};
                     if ~isempty(scattGainObj)
                         for i = 1:length(uniqueMdlNames)
-                            modelParams{i} = assignParameters2Model( uniqueMdlNames{i} ,scattGainObj(selMdlInd), 1 );%#ok<AGROW> %assignParameters2Model( uniqueMdlNames{i} , [params,gainParam] );
+                            modelParams{i} = assignParameters2Model( uniqueMdlNames{i} ,scattGainObj(selMdlInd) );%#ok<AGROW> %assignParameters2Model( uniqueMdlNames{i} , [params,gainParam] );
                         end 
                         mdlParamsCellArray = modelParams;
                         if ~isempty(modelParams)

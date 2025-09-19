@@ -12,14 +12,9 @@ classdef Requirement < matlab.mixin.Copyable
 %         
 %         IterativeRequierment = true
         
-%         PlotData%@Requirements.NewLine
+        PlotData%@Requirements.NewLine
     end % Public properties
    
-    %% Transient Properties
-    properties %(Transient = true )  
-        PlotData
-    end % Transient Properties
-    
     %% Dependant properties
     properties (Dependent = true)
         ModelWorkspace   % a handle to the modelworkspace

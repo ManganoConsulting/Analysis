@@ -54,7 +54,7 @@ im = reshape(uint8([255 255 255 255 255 255 255 255 255 255 255 255 255 ...
                     255 255 255 255 255 255 255 255 255 255 255 255 255 ...
                     255 255 255 255 255]), 16, 16, 3);
 
-warning('off','MATLAB:im2java:functionToBeRemoved');
+    warning('off','MATLAB:im2java:functionToBeRemoved');
     jImage = im2java(im);
 end
 

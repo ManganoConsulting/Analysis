@@ -4,8 +4,7 @@ function ...
   sys, ...
   x_u, n_x, ...
   i_x_u, i_d_y, ...
-  del_x_u,del_x_u_type,...
-  constraintsInputsArray,constraintsStatesArray)
+  del_x_u,del_x_u_type,constraintsArray)
 
 %JJ_LIN   Subsystem linearisation of a nonlinear ordinary differential equation system 
 % 
@@ -34,27 +33,21 @@ if nargin < 6
   %del_x_u = 1e-6*(1 + abs(x_u));
   del_x_u = 1e-10*(1 + 1e-3*abs(x_u));
   del_x_u_type = zeros(length(del_x_u),1);
-  constraintsInputsArray = [];
-  constraintsStatesArray = [];
+  constraintsArray = [];
+ 
 end
 
 if nargin < 7
   
   % Use default perturbation levels
   del_x_u_type = zeros(length(del_x_u),1);
-  constraintsInputsArray = [];
-  constraintsStatesArray = [];
+  constraintsArray = [];
+ 
 end
 
 % No constraints
 if nargin < 8
-    constraintsInputsArray = [];
-    constraintsStatesArray = [];
-end
-
-% No state constraints
-if nargin < 9
-    constraintsStatesArray = [];
+    constraintsArray = [];
 end
 
 % Determine vector lengths
@@ -95,43 +88,21 @@ for i = i_x_u'
   end
       
   
-  % Check for input constraints
-  if ~isempty(constraintsInputsArray)
-      jc = find(i-n_x==abs(constraintsInputsArray(:,2)));
+  % Check for constraints
+  if ~isempty(constraintsArray)
+      jc = find(i-n_x==abs(constraintsArray(:,2)));
       if ~isempty(jc)
-          idC = constraintsInputsArray(jc,1);
+          idC = constraintsArray(jc,1);
           
-          for iidC=1:length(idC)
-              if constraintsInputsArray(jc(iidC),2)>0
-                  x_u_left(idC(iidC)+n_x) = x_u_left(i);
-                  x_u_right(idC(iidC)+n_x)= x_u_right(i);
-              else
-                  x_u_left(idC(iidC)+n_x) = -x_u_left(i);
-                  x_u_right(idC(iidC)+n_x)= -x_u_right(i);
-              end
+          if constraintsArray(jc,2)>0
+            x_u_left(idC+n_x) = x_u_left(i);
+            x_u_right(idC+n_x)= x_u_right(i);
+          else
+              x_u_left(idC+n_x) = -x_u_left(i);
+              x_u_right(idC+n_x)= -x_u_right(i);
           end
       end
   end
-  
-    % Check for state constraints
-  if ~isempty(constraintsStatesArray)
-      jc = find(i==abs(constraintsStatesArray(:,2)));
-      if ~isempty(jc)
-          idC = constraintsStatesArray(jc,1);
-          
-          for iidC=1:length(idC)
-              if constraintsStatesArray(jc(iidC),2)>0
-                  x_u_left(idC(iidC)) = x_u_left(i);
-                  x_u_right(idC(iidC))= x_u_right(i);
-              else
-                  x_u_left(idC(iidC)) = -x_u_left(i);
-                  x_u_right(idC(iidC))= -x_u_right(i);
-              end
-          end
-      end
-  end
-  
-  
   
   % Calculate outputs and derivatives at the current trim point.
   % Important: We have to calculate the outputs first!

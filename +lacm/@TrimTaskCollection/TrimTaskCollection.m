@@ -210,9 +210,7 @@ classdef TrimTaskCollection < dynamicprops & matlab.mixin.Copyable %& UserInterf
         
         FC1_EB_String
         FC2_EB_String
-
-        FC_IndexMatch logical = false
-
+        
         UnitsSystem = 1 % 1 = english , 2 = metric
         
         SetName_String
@@ -1851,7 +1849,7 @@ classdef TrimTaskCollection < dynamicprops & matlab.mixin.Copyable %& UserInterf
             
         end % updateSelectedConfiguration
         
-        function tempTrimTask = createTaskObjManual( obj , mdl , constFile , selTrimDef , selLinMdlDef , selMassProp, useIndexBasedComb)
+        function tempTrimTask = createTaskObjManual( obj , mdl , constFile , selTrimDef , selLinMdlDef , selMassProp )
             import Utilities.*
 
             assert(~isempty(obj.FC1_EB_String),         'FCOND:EMPTY','Flight Conditions must be specified');
@@ -1869,10 +1867,9 @@ classdef TrimTaskCollection < dynamicprops & matlab.mixin.Copyable %& UserInterf
                 wc_string = strjoin({selMassProp.WeightCode},',');
             end
 
-            obj.FC_IndexMatch = ~useIndexBasedComb;
-
+            
             tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , selLinMdlDef , selMassProp ,...
-                obj.FC1_EB_String , obj.FC2_EB_String , obj.FC1_PM_String{obj.FC1_PM_SelValue} , obj.FC2_PM_String{obj.FC2_PM_SelValue} , obj.SetName_String , wc_string , [] , obj.FC_IndexMatch );
+                obj.FC1_EB_String , obj.FC2_EB_String , obj.FC1_PM_String{obj.FC1_PM_SelValue} , obj.FC2_PM_String{obj.FC2_PM_SelValue} , obj.SetName_String , wc_string , [] );
 
         end % createTaskObjManual
         
@@ -1933,7 +1930,7 @@ classdef TrimTaskCollection < dynamicprops & matlab.mixin.Copyable %& UserInterf
 
                  tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , tempLinMdlDefObjs , massPropObjs ,...
                     batchTaskObjs(i).FLIGHTCONDITION1{2} , batchTaskObjs(i).FLIGHTCONDITION2{2} , batchTaskObjs(i).FLIGHTCONDITION1{1}, batchTaskObjs(i).FLIGHTCONDITION2{1} , batchTaskObjs(i).LABEL , batchTaskObjs(i).WEIGHTCODE ,...
-                    batchTaskObjs(i).VARIABLES , obj.FC_IndexMatch);
+                    batchTaskObjs(i).VARIABLES);
                 
 
 
@@ -2386,25 +2383,20 @@ function status = checkFlightCondition(a, b)
 
 end % checkFlightCondition     
 
-function tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , selLinMdlDef , selMassProp , fc1ValueString , fc2ValueString , fc1TypeString , fc2TypeString ,setName , wcString , batchVariables , fcIndexMatch )
+function tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , selLinMdlDef , selMassProp , fc1ValueString , fc2ValueString , fc1TypeString , fc2TypeString ,setName , wcString , batchVariables )
     import Utilities.*
 
     tempTrimTask = lacm.TrimTask.empty;
 
-    fc1Vals = num2cell(str2num(fc1ValueString));
-    fc2Vals = num2cell(str2num(fc2ValueString));
-
-    if nargin < 13 || isempty(fcIndexMatch)
-        fcIndexMatch = false;
-    end
-
-    % When matching by index, all value arrays are synchronized in length
-    % later in the function.  Size checks are handled after assembling all
-    % arrays, so no early error is required here.
-
+    % Find all combinations of FlightConditon and MassProperies
     if selMassProp(1).DummyMode
+        cols = {num2cell(str2num(fc1ValueString)),...
+                    num2cell(str2num(fc2ValueString))};
         startingColIndex = 3;
-    else
+    else      
+        cols = {num2cell(str2num(fc1ValueString)),...
+                    num2cell(str2num(fc2ValueString)),... 
+                    strsplit(wcString,',')};
         startingColIndex = 4;
     end
     % Update Simulink model conditions
@@ -2428,121 +2420,9 @@ function tempTrimTask = createTaskTrim( mdl , constFile , selTrimDef , selLinMdl
     [ stateshdr , statesVal ] = getHeaderValueArray( vectorStateObjs );
     [ statesDerivhdr , statesDerivVal ] = getHeaderValueArray( vectorStateDerivObjs );
 
-    if fcIndexMatch
-        % Match all value arrays by index.  Determine the maximum length
-        % among non-scalar arrays and replicate scalar entries to that
-        % length so that each row in the table corresponds to a single
-        % index across all variables.
+    cols = [ cols , inputVal , outputVal , statesVal , statesDerivVal ];               
 
-        % Gather all value arrays and their identifying names
-        valueArrays = {fc1Vals , fc2Vals};
-        valueNames  = {'Flight Condition 1' , 'Flight Condition 2'};
-
-        if selMassProp(1).DummyMode
-            massPropVals = {};
-        else
-            massPropVals = strsplit(wcString,',');
-            valueArrays{end+1} = massPropVals;
-            valueNames{end+1}  = 'Mass Properties';
-        end
-
-        for ii = 1:length(inputVal)
-            valueArrays{end+1} = inputVal{ii};
-            valueNames{end+1}  = ['Input ' inputhdr{ii}];
-        end
-        for ii = 1:length(outputVal)
-            valueArrays{end+1} = outputVal{ii};
-            valueNames{end+1}  = ['Output ' outputhdr{ii}];
-        end
-        for ii = 1:length(statesVal)
-            valueArrays{end+1} = statesVal{ii};
-            valueNames{end+1}  = ['State ' stateshdr{ii}];
-        end
-        for ii = 1:length(statesDerivVal)
-            valueArrays{end+1} = statesDerivVal{ii};
-            valueNames{end+1}  = ['State Derivative ' statesDerivhdr{ii}];
-        end
-
-        % Compute lengths and determine maximum non-scalar length
-        valueLengths = cellfun(@numel, valueArrays);
-        nonScalarIdx = find(valueLengths > 1);
-        if isempty(nonScalarIdx)
-            maxLen = 1;
-        else
-            maxLen = max(valueLengths(nonScalarIdx));
-            mismatchIdx = nonScalarIdx(valueLengths(nonScalarIdx) ~= maxLen);
-            if ~isempty(mismatchIdx)
-                error('FCOND:SIZE', 'All array sizes must match for index based runs.');
-            end
-        end
-
-        % Replicate scalar arrays to match the maximum length
-        for ii = 1:numel(valueArrays)
-            if numel(valueArrays{ii}) == 1 && maxLen > 1
-                valueArrays{ii} = repmat(valueArrays{ii}, 1, maxLen);
-            end
-        end
-
-        % Assign expanded arrays back to original variables
-        idx = 1;
-        fc1Vals = valueArrays{idx}; idx = idx + 1;
-        fc2Vals = valueArrays{idx}; idx = idx + 1;
-        if ~selMassProp(1).DummyMode
-            massPropVals = valueArrays{idx}; idx = idx + 1;
-        end
-        for ii = 1:length(inputVal)
-            inputVal{ii} = valueArrays{idx}; idx = idx + 1;
-        end
-        for ii = 1:length(outputVal)
-            outputVal{ii} = valueArrays{idx}; idx = idx + 1;
-        end
-        for ii = 1:length(statesVal)
-            statesVal{ii} = valueArrays{idx}; idx = idx + 1;
-        end
-        for ii = 1:length(statesDerivVal)
-            statesDerivVal{ii} = valueArrays{idx}; idx = idx + 1;
-        end
-
-        % Construct table data by index across all arrays
-        nRows = maxLen;
-        nCols = 2 + (~selMassProp(1).DummyMode) + length(inputVal) + ...
-                length(outputVal) + length(statesVal) + length(statesDerivVal);
-        tabledata = cell(nRows, nCols);
-        for ii = 1:nRows
-            tabledata{ii,1} = fc1Vals{ii};
-            tabledata{ii,2} = fc2Vals{ii};
-            col = 3;
-            if ~selMassProp(1).DummyMode
-                tabledata{ii,col} = massPropVals{ii};
-                col = col + 1;
-            end
-            for jj = 1:length(inputVal)
-                tabledata{ii,col} = inputVal{jj}{ii};
-                col = col + 1;
-            end
-            for jj = 1:length(outputVal)
-                tabledata{ii,col} = outputVal{jj}{ii};
-                col = col + 1;
-            end
-            for jj = 1:length(statesVal)
-                tabledata{ii,col} = statesVal{jj}{ii};
-                col = col + 1;
-            end
-            for jj = 1:length(statesDerivVal)
-                tabledata{ii,col} = statesDerivVal{jj}{ii};
-                col = col + 1;
-            end
-        end
-
-    else
-        if selMassProp(1).DummyMode
-            cols = {fc1Vals, fc2Vals};
-        else
-            cols = {fc1Vals, fc2Vals, strsplit(wcString,',')};
-        end
-        cols = [cols , inputVal , outputVal , statesVal , statesDerivVal];
-        tabledata = allcomb(cols{:});
-    end
+    tabledata = allcomb(cols{:});
 
 
     tempTrimTask(size(tabledata,1)) = lacm.TrimTask;    
@@ -2720,8 +2600,8 @@ function saveFormat = getSaveFormat(mdl)
             end
             saveFormat.Format = get_param(cset,'SaveFormat');
         catch
-            error('SIMULINK:GETSTATENAMESDATASAVEFORMAT','Unable to set the data save format to ''array''. This is neccessary to use the command ''getInitialState''.');
+            error('SIMULINK:GETSTATENAMESDATASAVEFORMAT','Unable to set the data save format to ''array''. This is neccessary to use the command ''getInitialState''.');  
         end
     end
-
+    
 end % getSaveFormat

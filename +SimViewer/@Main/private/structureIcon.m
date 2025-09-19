@@ -271,7 +271,7 @@ function jImage = structureIcon()
     1.0000    1.0000    0.6000;
     1.0000    1.0000    0.8000;
     1.0000    1.0000    1.0000];
-
+    
  warning('off','MATLAB:im2java:functionToBeRemoved');
     jImage = im2java(I,map);
 end

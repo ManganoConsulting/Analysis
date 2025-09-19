@@ -56,9 +56,7 @@ classdef Gain < matlab.mixin.Copyable
 
     %% Methods - Property Access
     methods
-        function y = get.Value(obj)
-            y = double(obj.Value);
-        end
+        
         
     end % Property access methods
    
@@ -72,7 +70,7 @@ classdef Gain < matlab.mixin.Copyable
                 newObj = obj(lcArray);
             end   
         end % get
-
+        
         function ind = find(obj,name)
             ind = find(strcmp(name,{obj.Name}));
         end % find

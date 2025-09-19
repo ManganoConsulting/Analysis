@@ -54,9 +54,6 @@ classdef Parameter < matlab.mixin.Copyable
 
     %% Methods - Property Access
     methods
-        function y = get.Value(obj)
-            y = double(obj.Value);
-        end
         
         
     end % Property access methods

@@ -460,24 +460,6 @@ classdef LinearModel < matlab.mixin.Copyable
         end % get
         
     end % Ordinary Methods
-
-    methods %% Property Access, Nathan added
-        function y = get.A(obj)
-            y = double(obj.A);
-        end
-
-        function y = get.B(obj)
-            y = double(obj.B);
-        end
-
-        function y = get.C(obj)
-            y = double(obj.C);
-        end
-
-        function y = get.D(obj)
-            y = double(obj.D);
-        end
-    end
     
     %% Methods - Old View
     methods 
@@ -581,11 +563,7 @@ classdef LinearModel < matlab.mixin.Copyable
             position = fig.Position;
             fig.Position = [ position(1) , position(2) - 200 , 550 , 643 ];
             
-            if ~( strcmp(version('-release'),'2015b') || strcmp(version('-release'),'2016a')  || strcmp(version('-release'),'2023a')  )
-                jFig = get(handle(fig), 'JavaFrame');
-                pause(0.1);
-                jFig.fHG2Client.getWindow.setMinimumSize(java.awt.Dimension( 555 , 675 ));     
-            end
+            Utilities.setMinFigureSize(fig,[555 675]);
             obj.ModelText = uicontrol('Parent',obj.MainPanel,...
                 'Style','text',...
                 'FontSize',10,...
@@ -632,7 +610,6 @@ classdef LinearModel < matlab.mixin.Copyable
             end
             
             update(obj);
-            updateTable( obj );
         end % createView
         
         function createPanel( obj , parent )
@@ -791,7 +768,6 @@ classdef LinearModel < matlab.mixin.Copyable
         
         function updateModelName( obj )
             update(obj);
-            updateTable( obj );
         end % updateModelName
               
     end % Ordinary Methods
@@ -1088,8 +1064,8 @@ classdef LinearModel < matlab.mixin.Copyable
             obj.LabelEditBox.String = obj.Label;%obj.LabelEditBox.String = obj.LinMdlLabelString;
             
             obj.ModelEditBox.String = obj.ModelName;
-
-%             updateTable( obj );
+%             setFileTitle( obj );
+            updateTable( obj );
             
             
             [obj.States,obj.StatePerturbSizes,obj.StatePerturbTypes] = obj.ViewStates.getSelectedNames();
@@ -1451,7 +1427,6 @@ classdef LinearModel < matlab.mixin.Copyable
             end
             
             update(obj);
-            updateTable( obj );
         end % createDefault
         
         function updateMdlConditions( obj , simMdlName )

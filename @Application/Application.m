@@ -8,8 +8,8 @@ classdef Application < handle
       
     %% Public properties - Data Storage
     properties   
-        VersionNumber = '4.1'
-        InternalVersionNumber = '4.1.0'
+        VersionNumber = '5.0'
+        InternalVersionNumber = '5.0.0'
         
         AccessAllowed = false
         

@@ -52,7 +52,7 @@ classdef AxisPanel < matlab.mixin.Copyable & hgsetget
             addParameter(p,'Title','',@ischar);
             addParameter(p,'Units','Normalized',@ischar);
             addParameter(p,'Position',[0,0,1,1]);
-            checknumAx = @(x) any(x == [0,1,2,3,4,5,6]);
+            checknumAx = @(x) any(x == [1,2,3,4,5,6]);
             addParameter(p,'NumOfAxis',4,checknumAx);
             orientationErrorStr = 'Value must be Horizontal, Vertical, or Grid(Default)';
             checkOrientation = @(x) assert(any(strcmp(x,{'Horizontal','Vertical','Grid'})),orientationErrorStr);

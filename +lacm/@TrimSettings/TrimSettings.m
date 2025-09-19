@@ -442,7 +442,6 @@ classdef TrimSettings < matlab.mixin.Copyable
             end
             
             update(obj);
-            updateTable( obj );
         end % createView
         
         function createTab1( obj , parent )
@@ -875,7 +874,6 @@ classdef TrimSettings < matlab.mixin.Copyable
                         createDefault( obj );
                     otherwise
                         update(obj);
-                        updateTable( obj );
                 end
             end
         end % numOfTrimComboBox_CB 
@@ -932,8 +930,8 @@ classdef TrimSettings < matlab.mixin.Copyable
                     obj.InitialTrim.LandingGearSimulinkName    = obj.LandingGearSimulinkName;
                 end
             end
-
-%             updateTable( obj );
+% %             setFileTitle( obj );
+            updateTable( obj );
         end % update
          
         function reSize( obj , ~ , ~ )
@@ -1271,7 +1269,7 @@ classdef TrimSettings < matlab.mixin.Copyable
                             [~,iao] = setdiff(outNames,{obj.InitialTrim.Outputs.Name});
                             [~,ias] = setdiff(stateNames,{obj.InitialTrim.States.Name});
                             % Update input,outputs, states, and state derivatives
-                            [inC, outC, stC, stdC,obj] = privateUpdateMdlCondSubIC( obj, inNames , outNames , stateNames , inputUnits , outputUnits , stateUnit, iai, iao, ias);
+                            [inC, outC, stC, stdC,obj] = privateUpdateMdlCondSub( obj, inNames , outNames , stateNames , inputUnits , outputUnits , stateUnit, iai, iao, ias);
                             cStateIDC = cStateID;
                         case 'No'
                             inC = obj.InitialTrim.Inputs;
@@ -1317,7 +1315,7 @@ classdef TrimSettings < matlab.mixin.Copyable
                 
                 if isempty(iai) && isempty(iao) && isempty(ias)
                      % Update input,outputs, states, and state derivatives
-                     [inC, outC, stC, stdC,obj] = privateUpdateMdlCondSubIC( obj, inNames , outNames , stateNames , inputUnits , outputUnits , stateUnit, iai, iao, ias);
+                     [inC, outC, stC, stdC,obj] = privateUpdateMdlCondSub( obj, inNames , outNames , stateNames , inputUnits , outputUnits , stateUnit, iai, iao, ias);
                      cStateIDC = cStateID;
                      MessageBoxStr{end+1} = 'Trim definition is automatically updated.';
                      MessageBoxStr{end+1} = 'Please Save updated Trim Definition.';
@@ -1334,7 +1332,7 @@ classdef TrimSettings < matlab.mixin.Copyable
                                 [~,ias] = setdiff(stateNames,{obj.InitialTrim.States.Name});
                                 
                                 % Update input,outputs, states, and state derivatives
-                                [inC, outC, stC, stdC,obj] = privateUpdateMdlCondSubIC( obj, inNames , outNames , stateNames , inputUnits , outputUnits , stateUnit, iai, iao, ias);
+                                [inC, outC, stC, stdC,obj] = privateUpdateMdlCondSub( obj, inNames , outNames , stateNames , inputUnits , outputUnits , stateUnit, iai, iao, ias);
                                 cStateIDC = cStateID;
                             case 'No'
                                 inC = obj.InitialTrim.Inputs;
@@ -1427,48 +1425,6 @@ classdef TrimSettings < matlab.mixin.Copyable
             obj.SimulinkStates    = stateNames;
 
         end % privateUpdateMdlCondSub
-        
-        function [inC,outC,stC,stdC,obj] = privateUpdateMdlCondSubIC( obj, inNames , outNames , stateNames , inputUnits , outputUnits , stateUnit, iai, iao, ias)
-            
-            % Input update
-            inC = lacm.Condition.empty;
-            for i = 1:length(inNames)
-                if any(i == iai)
-                    inC(i) = lacm.Condition( inNames{i}, 0 , inputUnits{i} , true );
-                else
-                    logArray = strcmp(inNames{i},{obj.InitialTrim.Inputs.Name});
-                    inC(i) = obj.InitialTrim.Inputs(find(logArray,1));
-                end
-            end
-            
-            
-            % Output update
-            outC = lacm.Condition.empty;
-            for i = 1:length(outNames)
-                if any(i == iao)
-                    outC(i) = lacm.Condition( outNames{i}, 0 , outputUnits{i} , false );
-                else
-                    logArray = strcmp(outNames{i},{obj.InitialTrim.Outputs.Name});
-                    outC(i) = obj.InitialTrim.Outputs(find(logArray,1));
-                end
-            end
-            
-            % State update
-            stC = lacm.Condition.empty;
-            stdC= lacm.Condition.empty;
-            for i = 1:length(stateNames)
-                if any(i == ias)
-                    stC(i) = lacm.Condition( stateNames{i}, 0 , stateUnit{i} , true );
-                    stdC(i) = lacm.Condition( [stateNames{i},'_dot'], 0 , [stateUnit{i}, '/s'] , true );
-                else
-                    logArray = strcmp(stateNames{i},{obj.InitialTrim.States.Name});
-                    stC(i) = obj.InitialTrim.States(find(logArray,1));
-                    stdC(i) = obj.InitialTrim.StateDerivatives(find(logArray,1));
-                end
-            end
-            
-
-        end % privateUpdateMdlCondSub_InitialTrim
         
     end
     
@@ -1563,7 +1519,6 @@ classdef TrimSettings < matlab.mixin.Copyable
             %obj = trimSettings;
             
             update(obj);
-            updateTable( obj );
         end % createDefault
         
         function updateMdlConditions( obj , simMdlName )

@@ -56,10 +56,21 @@ else
     replaceFlag = false;
     
     %% Getting all available categories
-    fcObj = com.mathworks.mlwidgets.favoritecommands.FavoriteCommands.getInstance();
-    method = fcObj.getClass().getDeclaredMethod('getCategories', []);
-    method.setAccessible(true);
-    categories = method.invoke(fcObj,[]);      % returns a Java List with all categories
+    % Newer MATLAB releases may not expose the FavoriteCommands Java API that
+    % is used below.  In those cases an exception can be thrown which would
+    % previously prevent the application from launching.  Wrap the calls in a
+    % try/catch block so that failure to access the favorite command API only
+    % results in skipping the shortcut creation rather than throwing an
+    % error.
+    try
+        fcObj = com.mathworks.mlwidgets.favoritecommands.FavoriteCommands.getInstance();
+        method = fcObj.getClass().getDeclaredMethod('getCategories', []);
+        method.setAccessible(true);
+        categories = method.invoke(fcObj,[]);      % returns a Java List with all categories
+    catch ME
+        warning('Utilities:createShortcut:Failed','Unable to create favorite command shortcut: %s', ME.message);
+        return; % Gracefully exit if favorites cannot be accessed
+    end
     
     % Find the ACD Tools catagory
     acdCat = [];

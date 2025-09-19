@@ -58,7 +58,6 @@ classdef SchGainVec < matlab.mixin.Copyable
         NumberOfDimensions
         
         BreakPoints1ValueDisplayString
-        %BreakPoints1ValueExpression
         
         BreakPoints2DisplayString
         BreakPoints2Expression
@@ -442,30 +441,20 @@ classdef SchGainVec < matlab.mixin.Copyable
         function y = getXData( obj , scatteredGains ) 
             y = [];
             if ~isempty(obj.BreakPoints2Expression)
-                %for i = 1:length(scatteredGains)
-                %    y(i) = eval( getString(obj.BreakPoints2Expression,'scatteredGains(i).') );
-                %    %y(i) = eval(['scatteredGains(i).', obj.BreakPoints2Expression]);
-                %end
-                evalString = [
-                    '[scatteredGains.' ...
-                    obj.BreakPoints2Expression.AccessString ...
-                    ']'];
-                y = eval(evalString);
+                for i = 1:length(scatteredGains)
+                    y(i) = eval( getString(obj.BreakPoints2Expression,'scatteredGains(i).') );
+                    %y(i) = eval(['scatteredGains(i).', obj.BreakPoints2Expression]);
+                end
             end
         end % getXData
         
         function y = getYData( obj , scatteredGains )
             y = [];
             if ~isempty(obj.ScatteredGainExpression)
-                %for i = 1:length(scatteredGains)
-                %    y(i) = eval( getString(obj.ScatteredGainExpression,'scatteredGains(i).') );
-                %   % y(i) = eval(['scatteredGains(i).',obj.ScatteredGainExpression]);
-                %end
-                evalString = [
-                    '[scatteredGains.' ...
-                    obj.ScatteredGainExpression.AccessString ...
-                    ']'];
-                y = eval(evalString);
+                for i = 1:length(scatteredGains)
+                    y(i) = eval( getString(obj.ScatteredGainExpression,'scatteredGains(i).') );
+                   % y(i) = eval(['scatteredGains(i).',obj.ScatteredGainExpression]);
+                end
             end
         end % getYData
         

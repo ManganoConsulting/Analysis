@@ -60,7 +60,7 @@ classdef Synthesis < Requirements.Requirement
                 % Assign the evlauated user defined parameters to the unique
                 % models
                 for j = 1:length(uniqueMdlNames)
-                    mdlParams{i} = assignParameters2Model( uniqueMdlNames{j} , params{i}, 1 ); %#ok<*AGROW>
+                    mdlParams{i} = assignParameters2Model( uniqueMdlNames{j} , params{i} ); %#ok<*AGROW>
                 end 
                 mdlParamsCellArray = mdlParams;
                 % get the function handle

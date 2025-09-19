@@ -95,7 +95,7 @@ classdef OperatingCondition < matlab.mixin.Copyable%< matlab.mixin.CustomDisplay
                     Utilities.multiWaitbar( 'Running Trims...', i/numOfTrims , 'Color', 'b'); 
                     %notify(obj,'ShowLogMessage',UserInterface.LogMessageEventData('Running Trim ',int2str(i),' of ',int2str(numOfTrims),'info'));
                 end
-%                 releaseModel(obj);  
+                releaseModel(obj);  
                 
                 Utilities.multiWaitbar( 'Running Trims...', 'close'); 
                 
@@ -115,7 +115,7 @@ classdef OperatingCondition < matlab.mixin.Copyable%< matlab.mixin.CustomDisplay
                     Utilities.multiWaitbar( 'Running Trims...', i/numOfTrims , 'Color', 'b'); 
                     %notify(obj,'ShowLogMessage',UserInterface.LogMessageEventData('Running Trim ',int2str(i),' of ',int2str(numOfTrims),'info'));
                 end
-%                 releaseModel(obj);  
+                releaseModel(obj);  
                 
                 Utilities.multiWaitbar( 'Running Trims...', 'close'); 
      
@@ -676,32 +676,6 @@ classdef OperatingCondition < matlab.mixin.Copyable%< matlab.mixin.CustomDisplay
             c = [ inputIndex , constIndex , initialVal ];
         end
         
-        function c = getStateConstraintsTrim(obj,prop)
-            % Example Array  by columns [ Input Index | Constraind to Index | Initial Value ];
-            %   constrainedArray = [ 5  , 3 , 1.5 ;...
-            %                        2  , 1 , 20 ];
-            names = {obj.(prop).Name};
-            la = [obj.States.Constrained];
-            stateIndex = find(la)';          
-            constIndex = zeros(length(stateIndex),1);
-            constNames = {obj.States(stateIndex).StringValue}';
-            initialVal = zeros(length(stateIndex),1);
-            for i = 1:length(stateIndex)
-                % check if there is a '-' sign
-                if contains(constNames(i),'-')
-                    temp = strrep(constNames(i),'-','');
-                    constNamei = strrep(temp,'+','');
-                    constIndex(i) = -find(strcmp(constNamei,names));
-                    initialVal(i) = -[obj.States(-constIndex(i)).Value]';
-                else
-                    constIndex(i) = find(strcmp(constNames(i),names));
-                    initialVal(i) = [obj.States(constIndex(i)).Value]';
-                end
-            end
-            
-            c = [ stateIndex , constIndex , initialVal ];
-        end
-        
         
         function vec = getValues(obj,prop)
             vec = [obj.(prop).Value]'; 
@@ -927,56 +901,14 @@ classdef OperatingCondition < matlab.mixin.Copyable%< matlab.mixin.CustomDisplay
             end
 
         end % copyConditions
-
+        
         function initializeConditions2Task( obj , task )
             obj.States      = copy(task.StateConditions);
             obj.Inputs      = copy(task.InputConditions);
             obj.Outputs     = copy(task.OutputConditions);
             obj.StateDerivs = copy(task.StateDerivativeConditions);
         end % initializeConditions2Task
-
-    end % methods (Access = protected)
-
-    methods
-
-        function runLinearization(obj, linMdlObj)
-            %RUNLINEARIZATION Run linearization on an existing operating condition.
-            %   runLinearization(operCond, linMdlObj) uses the current
-            %   state of the operating condition to linearize the model
-            %   described by the supplied lacm.LinearModel object.
-            %
-            %   linMdlObj should be a lacm.LinearModel or array of such.
-            %
-            if nargin < 2 || ~isa(linMdlObj,'lacm.LinearModel')
-                error('Input must be a lacm.LinearModel object');
-            end
-
-            % Compile model if needed
-            if ~strcmp('paused', get_param(obj.ModelName, 'SimulationStatus'))
-                try
-                    feval(obj.ModelName, [], [], [], 'compile');
-                catch
-                    error('Unable to compile model');
-                end
-            end
-
-            % Gather names and values
-            stateNames   = getNames(obj,'States');
-            inportNames  = getNames(obj,'Inputs');
-            outportNames = getNames(obj,'Outputs');
-            X0_trim      = getValues(obj,'States');
-            U0_trim      = getValues(obj,'Inputs');
-            Y0_trim      = getValues(obj,'Outputs');
-            CStateIDs    = obj.TrimSettings.CStateID;
-
-            % Run the linearization
-            for i = 1:length(linMdlObj)
-                run(linMdlObj(i), obj.ModelName, stateNames, inportNames, ...
-                    outportNames, X0_trim, U0_trim, Y0_trim, CStateIDs);
-            end
-            obj.LinearModel = linMdlObj;
-        end % runLinearization
-
+        
     end
     
     %% Methods - Private - Trim Methods
@@ -1189,22 +1121,12 @@ classdef OperatingCondition < matlab.mixin.Copyable%< matlab.mixin.CustomDisplay
             %**************************************************************
             %***************Calculate Input Constraints********************
             %**************************************************************  
-            constraintsInputsArray = getConstraintsTrim(obj,'Inputs');
-            
-            %**************************************************************
-            %***************Calculate Input Constraints********************
-            %************************************************************** 
-            constraintsStatesArray = getStateConstraintsTrim(obj,'States');
+            constraintsArray = getConstraintsTrim(obj,'Inputs');
 
             
             % Update U0_in vector
-            for i = 1:size(constraintsInputsArray,1)
-                U0_in(constraintsInputsArray(i,1)) = constraintsInputsArray(i,3);
-            end
-            
-            % Update X0_in vector
-            for i = 1:size(constraintsStatesArray,1)
-                X0_in(constraintsStatesArray(i,1)) = constraintsStatesArray(i,3);
+            for i = 1:size(constraintsArray,1)
+                U0_in(constraintsArray(i,1)) = constraintsArray(i,3);
             end
             
             % Get Continuous States IDs
@@ -1230,7 +1152,7 @@ classdef OperatingCondition < matlab.mixin.Copyable%< matlab.mixin.CustomDisplay
             [X0_trim,U0_trim,DX0,Y0_trim,j_trim, cost] = ...
                 jj_trim(obj.ModelName,X0_in,U0_in,X0_dot,Y0_in,...
                 n_states,n_inputs,n_deriv,...
-                n_outputs,stateNames,inportNames,derivNames,outportNames, [],[],[],[],constraintsInputsArray, constraintsStatesArray, CStateIDs, trim_options);   
+                n_outputs,stateNames,inportNames,derivNames,outportNames, [],[],[],[],constraintsArray, CStateIDs, trim_options);   
             
             if j_trim > 0
                 obj.SuccessfulTrim = false;
@@ -1551,8 +1473,7 @@ function [x_tr, u_tr, d_tr, y_tr, j_trim, cost] = jj_trim (...
   x_nam, u_nam, d_nam, y_nam, ...
   del_x_max, del_u_max, ...
   del_x_lin, del_u_lin, ...
-  constraintsInputsArray, ...
-  constraintsStatesArray, ...
+  constrainedArray, ...
   cstateid,...
   options)
 
@@ -1868,7 +1789,7 @@ function [x_tr, u_tr, d_tr, y_tr, j_trim, cost] = jj_trim (...
         i_bisec = 0;
 
         % Linearize relevant subsystem at current operating point
-        jaco = jj_lin (sys, x_u, n_x, i_t_v, i_t_r, del_lin, del_lin_type, constraintsInputsArray, constraintsStatesArray);
+        jaco = jj_lin (sys, x_u, n_x, i_t_v, i_t_r, del_lin, del_lin_type, constrainedArray);
 
         % Singular Value Decomposition of the sensitivity matrix
         [u, s, v] = svd (jaco);
@@ -2029,21 +1950,12 @@ function [x_tr, u_tr, d_tr, y_tr, j_trim, cost] = jj_trim (...
       % Always use old value *before* first bisection
       x_u(i_t_v) = x_u_old(i_t_v) + del_t_v;
 
-      % Update input constraints
-      for i = 1:size(constraintsInputsArray,1)
-          if constraintsInputsArray(i,2) > 0
-            x_u(constraintsInputsArray(i,1)+n_x) = x_u(abs(constraintsInputsArray(i,2))+n_x);
+      % Update constraints
+      for i = 1:size(constrainedArray,1)
+          if constrainedArray(i,2) > 0
+            x_u(constrainedArray(i,1)+n_x) = x_u(abs(constrainedArray(i,2))+n_x);
           else
-            x_u(constraintsInputsArray(i,1)+n_x) = -x_u(abs(constraintsInputsArray(i,2))+n_x);
-          end
-      end
-      
-      % Update state constraints
-      for i = 1:size(constraintsStatesArray,1)
-          if constraintsStatesArray(i,2) > 0
-            x_u(constraintsStatesArray(i,1)) = x_u(abs(constraintsStatesArray(i,2)));
-          else
-            x_u(constraintsStatesArray(i,1)) = -x_u(abs(constraintsStatesArray(i,2)));
+            x_u(constrainedArray(i,1)+n_x) = -x_u(abs(constrainedArray(i,2))+n_x);
           end
       end
 
