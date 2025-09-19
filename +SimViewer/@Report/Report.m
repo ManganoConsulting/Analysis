@@ -314,15 +314,8 @@ classdef Report < handle
                 weightFieldName = 'WeightCode';
                 existingNames = [{selFields.name},{mpFields.name}];
                 if ~any(strcmp(existingNames, weightFieldName))
-                    weightKeyCandidates = {keyFcn('Mass Property','Weight Code'), keyFcn('Mass Property','WeightCode')};
+                    % Always add the Weight Code column without a units designator.
                     unit = '';
-                    for keyIdx = 1:numel(weightKeyCandidates)
-                        key = weightKeyCandidates{keyIdx};
-                        if isKey(unitMap,key)
-                            unit = unitMap(key);
-                            break;
-                        end
-                    end
                     mpFields(end+1) = struct('name',weightFieldName,'type','Mass Property','unit',unit,'displayName','Weight Code'); %#ok<AGROW>
                 end
 
@@ -438,7 +431,11 @@ classdef Report < handle
                 if isfield(selFields,'displayName') && ~isempty(selFields(i).displayName)
                     fieldName = selFields(i).displayName;
                 end
-                hdrTxt = sprintf('%s (%s)',fieldName,selFields(i).unit);
+                if strcmp(selFields(i).type,'Mass Property') && strcmp(selFields(i).name,'WeightCode')
+                    hdrTxt = fieldName;
+                else
+                    hdrTxt = sprintf('%s (%s)',fieldName,selFields(i).unit);
+                end
                 newTable1.Cell(2,i + 1).Range.InsertAfter(hdrTxt);
                 newTable1.Cell(2,i + 1).Range.Bold = 1;
                 newTable1.Cell(2,i + 1).Range.ParagraphFormat.Alignment = 1;
