@@ -35,20 +35,10 @@ classdef DYNMain < handle
             if obj.App.AccessAllowed
                 %warn = warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
                 % Start up the splash screen
-                splash = Utilities.SplashScreen( 'Splashscreen', 'ACDSplash_Dynamics.png', ...
-                    'ProgressBar', 'off');
-                splash.addText( 30, 310, ['Version ',obj.App.VersionNumber], 'FontSize', 20, 'Color', [0 0 0] , 'Shadow' , 'off' );
-                splash.addText( 33, 325, ['Build - ',obj.App.InternalVersionNumber], 'FontSize', 10, 'Color', [0 0 0] , 'Shadow' , 'off' );
+                splash = Utilities.SplashScreen(obj.Figure);
 
                 % Set the look and feel for the table models
-                try              
-                    defaults = javax.swing.UIManager.getLookAndFeelDefaults;
-                    if isempty(defaults.get('Table.alternateRowColor'))
-                        defaults.put('Table.alternateRowColor', java.awt.Color( 246/255 , 243/255 , 237/255 ));
-                    end
-                catch
-                   warning('Unable to update ''Table.alternateRowColor''.');
-                end
+
                 
                 figID = [getenv('username'),' Flight ',ProjectType,' | ',obj.App.InternalVersionNumber];
                 %check if GUI is already open

@@ -1,0 +1,7 @@
+pdfplumber
+pymupdf
+pytesseract
+pdf2image
+pandas
+python-dateutil
+markdownify
