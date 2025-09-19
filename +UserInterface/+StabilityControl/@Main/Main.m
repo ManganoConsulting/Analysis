@@ -1391,7 +1391,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
                         % Table of contents and figures placeholders
                         rpt.ActX_word.Selection.TypeText('Table of Contents');
-                        rpt.ActX_word.Selection.Style = 'Heading 1';
+                        rpt.ActX_word.Selection.Style = 'TOC Heading';
+                        rpt.ActX_word.Selection.Font.Size = 16;
                         rpt.ActX_word.Selection.TypeParagraph;
                         addTOC(rpt);
                         rpt.ActX_word.Selection.InsertBreak;
