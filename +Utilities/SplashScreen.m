@@ -54,7 +54,7 @@ end
 function imagePath = iGetSplashImagePath()
     utilitiesFolder = fileparts(mfilename('fullpath'));
     projectRoot = fileparts(utilitiesFolder);
-    imagePath = fullfile(projectRoot, '+UserInterface', 'Resources', 'v5_splashscreen_badge_splash.png');
+    imagePath = fullfile(projectRoot, '+UserInterface', 'Resources', 'v5_splashscreen_badge_dynamics.png');
     if exist(imagePath, 'file') ~= 2
         error('Utilities:SplashScreen:MissingImage', ...
             'Splash screen image ''%s'' not found.', imagePath);
