@@ -150,12 +150,9 @@ classdef Level1Container < matlab.mixin.Copyable & UserInterface.GraphicsObject
                                     'Tag',figID,...
                                     'CloseRequestFcn', @obj.closeFigure_CB);
  
-                                
-                if ~( strcmp(version('-release'),'2015b') || strcmp(version('-release'),'2016a') )
-                    jFig = get(handle(obj.Parent), 'JavaFrame');
-                    pause(0.1);
-                    jFig.fHG2Client.getWindow.setMinimumSize(java.awt.Dimension( 1384 , 960 ));       
-                end
+                if isa(obj.Parent,'matlab.ui.Figure')
+                    Utilities.enforceMinimumFigureSize(obj.Parent,[1384 960]);
+                end         
             else
                 obj.Parent = parent;
             end
