@@ -80,7 +80,7 @@ classdef DYNMain < handle
                                 
 
                 drawnow();
-                UserInterface.Utilities.enableDisableFig(obj.Figure, false);
+                % UserInterface.Utilities.enableDisableFig(obj.Figure, false);
 
 
                 if ~( strcmp(version('-release'),'2015b') || strcmp(version('-release'),'2016a') )
@@ -100,7 +100,7 @@ classdef DYNMain < handle
                 launchStartUp(obj);
 
                 drawnow();
-                UserInterface.Utilities.enableDisableFig(obj.Figure, true);
+                % UserInterface.Utilities.enableDisableFig(obj.Figure, true);
                 delete(splash);
 
 %                 warning(warn);
