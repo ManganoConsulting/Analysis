@@ -69,9 +69,25 @@ function currentState = enableDisableFig(hFig, newState)
           hFig = gcf;
       end
 
-      % Require Java engine to run
-      if ~usejava('jvm')
-          error([mfilename ' requires Java to run.']);
+      useJavaFrame = usejava('jvm') && isprop(hFig(1),'JavaFrame');
+      if useJavaFrame
+          % verify that the legacy Java frame can actually be retrieved
+          try
+              jtest = getJFrame(hFig(1));
+              if isempty(jtest)
+                  useJavaFrame = false;
+              end
+          catch
+              useJavaFrame = false;
+          end
+      end
+      if ~useJavaFrame
+          if exist('newState','var')
+              currentState = localFallback(hFig,newState);
+          else
+              currentState = localFallback(hFig);
+          end
+          return;
       end
 
       % Loop over all requested figures
@@ -79,6 +95,14 @@ function currentState = enableDisableFig(hFig, newState)
 
           % Get the root Java frame
           jff = getJFrame(hFig(figIdx));
+          if isempty(jff)
+              if exist('newState','var')
+                  currentState{figIdx} = localFallback(hFig(figIdx),newState);
+              else
+                  currentState{figIdx} = localFallback(hFig(figIdx));
+              end
+              continue;
+          end
 
           % Get the current frame's state
           currentState{figIdx} = get(jff,'Enabled');  %#ok loop
@@ -149,6 +173,7 @@ function currentState = enableDisableFig(hFig, newState)
           rethrow(err);
       end
   end
+end
 
 %% Get the root Java frame (up to 10 tries, to wait for figure to become responsive)
 function jframe = getJFrame(hFig)
@@ -190,6 +215,43 @@ function jframe = getJFrame(hFig)
       end
   end
   if isempty(jframe)
-      error('Cannot retrieve figure''s java frame');
+      warning(oldWarn);
+      jframe = [];
+      return;
   end
   warning(oldWarn);
+end
+
+function currentState = localFallback(hFig,newState)
+% localFallback Simple figure enable/disable when JavaFrame is unavailable
+
+if nargin < 2
+    comps = findall(hFig,'-property','Enable');
+    if isempty(comps)
+        currentState = 'on';
+    else
+        val = get(comps(1),'Enable');
+        if iscell(val)
+            val = val{1};
+        end
+        currentState = val;
+    end
+    return;
+end
+
+if ischar(newState) || isstring(newState)
+    enabled = strcmpi(newState,'on');
+else
+    enabled = logical(newState);
+end
+if enabled
+    stateStr = 'on';
+    set(hFig,'Pointer','arrow');
+else
+    stateStr = 'off';
+    set(hFig,'Pointer','watch');
+end
+comps = findall(hFig,'-property','Enable');
+set(comps,'Enable',stateStr);
+currentState = stateStr;
+end

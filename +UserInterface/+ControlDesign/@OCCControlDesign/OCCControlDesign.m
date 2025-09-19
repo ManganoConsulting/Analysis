@@ -79,7 +79,6 @@ classdef OCCControlDesign < hgsetget %< lacm.OperatingConditionCollection & hgse
         
         
         LabelComp
-        LabelCont
     end % Public properties
     
     properties ( Dependent = true )
@@ -378,13 +377,14 @@ classdef OCCControlDesign < hgsetget %< lacm.OperatingConditionCollection & hgse
             
             panelPos = getpixelposition(obj.Container);
             
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;Operating&nbsp;Conditons</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.LabelComp,obj.LabelCont] = javacomponent(jLabelview,[ 1 , panelPos(4) - 17 , panelPos(3) , 16 ], obj.Container );
+            obj.LabelComp = uilabel('Parent',obj.Container,...
+                'Text','Operating Conditons',...
+                'FontName','Courier New',...
+                'FontColor',[1 1 1],...
+                'BackgroundColor',[55 96 146]/255,...
+                'HorizontalAlignment','left',...
+                'VerticalAlignment','bottom',...
+                'Position',[1 , panelPos(4) - 17 , panelPos(3) , 16]);
             
             
             
@@ -551,102 +551,42 @@ classdef OCCControlDesign < hgsetget %< lacm.OperatingConditionCollection & hgse
             end
             
             delete(obj.HContainer);
-            
-            
-            model = javaObjectEDT('javax.swing.table.DefaultTableModel',obj.TableData,obj.TableHeader);
-            obj.JTable = javaObjectEDT('javax.swing.JTable',model);
-            obj.JTableH = handle(javaObjectEDT(obj.JTable), 'CallbackProperties');  % ensure that we're using EDT
-            % Present the tree-table within a scrollable viewport on-screen
-            obj.JScroll = javaObjectEDT('javax.swing.JScrollPane',obj.JTable);
-            [obj.JHScroll,obj.HContainer] = javacomponent(obj.JScroll, [], obj.TableContainer);
-                set(obj.HContainer,'Units','Normal');
-                set(obj.HContainer,'Position',[ 0 , 0 , 1 , 1 ]);
-                
-            % Set Callbacks
-            obj.JTableH.MousePressedCallback = @obj.mousePressedInTable;
-            obj.JTableH.KeyReleasedCallback  = @obj.keyReleasedInTable; 
-            obj.JTableH.FocusGainedCallback  = @obj.focusGainedInTable;
-            obj.JTableH.KeyPressedCallback   = @obj.keyPressedInTable;
-            obj.JTableH.KeyTypedCallback     = @obj.keyTypedInTable;
-            JModelH = handle(obj.JTable.getModel, 'CallbackProperties');
-            JModelH.TableChangedCallback     = {@obj.dataUpdatedInTable,obj.JTable};
-            set(handle(obj.JTable.getModel, 'CallbackProperties'),  'TableChangedCallback', {@obj.dataUpdatedInTable,obj.JTable});              
-            
-            obj.JTable.getTableHeader().setReorderingAllowed(false);
-            
-            obj.JTable.setVisible(false);
-%             obj.JTable.setModel(javax.swing.table.DefaultTableModel(obj.TableData,obj.TableHeader)); 
-            
-            obj.JTable.getColumnModel.getColumn(6).setCellRenderer(ColorCellRenderer); 
-            obj.JTable.getColumnModel.getColumn(6).setCellEditor(ColorCellEditor);
-            
 
+            %------------------------------------------------------------------
+            % Create MATLAB uitable instead of java JTable
+            %------------------------------------------------------------------
+            data   = obj.TableData;
+            obj.JTable = uitable('Parent',obj.TableContainer, ...
+                'Data',data, ...
+                'ColumnName',obj.TableHeader, ...
+                'ColumnEditable',[true false false false false true true], ...
+                'Units','normalized', ...
+                'Position',[0 0 1 1], ...
+                'RowName',[], ...
+                'CellEditCallback',@(src,event)obj.dataUpdatedInTable(src,event), ...
+                'CellSelectionCallback',@(src,event)obj.mousePressedInTable(src,event));
+            obj.HContainer = obj.JTable;
 
-            checkBoxCR = javaObjectEDT('com.jidesoft.grid.BooleanCheckBoxCellRenderer');
-            checkBoxCE = javaObjectEDT('com.jidesoft.grid.BooleanCheckBoxCellEditor');
-            %pause(0.01);
-            %checkBoxCR.setBackground(java.awt.Color.blue); 
-            nonEditCR = javaObjectEDT('javax.swing.DefaultCellEditor',javax.swing.JTextField);
-            nonEditCR.setClickCountToStart(intmax); % =never.
-            obj.JTable.getColumnModel.getColumn(0).setCellRenderer(checkBoxCR); 
-            obj.JTable.getColumnModel.getColumn(0).setCellEditor(checkBoxCE); 
-            obj.JTable.getColumnModel.getColumn(1).setCellEditor(nonEditCR); 
-            obj.JTable.getColumnModel.getColumn(2).setCellEditor(nonEditCR); 
-            obj.JTable.getColumnModel.getColumn(3).setCellEditor(nonEditCR); 
-            obj.JTable.getColumnModel.getColumn(4).setCellEditor(nonEditCR); 
-            obj.JTable.getColumnModel.getColumn(5).setCellRenderer(checkBoxCR); 
-            obj.JTable.getColumnModel.getColumn(5).setCellEditor(checkBoxCE); 
-       
-            cr = javaObjectEDT('ColoredFieldCellRenderer'); 
+            % Configure column widths similar to previous java implementation
+            obj.JTable.ColumnWidth = {20,60,60,60,60,20,20};
 
-            column0 = obj.JTable.getColumnModel().getColumn(0);column0.setPreferredWidth(20);column0.setMinWidth(20);column0.setMaxWidth(60);
-            column1 = obj.JTable.getColumnModel().getColumn(1);column1.setPreferredWidth(60);column1.setMinWidth(60);%column1.setMaxWidth(60);
-            column2 = obj.JTable.getColumnModel().getColumn(2);column2.setPreferredWidth(60);column2.setMinWidth(60);%column2.setMaxWidth(60);
-            column3 = obj.JTable.getColumnModel().getColumn(3);column3.setPreferredWidth(60);column3.setMinWidth(60);%column3.setMaxWidth(60);
-            column4 = obj.JTable.getColumnModel().getColumn(4);column4.setPreferredWidth(60);column4.setMinWidth(60);%column4.setMaxWidth(60);
-            column5 = obj.JTable.getColumnModel().getColumn(5);column5.setPreferredWidth(20);column5.setMinWidth(20);column5.setMaxWidth(60);
-            column6 = obj.JTable.getColumnModel().getColumn(6);column6.setPreferredWidth(20);column6.setMinWidth(20);column6.setMaxWidth(60);
-            
-%             %--------------------------------------------------------------
-%             %           ScatteredGain Source Highlight
-%             %--------------------------------------------------------------
-%             scatterdGainExistsBool = [obj.FilteredOperConds.HasSavedGain];
-%             if obj.ScatteredGainSourceSelected
-%                 for i = 0:double(obj.JTable.getRowCount) - 1
-%                     if scatterdGainExistsBool(i+1)
-%                         cr.setCellFgColor( i,1,java.awt.Color.red );
-%                     end
-%                 end
-%                 obj.JTable.getColumnModel.getColumn(2).setCellRenderer(cr);
-%                 for i = 0:double(obj.JTable.getRowCount) - 1
-%                     if scatterdGainExistsBool(i+1)
-%                         cr.setCellFgColor( i,2,java.awt.Color.red );
-%                     end 
-%                 end
-%                 obj.JTable.getColumnModel.getColumn(3).setCellRenderer(cr);
-%                 for i = 0:double(obj.JTable.getRowCount) - 1
-%                     if scatterdGainExistsBool(i+1)
-%                         cr.setCellFgColor( i,3,java.awt.Color.red );
-%                     end 
-%                 end  
-%                 obj.JTable.getColumnModel.getColumn(4).setCellRenderer(cr);
-%                 for i = 0:double(obj.JTable.getRowCount) - 1
-%                     if scatterdGainExistsBool(i+1)
-%                         cr.setCellFgColor( i,4,java.awt.Color.red );
-%                     end 
-%                 end
-%             end
-            
+            % Apply existing callback stubs for key press/release if supported
+            if isprop(obj.JTable,'KeyPressFcn')
+                obj.JTable.KeyPressFcn = @obj.keyPressedInTable;
+            end
+            if isprop(obj.JTable,'KeyReleaseFcn')
+                obj.JTable.KeyReleaseFcn = @obj.keyReleasedInTable;
+            end
 
-            obj.JTable.setGridColor(java.awt.Color.lightGray);
+            % Apply background color style for color column
+            for r = 1:size(data,1)
+                c = sscanf(data{r,7},'%d,%d,%d')';
+                if numel(c)==3
+                    s = uistyle('BackgroundColor',c/255);
+                    addStyle(obj.JTable,s,'cell',[r 7]);
+                end
+            end
 
-            set(handle(obj.JTable.getModel, 'CallbackProperties'),  'TableChangedCallback', {@obj.dataUpdatedInTable,obj.JTable});
-            % Taken from: http://xtargets.com/snippets/posts/show/37
-            obj.JTable.putClientProperty('terminateEditOnFocusLost', java.lang.Boolean.TRUE);
-            
-            obj.JTable. repaint;
-            obj.JTable.setVisible(true);
-           
             notify(obj,'OperCondTableUpdated');
             
         end % updateTable
@@ -969,8 +909,8 @@ classdef OCCControlDesign < hgsetget %< lacm.OperatingConditionCollection & hgse
             
             panelPos = getpixelposition(obj.Container);
             
-            obj.LabelCont.Units = 'Pixels';
-            obj.LabelCont.Position = [ 1 , panelPos(4) - 17 , panelPos(3) , 16 ];
+            % uilabel components always use pixel units, so only set Position
+            obj.LabelComp.Position = [ 1 , panelPos(4) - 17 , panelPos(3) , 16 ];
 
             % - searchMdlRow1HBox ------------------------------------
             set(obj.Text1,...
@@ -1147,41 +1087,50 @@ classdef OCCControlDesign < hgsetget %< lacm.OperatingConditionCollection & hgse
 
         end % keyTypedInTable   
         
-        function dataUpdatedInTable( obj , hModel , hEvent , jtable )
-            modifiedRow = get(hEvent,'FirstRow');
-            modifiedCol = get(hEvent,'Column');
-            modifiedOC = obj.FilteredOperConds(modifiedRow + 1);
-            newData = hModel.getValueAt(modifiedRow,modifiedCol);
+        function dataUpdatedInTable( obj , src , event )
+            if isempty(event.Indices)
+                return;
+            end
+            modifiedRow = event.Indices(1);
+            modifiedCol = event.Indices(2);
+            modifiedOC  = obj.FilteredOperConds(modifiedRow);
+            newData     = event.NewData;
             switch modifiedCol
-                case 0
+                case 1
                     if sum([obj.FilteredOperConds.SelectedforDesign]) > 1 && obj.GainSource == 3
                         updateTable( obj , [obj.FilteredOperConds.SelectedforDesign] , [obj.FilteredOperConds.SelectedforAnalysis]);
                     else
                         modifiedOC.SelectedforAnalysis = newData;
-                        %obj.LastSelectedDesignCond    = [obj.FilteredOperConds.SelectedforDesign];
                         obj.LastSelectedAnaylysisCond = [obj.FilteredOperConds.SelectedforAnalysis];
                     end
-                case 5
+                case 6
                     if obj.GainSource == 3
-                        %[obj.FilteredOperConds.SelectedforDesign] = deal(false);
                         modifiedOC.SelectedforDesign = newData;
                         if sum([obj.FilteredOperConds.SelectedforDesign]) > 1
                             [obj.FilteredOperConds.SelectedforAnalysis] = obj.FilteredOperConds.SelectedforDesign;
                         end
                         updateTable( obj , [obj.FilteredOperConds.SelectedforDesign] , [obj.FilteredOperConds.SelectedforAnalysis]);
                         obj.LastSelectedDesignCond    = [obj.FilteredOperConds.SelectedforDesign];
-                        %obj.LastSelectedAnaylysisCond = [obj.FilteredOperConds.SelectedforAnalysis];      
                     else
                         [obj.FilteredOperConds.SelectedforDesign] = deal(false);
                         modifiedOC.SelectedforDesign = newData;
                         updateTable( obj , [obj.FilteredOperConds.SelectedforDesign] , [obj.FilteredOperConds.SelectedforAnalysis]);
                         obj.LastSelectedDesignCond    = [obj.FilteredOperConds.SelectedforDesign];
                     end
-                case 6
-                    color = double([ newData.getRed , newData.getGreen , newData.getBlue ]);
-                    modifiedOC.Color = color;
+                case 7
+                    % Launch color chooser and update table/background
+                    color = uisetcolor(modifiedOC.Color/255);
+                    if numel(color)==3
+                        color = round(color*255);
+                        modifiedOC.Color = color;
+                        src.Data{modifiedRow,7} = sprintf('%d,%d,%d',color);
+                        s = uistyle('BackgroundColor',color/255);
+                        addStyle(src,s,'cell',[modifiedRow 7]);
+                    else
+                        % revert to previous value if user cancelled
+                        src.Data{modifiedRow,7} = sprintf('%d,%d,%d',modifiedOC.Color);
+                    end
             end
-%             updateTable( obj );
         end % dataUpdatedInTable
         
         function write2MFile( obj , hModel , hEvent , ind )
@@ -1203,8 +1152,23 @@ classdef OCCControlDesign < hgsetget %< lacm.OperatingConditionCollection & hgse
         end % deselectAllAnalysis
         
         function updateColumnJTable( obj , columnNum , value )
-            for i=1:double(obj.JTable.getRowCount)
-                obj.JTable.setValueAt(value(i), (i - 1) ,columnNum);
+            % columnNum provided using 0-based indexing in original java code
+            col = columnNum + 1;
+            data = obj.JTable.Data;
+            for i = 1:min(size(data,1),numel(value))
+                data{i,col} = value(i);
+            end
+            obj.JTable.Data = data;
+
+            % update color styling if needed
+            if col == 7
+                for i = 1:min(size(data,1),numel(value))
+                    c = sscanf(data{i,7},'%d,%d,%d')';
+                    if numel(c)==3
+                        s = uistyle('BackgroundColor',c/255);
+                        addStyle(obj.JTable,s,'cell',[i 7]);
+                    end
+                end
             end
         end % updateColumnJTable
         
@@ -1226,8 +1190,8 @@ classdef OCCControlDesign < hgsetget %< lacm.OperatingConditionCollection & hgse
             if ishandle(obj.HContainer) && strcmp(get(obj.HContainer, 'BeingDeleted'), 'off')
                 delete(obj.HContainer);
             end
-            if ishandle(obj.LabelCont) && strcmp(get(obj.LabelCont, 'BeingDeleted'), 'off')
-                delete(obj.LabelCont);
+            if ishandle(obj.LabelComp) && strcmp(get(obj.LabelComp, 'BeingDeleted'), 'off')
+                delete(obj.LabelComp);
             end
 
 

@@ -14,7 +14,7 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
     %
     %
     
-    %% Transient properties - Object Handles
+    %% Transient properties - Object Handles{'1-D','2-D'}
     properties (Transient = true)   
         Parent
         Container
@@ -118,6 +118,7 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         SelScatteredGainList = struct('Name',{},'Expression',{})
         SelIndVarsList = struct('Name',{},'Expression',{})
+        TableDimList = {'1-D','2-D'}
     end % Public properties
     
     %% Private properties
@@ -426,11 +427,20 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         % Callback | Scattered Gain Object:  
         function scattGainFileSel_CB( obj , hobj , ~ )
-            if hobj.getSelectedIndex < 0
-                obj.SelScattGainObjIndex = [];
+            if isprop(hobj,'Value')
+                if isempty(hobj.Value)
+                    obj.SelScattGainObjIndex = [];
+                else
+                    obj.SelScattGainObjIndex = find(strcmp(hobj.Items,hobj.Value));
+                    notify(obj,'ScatteredGainFileSelected',UserInterface.ControlDesign.GainSchEventData(obj.SelectedScattGainFileObj));
+                end
             else
-                obj.SelScattGainObjIndex = hobj.getSelectedIndex + 1;
-                notify(obj,'ScatteredGainFileSelected',UserInterface.ControlDesign.GainSchEventData(obj.SelectedScattGainFileObj));
+                if hobj.getSelectedIndex < 0
+                    obj.SelScattGainObjIndex = [];
+                else
+                    obj.SelScattGainObjIndex = hobj.getSelectedIndex + 1;
+                    notify(obj,'ScatteredGainFileSelected',UserInterface.ControlDesign.GainSchEventData(obj.SelectedScattGainFileObj));
+                end
             end
             obj.SelScatteredGainList = [];
             obj.SelIndVarsList = [];
@@ -441,60 +451,97 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
        
         % Callback | Select Scattered Gain:
         function gainSel_CB( obj , hobj , ~ )
-            if hobj.getSelectedIndex ~= -1
-                % Called when a new scattered gain is selected
-                obj.SelectedGainIndex = hobj.getSelectedIndex + 1;  
-                obj.SelectedGainString = hobj.getSelectedItem;
-                obj.SelectedGain = obj.SelectedGainString; 
-                update( obj );
-                notify(obj,'GainSelected',UserInterface.ControlDesign.GainSchEventData(obj.SelectedGain)); 
+            if isprop(hobj,'Value')
+                val = hobj.Value;
+                idx = find(strcmp(hobj.Items,val));
+                if ~isempty(idx)
+                    obj.SelectedGainIndex = idx;
+                    obj.SelectedGainString = val;
+                    obj.SelectedGain = val;
+                    update( obj );
+                    notify(obj,'GainSelected',UserInterface.ControlDesign.GainSchEventData(obj.SelectedGain));
+                else
+                    if ~isempty(obj.SelectedGainIndex)
+                        selItem = hobj.Items{obj.SelectedGainIndex};
+                        userExp = val;
+                        symvarStr = symvar(userExp);
+                        if any(strcmp(selItem,symvarStr))
+                            obj.SelectedGainString = userExp;
+                            obj.SelectedGain = selItem;
+                            update( obj );
+                            notify(obj,'GainSelected',UserInterface.ControlDesign.GainSchEventData(obj.SelectedGain));
+                        else
+                            error('GainSchedule:UnknownGain','Gain Expression must contain the selected gain.');
+                        end
+                    end
+                end
             else
-                if ~isempty(obj.SelectedGainIndex)
-                    % called when user adds an expression
-                    selItem = hobj.getModel.getElementAt( obj.SelectedGainIndex - 1 );
-                    userExp = hobj.getSelectedItem;
-                    symvarStr = symvar(userExp);
-                    if any(strcmp(selItem,symvarStr))
-                        obj.SelectedGainString = userExp;
-                        obj.SelectedGain = selItem;
-                        update( obj );
-                        notify(obj,'GainSelected',UserInterface.ControlDesign.GainSchEventData(obj.SelectedGain));
-                    else
-                        error('GainSchedule:UnknownGain','Gain Expression must contain the selected gain.');
+                if hobj.getSelectedIndex ~= -1
+                    obj.SelectedGainIndex = hobj.getSelectedIndex + 1;
+                    obj.SelectedGainString = hobj.getSelectedItem;
+                    obj.SelectedGain = obj.SelectedGainString;
+                    update( obj );
+                    notify(obj,'GainSelected',UserInterface.ControlDesign.GainSchEventData(obj.SelectedGain));
+                else
+                    if ~isempty(obj.SelectedGainIndex)
+                        selItem = hobj.getModel.getElementAt( obj.SelectedGainIndex - 1 );
+                        userExp = hobj.getSelectedItem;
+                        symvarStr = symvar(userExp);
+                        if any(strcmp(selItem,symvarStr))
+                            obj.SelectedGainString = userExp;
+                            obj.SelectedGain = selItem;
+                            update( obj );
+                            notify(obj,'GainSelected',UserInterface.ControlDesign.GainSchEventData(obj.SelectedGain));
+                        else
+                            error('GainSchedule:UnknownGain','Gain Expression must contain the selected gain.');
+                        end
                     end
                 end
             end
-%             obj.SelectedGainString = hobj.getSelectedItem;
-%             tempName = symvar(obj.SelectedGainString);
-%             obj.SelectedGain = tempName{1};
-%             update( obj );
-%             notify(obj,'GainSelected',UserInterface.ControlDesign.GainSchEventData(tempName{1}));                
         end % gainSel_CB
         
         % Callback | Independent Variable:
         function indVar_CB( obj , hobj , ~ )
-            if hobj.getSelectedIndex ~= -1
-                obj.IndVarSelectedIndex = hobj.getSelectedIndex + 1;  
-                obj.IndVarString = hobj.getSelectedItem; 
-                update( obj );
+            if isprop(hobj,'Value')
+                val = hobj.Value;
+                idx = find(strcmp(hobj.Items,val));
+                if ~isempty(idx)
+                    obj.IndVarSelectedIndex = idx;
+                    obj.IndVarString = val;
+                    update( obj );
+                else
+                    if ~isempty(obj.IndVarSelectedIndex)
+                        selItem = hobj.Items{obj.IndVarSelectedIndex};
+                        userExp = val;
+                        symvarStr = symvar(userExp);
+                        if any(strcmp(selItem,symvarStr))
+                            obj.IndVarString = userExp;
+                            update( obj );
+                        else
+                            error('GainSchedule:UnknownIndependantVariable','Independant Variable Expression must contain the selected Independant Variable.');
+                        end
+                    end
+                end
             else
-                if ~isempty(obj.IndVarSelectedIndex)
-                    % called when user adds an expression
-                    selItem = hobj.getModel.getElementAt( obj.IndVarSelectedIndex - 1 );
-                    userExp = hobj.getSelectedItem;
-                    symvarStr = symvar(userExp);
-                    if any(strcmp(selItem,symvarStr))
-                        obj.IndVarString = userExp;
-                        update( obj );
-                    else
-                        error('GainSchedule:UnknownIndependantVariable','Independant Variable Expression must contain the selected Independant Variable.');
+                if hobj.getSelectedIndex ~= -1
+                    obj.IndVarSelectedIndex = hobj.getSelectedIndex + 1;
+                    obj.IndVarString = hobj.getSelectedItem;
+                    update( obj );
+                else
+                    if ~isempty(obj.IndVarSelectedIndex)
+                        selItem = hobj.getModel.getElementAt( obj.IndVarSelectedIndex - 1 );
+                        userExp = hobj.getSelectedItem;
+                        symvarStr = symvar(userExp);
+                        if any(strcmp(selItem,symvarStr))
+                            obj.IndVarString = userExp;
+                            update( obj );
+                        else
+                            error('GainSchedule:UnknownIndependantVariable','Independant Variable Expression must contain the selected Independant Variable.');
+                        end
                     end
                 end
             end
-%             obj.IndVarSelectedIndex = hobj.getSelectedIndex + 1;  
-%             obj.IndVarString = hobj.getSelectedItem;
-%             update( obj );
-        end % indVar_CB    
+        end % indVar_CB
         
         % Callback | Edit Scattered Gain List
         function updateSelectableScatteredGains( obj , ~ , ~ )
@@ -529,14 +576,21 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         % Callback | Scheduled Gain Collection Object:
         function schGainFileSel_CB( obj , hobj , ~ )
-            if hobj.getSelectedIndex < 0
-                obj.SelSchGainFileObjIndex = [];
+            if isprop(hobj,'Value')
+                if isempty(hobj.Value)
+                    obj.SelSchGainFileObjIndex = [];
+                else
+                    obj.SelSchGainFileObjIndex = find(strcmp(hobj.Items,hobj.Value));
+                end
             else
-                obj.SelSchGainFileObjIndex = hobj.getSelectedIndex + 1;
+                if hobj.getSelectedIndex < 0
+                    obj.SelSchGainFileObjIndex = [];
+                else
+                    obj.SelSchGainFileObjIndex = hobj.getSelectedIndex + 1;
+                end
             end
             setScheduledGainComboBox( obj );
-            notify(obj,'SchGainFileSelected',UserInterface.ControlDesign.GainSchEventData({obj.CurrentSchGainFileObj,obj.SelectedScattGainFileObj})); % Is currently commented out in ControlDesignGUI.m
-            %update( obj );
+            notify(obj,'SchGainFileSelected',UserInterface.ControlDesign.GainSchEventData({obj.CurrentSchGainFileObj,obj.SelectedScattGainFileObj}));
         end % schGainFileSel_CB
         
         % Callback | Add Scheduled Gain Collection Object
@@ -688,12 +742,16 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
         % Callback | Scheduled Gain Name:
         function schGainNameSel_CB( obj , hobj , eventdata )
             set(obj.ParentFigure, 'pointer', 'watch');
-            
-            mdl = hobj.getModel;
-            javaObjectEDT(mdl);
-            
-            obj.SelectedScheduledGain = char(mdl.getSelectedItem);
-            obj.HContSchGainSelIndex = hobj.getSelectedIndex;
+
+            if isprop(hobj,'Value')
+                obj.SelectedScheduledGain = hobj.Value;
+                obj.HContSchGainSelIndex = find(strcmp(hobj.Items,hobj.Value));
+            else
+                mdl = hobj.getModel;
+                javaObjectEDT(mdl);
+                obj.SelectedScheduledGain = char(mdl.getSelectedItem);
+                obj.HContSchGainSelIndex = hobj.getSelectedIndex;
+            end
             % Needs an error catch
             currentGain = findGainByUserName( obj.CurrentSchGainFileObj , obj.SelectedScheduledGain );
             
@@ -785,56 +843,34 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'Yes',...
                     'No','No');
                 drawnow();pause(0.5);
-                % Handle response
                 switch choice
                     case 'Yes'
                         gain2remove = obj.SelectedScheduledGain;
-                        
-                        % Remove from combobox
-                        m = obj.HCompSchGainName.getModel.getSize;
-                        names = {};
-                        for i = 0:m-1
-                            temp = obj.HCompSchGainName.getModel.getElementAt(i);
-                            if ~(length(temp) == 1 && isspace(temp))
-                                names{end + 1} = temp;
-                            end
-                        end
+
+                        names = obj.HCompSchGainName.Items;
                         logArray = ~strcmp(gain2remove,names);
                         names = names(logArray);
                         if ~isempty(names)
-                            model = javaObjectEDT('javax.swing.DefaultComboBoxModel',names);
-                            obj.HCompSchGainName.setModel(model);
-                            obj.HContSchGainSelIndex = 0;
-                            obj.HCompSchGainName.setSelectedIndex(obj.HContSchGainSelIndex);
-                            %obj.SelectedGain = names{1};
+                            obj.HCompSchGainName.Items = names;
+                            obj.HContSchGainSelIndex = 1;
+                            obj.HCompSchGainName.Value = names{1};
                             obj.SelectedScheduledGain = names{1};
-                            
-%                             obj.ScheduledGainNamesArray(~logArray) = [];
                         else
-                            model = javaObjectEDT('javax.swing.DefaultComboBoxModel',{' '});
-                            obj.HCompSchGainName.setModel(model);
-                            %obj.SelectedGain = {};
-                            obj.SelectedScheduledGain = {};
-                            
-                            % Set the Breakpoints Names and Values
+                            obj.HCompSchGainName.Items = {' '};
+                            obj.HCompSchGainName.Value = ' ';
+                            obj.SelectedScheduledGain = '';
                             obj.BreakPoints1TableName = '';
                             obj.BP1ValueString = '';
-
                             obj.BreakPoints2TableName = '';
                             obj.BreakPointsString = '';
-                            
                             obj.PolyFitData = {'1','[0,1]';'','';'','';'','';'','';};
-                            
-%                             obj.ScheduledGainNamesArray = {};
                         end
-                        
-                        
-                        % Remove from gain file obj
+
                         lgArray = strcmp(gain2remove,{obj.CurrentSchGainFileObj.Gain.Name});
                         if any(lgArray)
                             obj.CurrentSchGainFileObj.Gain(lgArray) = [];
                         end
-                        
+
                         update( obj );
                         updateTable( obj );
                     case 'No'
@@ -842,20 +878,23 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
                     otherwise
                         return;
                 end
-                
             end
         end % rmScheduleGainName_CB
         
         % Callback | Dimension:
         function tableDim_CB( obj , hobj , ~ )
-            
-            tableDimCell = hobj.String;
-            tableDimText =  tableDimCell{hobj.Value};
+
+            if isprop(hobj,'Value') && ischar(hobj.Value)
+                tableDimText = hobj.Value;
+            else
+                tableDimCell = hobj.String;
+                tableDimText = tableDimCell{hobj.Value};
+            end
             switch tableDimText
                 case {'1-D'}
                     ndim = 1;
                 case {'2-D'}
-                    ndim = 2;       
+                    ndim = 2;
             end
 
             
@@ -872,75 +911,88 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
                     switch choice
                         case 'Yes'
                             obj.CurrentSchGainFileObj.Gain(logArray) = [];
-                            
+
                             updateTable( obj );
                         otherwise
                             switch currentGainSch.Ndim
                                 case 1
-                                    obj.HContTableDim.Value = 1; 
+                                    obj.HContTableDim.Value = '1-D';
                                 case 2
-                                    obj.HContTableDim.Value = 2;        
+                                    obj.HContTableDim.Value = '2-D';
                             end
                             pause(0.5);
                             return;
                     end
                 end
             end
-             
+
 
             obj.SelectedTableDimension = ndim;
             resize( obj , [] , [] );
-            
+
             update( obj );
             %updatecurrentSchGain( obj );
         end % tableDim_CB
         
         % Callback | Break Points 1 Name:
         function bp1TableName_CB( obj , hobj , ~ )
-            str = strtrim(get(hobj,'String'));
-            if isvarname(str) 
+            if isprop(hobj,'Value')
+                str = strtrim(hobj.Value);
+            else
+                str = strtrim(get(hobj,'String'));
+            end
+            if isvarname(str)
                 obj.BreakPoints1TableName = str;
             else
                 obj.BreakPoints1TableName = '';
                 notify(obj,'ShowLogMessage',UserInterface.LogMessageEventData('Breakpoints 1 Name must be a valid Matlab variable name.','warn'));
             end
             update( obj );
-%             updatecurrentSchGain( obj );
-        end % bp1TableName_CB 
+        end % bp1TableName_CB
         
         % Callback | Break Points 2 Name:
         function bp2TableName_CB( obj , hobj , ~ )
-            str = strtrim(get(hobj,'String'));
-            if isvarname(str) 
+            if isprop(hobj,'Value')
+                str = strtrim(hobj.Value);
+            else
+                str = strtrim(get(hobj,'String'));
+            end
+            if isvarname(str)
                 obj.BreakPoints2TableName = str;
             else
                 obj.BreakPoints2TableName = '';
                 notify(obj,'ShowLogMessage',UserInterface.LogMessageEventData('Breakpoints 2 Name must be a valid Matlab variable name.','warn'));
             end
             update( obj );
-%             updatecurrentSchGain( obj );
         end % bp2TableName_CB
         
         % Callback | Break Points 1 Value:
         function bp1Value_CB( obj , hobj , ~ )
-            
-            test = str2double(hobj.String);
+
+            if isprop(hobj,'Value')
+                str = hobj.Value;
+            else
+                str = hobj.String;
+            end
+            test = str2double(str);
             if isnan(test)
                 notify(obj,'ShowLogMessage',UserInterface.LogMessageEventData('Breakpoint 1 value must be convertible to a scalar number.','warn'));
                 obj.BP1ValueString = [];
             else
-                obj.BP1ValueString = hobj.String;
+                obj.BP1ValueString = str;
             end
             update( obj );
-%             updatecurrentSchGain( obj );
         end % bp1Value_CB
         
         % Callback | Break Points 2 Value:
         function bp_CB( obj , hobj , ~ )
-            obj.BreakPointsString = get(hobj,'String');
+            if isprop(hobj,'Value')
+                obj.BreakPointsString = hobj.Value;
+            else
+                obj.BreakPointsString = get(hobj,'String');
+            end
             update( obj );
-%             updatecurrentSchGain( obj );
-        end % bp_CB 
+        end % bp_CB
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%%%% Gain Fit %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1194,47 +1246,42 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         % Callback | Option Table
-        function dataUpdatedInTable( obj , hModel , hEvent , jtable ) 
-            modifiedRow = get(hEvent,'FirstRow');
-            modifiedCol = get(hEvent,'Column');
-            
-            columnCount = obj.JTable.getColumnCount;
-            
+        function dataUpdatedInTable( obj , src , event )
+            modifiedRow = event.Indices(1);
+            modifiedCol = event.Indices(2);
+            newData = event.NewData;
+
             currentGain = findGainByUserName( obj.CurrentSchGainFileObj , obj.SelectedScheduledGain );
-            rowCount = obj.JTable.getRowCount;
+            rowCount = size(src.Data,1);
             if isempty(currentGain)
                 return;
             end
-            
+
             if rowCount == 1
                 modifiedSchGainVec = currentGain.SchGainVec(1);
-                newData = hModel.getValueAt(0,modifiedCol);
             else
                 sortOrderBreakPoints1 = currentGain.SortOrderBreakPoints1;
-                ind = sortOrderBreakPoints1(modifiedRow + 1);% find(sortOrderBreakPoints1 == modifiedRow + 1);
+                ind = sortOrderBreakPoints1(modifiedRow);
                 modifiedSchGainVec = currentGain.SchGainVec(ind);
-                newData = hModel.getValueAt(modifiedRow,modifiedCol);
             end
-            
+
             switch modifiedCol
-                case 0
+                case 1
                     modifiedSchGainVec.Selected = newData;
-                    
+
                     if modifiedSchGainVec.Selected
-                        % Show Plot
-                        
                         pfLineH3 = line(modifiedSchGainVec.Line3.XData,modifiedSchGainVec.Line3.YData,...
                             'Parent',obj.axH,...
-                            'Color',[str2num(modifiedSchGainVec.Color)/256,0.5],...%[1,0,0],...
+                            'Color',[str2num(modifiedSchGainVec.Color)/256,0.5],...
                             'Marker','o',...
                             'MarkerSize',6,...
-                            'MarkerFaceColor',str2num(modifiedSchGainVec.Color)/256,...%[1,0,0],...
-                            'MarkerEdgeColor',str2num(modifiedSchGainVec.Color)/256,...%[1,0,0],...
-                            'LineStyle','-',... 
+                            'MarkerFaceColor',str2num(modifiedSchGainVec.Color)/256,...
+                            'MarkerEdgeColor',str2num(modifiedSchGainVec.Color)/256,...
+                            'LineStyle','-',...
                             'Visible','on',...
                             'LineWidth',2); %#ok<ST2NM>
                         modifiedSchGainVec.LineH = pfLineH3;
-                        obj.PolyFitLineH = [obj.PolyFitLineH,pfLineH3]; 
+                        obj.PolyFitLineH = [obj.PolyFitLineH,pfLineH3];
                     else
                         try
                             delete(modifiedSchGainVec.LineH);
@@ -1431,54 +1478,56 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
     %% Methods - Set ComboBoxes
     methods                 
 
-        function setScheduledGainComboBox( obj , gainName ) 
-            
+        function setScheduledGainComboBox( obj , gainName )
+
             if isempty(obj.CurrentSchGainFileObj)
-%                 names = {' '};
-                model = javaObjectEDT( 'javax.swing.DefaultComboBoxModel' );
-                obj.HCompSchGainName.setModel(model);
+                if isa(obj.HCompSchGainName,'matlab.ui.control.DropDown')
+                    obj.HCompSchGainName.Items = {' '};
+                    obj.HCompSchGainName.Value = ' ';
+                else
+                    model = javaObjectEDT( 'javax.swing.DefaultComboBoxModel' );
+                    obj.HCompSchGainName.setModel(model);
+                end
                 obj.HContSchGainSelIndex = 0;
                 obj.SelectedScheduledGain = '';
                 drawnow(); pause(0.01);
 
             else
-            
-%                 names = {obj.CurrentSchGainFileObj.Gain.Name};
-%                 names = obj.ScheduledGainNamesArray;
-
                 if nargin == 2
-%                     if any(strcmp(gainName,strtrim(names)))
-%                         notify(obj,'ShowLogMessage' ,UserInterface.LogMessageEventData('Gain name must be unique.','error'));
-%                         notify(obj,'ShowLogMessage',UserInterface.LogMessageEventData(['Scheduling completed.'],'info'));
-%                         return;  
-%                     end
-%                     names = [obj.ScheduledGainNamesArray,gainName];
-%                     obj.ScheduledGainNamesArray = names;
+                    if any(strcmp(gainName,obj.ScheduledGainNamesArray))
+                        notify(obj,'ShowLogMessage' ,UserInterface.LogMessageEventData('Gain name must be unique.','error'));
+                        notify(obj,'ShowLogMessage',UserInterface.LogMessageEventData(['Scheduling completed.'],'info'));
+                        return;
+                    end
+                    obj.ScheduledGainNamesArray = [obj.ScheduledGainNamesArray,gainName];
                 end
-            
-                if ~isempty(obj.CurrentSchGainFileObj.Gain) %~isempty(obj.ScheduledGainNamesArray)
-                    
-                    schGainNames = {obj.CurrentSchGainFileObj.Gain.Name};
-                    model = javaObjectEDT('javax.swing.DefaultComboBoxModel',schGainNames);
-%                     model = javaObjectEDT('javax.swing.DefaultComboBoxModel',obj.ScheduledGainNamesArray);
-                    obj.HCompSchGainName.setModel(model);
-                    obj.HContSchGainSelIndex = length(obj.CurrentSchGainFileObj.Gain) - 1;
-%                     obj.HContSchGainSelIndex = length(obj.ScheduledGainNamesArray) - 1;
-                    obj.HCompSchGainName.setSelectedIndex(obj.HContSchGainSelIndex);
 
-                    obj.SelectedScheduledGain = model.getElementAt(obj.HContSchGainSelIndex);
+                if ~isempty(obj.CurrentSchGainFileObj.Gain)
+                    schGainNames = {obj.CurrentSchGainFileObj.Gain.Name};
+                    if isa(obj.HCompSchGainName,'matlab.ui.control.DropDown')
+                        obj.HCompSchGainName.Items = schGainNames;
+                        obj.HCompSchGainName.Value = schGainNames{end};
+                    else
+                        model = javaObjectEDT('javax.swing.DefaultComboBoxModel',schGainNames);
+                        obj.HCompSchGainName.setModel(model);
+                        obj.HCompSchGainName.setSelectedIndex(length(schGainNames) - 1);
+                    end
+                    obj.HContSchGainSelIndex = length(obj.CurrentSchGainFileObj.Gain) - 1;
+                    obj.SelectedScheduledGain = schGainNames{end};
                 else
-%                     names = {' '};
-                    model = javaObjectEDT( 'javax.swing.DefaultComboBoxModel' );
-                    obj.HCompSchGainName.setModel(model);
+                    if isa(obj.HCompSchGainName,'matlab.ui.control.DropDown')
+                        obj.HCompSchGainName.Items = {' '};
+                        obj.HCompSchGainName.Value = ' ';
+                    else
+                        model = javaObjectEDT( 'javax.swing.DefaultComboBoxModel' );
+                        obj.HCompSchGainName.setModel(model);
+                    end
                     obj.HContSchGainSelIndex = 0;
                     obj.SelectedScheduledGain = '';
                 end
             end
-%             obj.ScheduledGainNamesArray = names;
-            %obj.SelectedScheduledGain = gainName;
             updateTable( obj );
-            
+
         end % setScheduledGainComboBox
         
         function setSchGainFileComboBox( obj , schGainObjs )
@@ -1487,30 +1536,50 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
             if nargin == 2
                 obj.SchGainFileObjArray(end +1) = schGainObjs;
             end
-            
+
             if ~isempty(obj.SchGainFileObjArray)
                 cellstr = {obj.SchGainFileObjArray.Name};
-                model = javaObjectEDT('javax.swing.DefaultComboBoxModel',cellstr);
-                obj.HCompSelSchFile.setModel(model);
-                obj.HCompSelSchFile.setSelectedIndex(length(cellstr) - 1);
+                if isa(obj.HCompSelSchFile,'matlab.ui.control.DropDown')
+                    obj.HCompSelSchFile.Items = cellstr;
+                    obj.HCompSelSchFile.Value = cellstr{end};
+                else
+                    model = javaObjectEDT('javax.swing.DefaultComboBoxModel',cellstr);
+                    obj.HCompSelSchFile.setModel(model);
+                    obj.HCompSelSchFile.setSelectedIndex(length(cellstr) - 1);
+                end
                 obj.SelSchGainFileObjIndex = length(cellstr);
 
             else
-                model = javaObjectEDT('javax.swing.DefaultComboBoxModel',{''});
-                obj.HCompSelSchFile.setModel(model);
+                if isa(obj.HCompSelSchFile,'matlab.ui.control.DropDown')
+                    obj.HCompSelSchFile.Items = {''};
+                    obj.HCompSelSchFile.Value = '';
+                else
+                    model = javaObjectEDT('javax.swing.DefaultComboBoxModel',{''});
+                    obj.HCompSelSchFile.setModel(model);
+                end
                 obj.SelSchGainFileObjIndex = [];
             end
         end % setSchGainFileComboBox
         
-        function setScatteredGainFileComboBox( obj )  
+        function setScatteredGainFileComboBox( obj )
             if ~isempty(obj.ScattGainFileObjArray)
                 cellstr = {obj.ScattGainFileObjArray.Name};
-                model = javaObjectEDT('javax.swing.DefaultComboBoxModel',cellstr);
-                obj.HCompScatGainFile.setModel(model);
+                if isa(obj.HCompScatGainFile,'matlab.ui.control.DropDown')
+                    obj.HCompScatGainFile.Items = cellstr;
+                    obj.HCompScatGainFile.Value = cellstr{1};
+                else
+                    model = javaObjectEDT('javax.swing.DefaultComboBoxModel',cellstr);
+                    obj.HCompScatGainFile.setModel(model);
+                end
                 obj.SelScattGainObjIndex = 1;
             else
-                model = javaObjectEDT('javax.swing.DefaultComboBoxModel',{''});
-                obj.HCompScatGainFile.setModel(model);
+                if isa(obj.HCompScatGainFile,'matlab.ui.control.DropDown')
+                    obj.HCompScatGainFile.Items = {''};
+                    obj.HCompScatGainFile.Value = '';
+                else
+                    model = javaObjectEDT('javax.swing.DefaultComboBoxModel',{''});
+                    obj.HCompScatGainFile.setModel(model);
+                end
                 obj.SelScattGainObjIndex = [];
             end
         end % setScatteredGainFileComboBox
@@ -1518,58 +1587,92 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
         function setScattGainFileComboBox( obj , scattGainFileObj )
             % Called from ControlDesignGUI.m when a scattered gain file
             % object is loaded into the tree
-            
+
             obj.ScattGainFileObjArray = scattGainFileObj;
 
             cellstr = {obj.ScattGainFileObjArray.Name};
-            model = javaObjectEDT('javax.swing.DefaultComboBoxModel',cellstr);
-            obj.HCompScatGainFile.setModel(model);
-            if ~isempty(obj.SelScattGainObjIndex)
-                obj.HCompScatGainFile.setSelectedIndex(obj.SelScattGainObjIndex -1);
+            if isa(obj.HCompScatGainFile,'matlab.ui.control.DropDown')
+                obj.HCompScatGainFile.Items = cellstr;
+                if ~isempty(obj.SelScattGainObjIndex)
+                    obj.HCompScatGainFile.Value = cellstr{obj.SelScattGainObjIndex};
+                else
+                    obj.SelScattGainObjIndex = 1;
+                    obj.HCompScatGainFile.Value = cellstr{1};
+                end
             else
-                obj.SelScattGainObjIndex = 1;
-                obj.HCompScatGainFile.setSelectedIndex(obj.SelScattGainObjIndex -1); 
+                model = javaObjectEDT('javax.swing.DefaultComboBoxModel',cellstr);
+                obj.HCompScatGainFile.setModel(model);
+                if ~isempty(obj.SelScattGainObjIndex)
+                    obj.HCompScatGainFile.setSelectedIndex(obj.SelScattGainObjIndex -1);
+                else
+                    obj.SelScattGainObjIndex = 1;
+                    obj.HCompScatGainFile.setSelectedIndex(obj.SelScattGainObjIndex -1);
+                end
             end
-            
-            
+
             notify(obj,'ScatteredGainFileSelected',UserInterface.ControlDesign.GainSchEventData(obj.SelectedScattGainFileObj));
         end % setScattGainFileComboBox
         
         function setGainSelectionComboBox( obj )
             if ~isempty(obj.FilteredScatteredGains) && ~isempty(obj.SelScatteredGainList)
-                %avlGain = {obj.FilteredScatteredGains(1).Gain.Name};   
                 avlGain = {obj.SelScatteredGainList.Name};
-                model = javaObjectEDT('javax.swing.DefaultComboBoxModel',avlGain);
-                obj.HCompGainSel.setModel(model);
+                if isa(obj.HCompGainSel,'matlab.ui.control.DropDown')
+                    obj.HCompGainSel.Items = avlGain;
+                    obj.HCompGainSel.Value = avlGain{1};
+                    obj.SelectedGainString = avlGain{1};
+                else
+                    model = javaObjectEDT('javax.swing.DefaultComboBoxModel',avlGain);
+                    obj.HCompGainSel.setModel(model);
+                    obj.SelectedGainString = obj.HCompGainSel.getSelectedItem;
+                end
                 obj.SelectedGainIndex = 1;
-                obj.SelectedGainString = obj.HCompGainSel.getSelectedItem;  
             else
-                model = javaObjectEDT('javax.swing.DefaultComboBoxModel',{''});
-                obj.HCompGainSel.setModel(model);
+                if isa(obj.HCompGainSel,'matlab.ui.control.DropDown')
+                    obj.HCompGainSel.Items = {''};
+                    obj.HCompGainSel.Value = '';
+                else
+                    model = javaObjectEDT('javax.swing.DefaultComboBoxModel',{''});
+                    obj.HCompGainSel.setModel(model);
+                end
                 obj.SelectedGainIndex = [];
-                obj.SelectedGainString = []; 
+                obj.SelectedGainString = [];
             end
             obj.SelectedGain = obj.SelectedGainString;
         end % setGainSelectionComboBox
                   
-        function setIndVarComboBox( obj ) 
+        function setIndVarComboBox( obj )
             if ~isempty(obj.FilteredScatteredGains) && ~isempty(obj.SelIndVarsList)
-                %bpSel = obj.BP2Selections;
                 inVarSel = {obj.SelIndVarsList.Name};
-                model = javaObjectEDT('javax.swing.DefaultComboBoxModel',inVarSel);
-                obj.HCompIndVar.setModel(model);
+                if isa(obj.HCompIndVar,'matlab.ui.control.DropDown')
+                    obj.HCompIndVar.Items = inVarSel;
+                    obj.HCompIndVar.Value = inVarSel{1};
+                    obj.IndVarString = inVarSel{1};
+                else
+                    model = javaObjectEDT('javax.swing.DefaultComboBoxModel',inVarSel);
+                    obj.HCompIndVar.setModel(model);
+                    obj.IndVarString = obj.HCompIndVar.getSelectedItem;
+                end
                 obj.IndVarSelectedIndex = 1;
-                obj.IndVarString = obj.HCompIndVar.getSelectedItem;  
             else
-                model = javaObjectEDT('javax.swing.DefaultComboBoxModel',{''});
-                obj.HCompIndVar.setModel(model);
+                if isa(obj.HCompIndVar,'matlab.ui.control.DropDown')
+                    obj.HCompIndVar.Items = {''};
+                    obj.HCompIndVar.Value = '';
+                else
+                    model = javaObjectEDT('javax.swing.DefaultComboBoxModel',{''});
+                    obj.HCompIndVar.setModel(model);
+                end
                 obj.IndVarSelectedIndex = [];
-                obj.IndVarString = ''; 
+                obj.IndVarString = '';
             end
         end % setIndVarComboBox
         
-        function updateDimCombobox( obj )   
-            obj.HContTableDim.Value = obj.SelectedTableDimension; 
+        function updateDimCombobox( obj )
+            if isa(obj.HContTableDim,'matlab.ui.control.DropDown')
+                items = obj.HContTableDim.Items;
+                obj.HContTableDim.Value = items{obj.SelectedTableDimension};
+            else
+                obj.HContTableDim.Value = obj.SelectedTableDimension;
+            end
         end % updateDimCombobox
                
     end
@@ -1618,13 +1721,13 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
 %             set(obj.BP1ValueString_eb,'String',obj.BP1ValueString);
                        
             % Set Breakpoints 1 Name
-            set(obj.BP1Name_eb,'String', obj.BreakPoints1TableName);
+            set(obj.BP1Name_eb,'Value', obj.BreakPoints1TableName);
             
             % Set Breakpoints 2 Name
-            set(obj.BP2Name_eb,'String', obj.BreakPoints2TableName);
+            set(obj.BP2Name_eb,'Value', obj.BreakPoints2TableName);
                       
             % Set Breakpoints Values
-            set(obj.BP_eb,'String', obj.BreakPointsString);
+            set(obj.BP_eb,'Value', obj.BreakPointsString);
 
             % Update the Plot
             obj.IncludedInFit = true(1,length(obj.FilteredScatteredGains));
@@ -1745,7 +1848,6 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function updateTable( obj )
 
-            
             % *************************************************************
             % ************ Create Options Table Data **********************
             % *************************************************************
@@ -1753,35 +1855,34 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
                 currentGain = findGainByUserName( obj.CurrentSchGainFileObj , obj.SelectedScheduledGain );
 
                 if ~isempty(currentGain) && ~isempty(currentGain.SchGainVec(1).ScheduledGain)
-              
+
                     tempOptionsTableData = [num2cell(currentGain.Breakpoints1Values)',num2cell(currentGain.TableData)];
                     tempOptionsTableData = cellfun(@(x) num2str(x), tempOptionsTableData, 'UniformOutput', false);
 
                     schGainVec = currentGain.SchGainVec;
-                    
+
                     if currentGain.Ndim == 2
-                        for i = 1:length(schGainVec)% or max(sortOrderBreakPoints1)
+                        for i = 1:length(schGainVec)
                             sortOrderBreakPoints1 = currentGain.SortOrderBreakPoints1;
                             colorSelectedCell{i,1} = schGainVec(sortOrderBreakPoints1(i)).Selected;
                             colorSelectedCell{i,2} = schGainVec(sortOrderBreakPoints1(i)).Color;
                         end
                     else
-                        for i = 1:length(schGainVec)% or max(sortOrderBreakPoints1)
+                        for i = 1:length(schGainVec)
                             sortOrderBreakPoints2 = currentGain.SortOrderBreakPoints2;
                             colorSelectedCell{i,1} = schGainVec(sortOrderBreakPoints2(i)).Selected;
                             colorSelectedCell{i,2} = schGainVec(sortOrderBreakPoints2(i)).Color;
-                        end  
+                        end
                     end
-                    
+
                     if obj.SelectedTableDimension == 1 && currentGain.Ndim ~= 2
                         OptionsTableData = [colorSelectedCell,' ',tempOptionsTableData];
                     else
                         OptionsTableData = [colorSelectedCell,tempOptionsTableData];
                     end
 
-                    % Create Table Header
                     tempOptionsTableHeader = num2cell(currentGain.Breakpoints2Values);
-                    OptionsTableHeader = cellfun(@(x) num2str(x), tempOptionsTableHeader, 'UniformOutput', false); 
+                    OptionsTableHeader = cellfun(@(x) num2str(x), tempOptionsTableHeader, 'UniformOutput', false);
                     OptionsTableHeader = [' ',{' ',' '},OptionsTableHeader];
                 else
                     OptionsTableData = {true,'255,255,255',' ',' ',' ';...
@@ -1802,57 +1903,16 @@ classdef GainSchGUI < matlab.mixin.Copyable & matlab.mixin.SetGet
             % **************************END********************************
             % ************ Create Options Table Data **********************
             % *************************************************************
-            
-            % Remove existing table
+
             delete(obj.HContainer);
 
-            % Create Table
-            obj.TableModel = javaObjectEDT('javax.swing.table.DefaultTableModel',OptionsTableData,OptionsTableHeader);
-            obj.JTable = javaObjectEDT('javax.swing.JTable',obj.TableModel);
-            obj.JTableH = handle(javaObjectEDT(obj.JTable), 'CallbackProperties');  % ensure that we're using EDT
-            obj.JTable.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_OFF);
-            column0 = obj.JTable.getColumnModel().getColumn(0);column0.setPreferredWidth(20);column0.setMinWidth(20);column0.setMaxWidth(20); 
-            column1 = obj.JTable.getColumnModel().getColumn(1);column1.setPreferredWidth(20);column1.setMinWidth(20);column1.setMaxWidth(20); 
-            column2 = obj.JTable.getColumnModel().getColumn(2);column2.setPreferredWidth(40);column2.setMinWidth(40);column0.setMaxWidth(40); 
-            obj.JTable.getColumnModel.getColumn(1).setCellRenderer(ColorCellRenderer); 
-            obj.JTable.getColumnModel.getColumn(1).setCellEditor(ColorCellEditor);  
-            obj.JTable.getColumnModel.getColumn(0).setCellRenderer(com.jidesoft.grid.BooleanCheckBoxCellRenderer); 
-            obj.JTable.getColumnModel.getColumn(0).setCellEditor(com.jidesoft.grid.BooleanCheckBoxCellEditor); 
-            
-            % Present the tree-table within a scrollable viewport on-screen
-            obj.JScroll = javaObjectEDT('javax.swing.JScrollPane',obj.JTable);
-            obj.FixColTbl = javaObjectEDT('FixedColumnTable',3, obj.JScroll);
-            [obj.JHScroll,obj.HContainer] = javacomponent(obj.JScroll, [], obj.OptionsPanel);
-            obj.HContainer.Position = [ 10 , 40, 310 , 115  ]; 
-            
-            obj.JScroll.setVerticalScrollBarPolicy(obj.JScroll.VERTICAL_SCROLLBAR_AS_NEEDED);
-            obj.JScroll.setHorizontalScrollBarPolicy(obj.JScroll.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-            obj.JTable.setAutoResizeMode( obj.JTable.AUTO_RESIZE_OFF );
-            
-            
-            % Set Callbacks
-            obj.JTableH.MousePressedCallback = @obj.mousePressedInTable;
-            JModelH = handle(obj.JTable.getModel, 'CallbackProperties');
-            JModelH.TableChangedCallback     = {@obj.dataUpdatedInTable,obj.JTable};
-               
-
-            %FixedColumnTable
-            fixColTbl = obj.FixColTbl.getFixedTable();
-            javaObjectEDT(fixColTbl);
-            fixColTbl.setGridColor(java.awt.Color.lightGray); 
-           
-            obj.JTable.setGridColor(java.awt.Color.lightGray);
-
-            set(handle(obj.JTable.getModel, 'CallbackProperties'),  'TableChangedCallback', {@obj.dataUpdatedInTable,obj.JTable});
-            % Taken from: http://xtargets.com/snippets/posts/show/37
-            obj.JTable.putClientProperty('terminateEditOnFocusLost', java.lang.Boolean.TRUE);
-            
-            obj.JTable.repaint;
-            obj.FixColTbl.getFixedTable.repaint;
-            obj.JTable.setVisible(true);
-            obj.FixColTbl.getFixedTable.setVisible(true);
-
-            drawnow();
+            obj.JTable = uitable('Parent',obj.OptionsPanel,...
+                'Data',OptionsTableData,...
+                'ColumnName',OptionsTableHeader,...
+                'ColumnEditable',true(1,size(OptionsTableData,2)),...
+                'CellEditCallback',@obj.dataUpdatedInTable,...
+                'CellSelectionCallback',@obj.mousePressedInTable);
+            obj.HContainer = obj.JTable;
         end % updateTable
         
         function f = userUpdatesAvailableGains( obj , callingFunctionType )

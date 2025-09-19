@@ -85,38 +85,34 @@ classdef AxisPanelCollection < matlab.mixin.Copyable & hgsetget
 
                 obj.Panel(i) = UserInterface.AxisPanel('Parent',obj.Container,...
                     'Units','Pixels',...
-                    'Position',[parentPos(1),25,parentPos(3), parentPos(4)-25],...
+                    'Position',[parentPos(1),30,parentPos(3), parentPos(4)-30],...
                     'NumOfAxis',options.NumOfAxisPerPage,...
                     'Orientation',options.Orientation);
                 addlistener(obj.Panel(i),'AxisEvent',@obj.axisEvent);                          
-
+                drawnow;
             end
 
-            % Find directories
-            this_dir = fileparts( mfilename( 'fullpath' ) );
-            res_dir = fullfile( this_dir,'..','Resources' );
-            
-            % Create bottom arrows
-            [image_left, ~ ] = imread(fullfile(res_dir,'leftArrow1.jpg'));
-            obj.LeftArrowButton = uicontrol('Parent',obj.Container,...
-                'Style','push',...
-                'CData',image_left,...
-                'Callback',@obj.pageSelectLeft_CB,...
-                'Position',[6,6,20,15],...
-                'UserData',1);
+            [leftPos, labelPos, rightPos] = obj.navigationControlPositions(parentPos(3));
+
+            obj.LeftArrowButton = uihtml(obj.Container, ...
+                'HTMLSource',obj.createNavigationButtonHtml('left'), ...
+                'Position',leftPos);
+            obj.LeftArrowButton.HTMLEventReceivedFcn = @(src,evt)obj.handleNavigationEvent('left',src,evt);
+            obj.LeftArrowButton.UserData = 1;
+
             obj.PageNumberDisplay= uicontrol('Parent',obj.Container,...
                             'Style','text',...
                             'String','1',...
                             'FontSize',10,...
-                            'Position',[50,6,parentPos(3)-100,15],...
-                            'HorizontalAlignment','Center'); 
-            [image_right, ~ ] = imread(fullfile(res_dir,'rightArrow1.jpg'));
-            obj.RightArrowButton = uicontrol('Parent',obj.Container,...
-                'Style','push',...
-                'CData',image_right,...
-                'Callback',@obj.pageSelectRight_CB,...
-                'Position',[parentPos(3)-26,6,20,15],...
-                'UserData',1);
+                            'Units','Pixels',...
+                            'Position',labelPos,...
+                            'HorizontalAlignment','Center');
+
+            obj.RightArrowButton = uihtml(obj.Container, ...
+                'HTMLSource',obj.createNavigationButtonHtml('right'), ...
+                'Position',rightPos);
+            obj.RightArrowButton.HTMLEventReceivedFcn = @(src,evt)obj.handleNavigationEvent('right',src,evt);
+            obj.RightArrowButton.UserData = 1;
             
             % Create Queue for axis handles
             obj.AxisHandleQueue = javaObjectEDT('java.util.LinkedList');
@@ -179,7 +175,7 @@ classdef AxisPanelCollection < matlab.mixin.Copyable & hgsetget
                 for i = (currentNumPages + 1):numOfPagesNeeded
                     obj.Panel(i) = UserInterface.AxisPanel('Parent',obj.Container,...
                         'Units','Pixels',...
-                        'Position',[parentPos(1),25,parentPos(3), parentPos(4)-25],...
+                        'Position',[parentPos(1),30,parentPos(3), parentPos(4)-30],...
                         'NumOfAxis',numPP);
                 end
                 ind = numOfPagesNeeded;
@@ -251,37 +247,6 @@ classdef AxisPanelCollection < matlab.mixin.Copyable & hgsetget
                 obj.SelectedPanel = 1;
             end
             obj.update();
-      
-            
-            
-%             totalNumAxis = obj.AxisHandleQueue.size;
-%             numOfPages = totalNumAxis / numPP;
-%             currentNumP = length( obj.Panel );
-% 
-%             
-%             while ~isempty(obj.Panel)
-%                 delete(obj.Panel(1));
-%                 obj.Panel(1) = [];
-%             end
-%             
-%             parentPos = getpixelposition(obj.Container);
-%             for i = 1:numOfPages
-%                 obj.Panel(i) = UserInterface.AxisPanel('Parent',obj.Container,...
-%                     'Units','Pixels',...
-%                     'Position',[parentPos(1),25,parentPos(3), parentPos(4)-25],...
-%                     'NumOfAxis',numPP);
-%             end
-% 
-%             % Create Queue for axis handles
-%             obj.AxisHandleQueue = java.util.LinkedList();
-%             for j = 1:length(obj.Panel)
-%                 for i = 1:length(obj.Panel(j).Axis)
-%                     obj.AxisHandleQueue.add(obj.Panel(j).Axis(i)); 
-%                 end
-%             end   
-% 
-
-
             
         end % setOrientation
     end
@@ -338,12 +303,13 @@ classdef AxisPanelCollection < matlab.mixin.Copyable & hgsetget
             
            posPix = getpixelposition(obj.Container);
 
-           set(obj.LeftArrowButton,'Position',[6,6,20,15]);
-           set(obj.PageNumberDisplay,'Position',[50,6,posPix(3)-100,15]); 
-           set(obj.RightArrowButton,'Position',[posPix(3)-26,6,20,15]);
+           [leftPos, labelPos, rightPos] = obj.navigationControlPositions(posPix(3));
+           set(obj.LeftArrowButton,'Position',leftPos);
+           set(obj.PageNumberDisplay,'Position',labelPos);
+           set(obj.RightArrowButton,'Position',rightPos);
 
             for i = 1:length(obj.Panel)
-                obj.Panel(i).Position = [0,25,posPix(3), posPix(4)-25];
+                obj.Panel(i).Position = [0,30,posPix(3), posPix(4)-30];
             end
             
         end % reSize
@@ -358,12 +324,232 @@ classdef AxisPanelCollection < matlab.mixin.Copyable & hgsetget
         
     end
  
+    %% Methods - Private helpers
+    methods (Access = private)
+
+        function handleNavigationEvent(obj, direction, src, evt)
+            if nargin < 4 || isempty(evt)
+                return;
+            end
+
+            eventDirection = '';
+
+            if isprop(evt,'HTMLEventName')
+                eventName = evt.HTMLEventName;
+                if isa(eventName,'string')
+                    if ~isscalar(eventName)
+                        return;
+                    end
+                    eventName = char(eventName);
+                end
+
+                if ~ischar(eventName) || ~strcmpi(strtrim(eventName),'navigate')
+                    return;
+                end
+
+                if isprop(evt,'HTMLEventData')
+                    eventDirection = obj.parseNavigationDirection(evt.HTMLEventData);
+                end
+            elseif isprop(evt,'Data')
+                data = evt.Data;
+                if isempty(data) || ~isstruct(data)
+                    return;
+                end
+
+                if ~isfield(data,'type') || ~strcmp(data.type,'nav-button')
+                    return;
+                end
+
+                if isfield(data,'direction')
+                    eventDirection = obj.parseNavigationDirection(data.direction);
+                else
+                    eventDirection = obj.parseNavigationDirection(data);
+                end
+            else
+                return;
+            end
+
+            if isempty(eventDirection) || ~strcmpi(eventDirection,direction)
+                return;
+            end
+
+            switch lower(direction)
+                case 'left'
+                    obj.pageSelectLeft_CB(src,evt);
+                case 'right'
+                    obj.pageSelectRight_CB(src,evt);
+            end
+        end
+
+        function normalizedDirection = parseNavigationDirection(~, candidate)
+            normalizedDirection = '';
+            value = candidate;
+
+            if isstruct(value)
+                if isfield(value,'direction')
+                    value = value.direction;
+                else
+                    value = '';
+                end
+            end
+
+            if isa(value,'string')
+                if isscalar(value)
+                    value = char(value);
+                else
+                    value = '';
+                end
+            elseif iscell(value)
+                if numel(value) == 1
+                    value = value{1};
+                    if isa(value,'string')
+                        if isscalar(value)
+                            value = char(value);
+                        else
+                            value = '';
+                        end
+                    end
+                else
+                    value = '';
+                end
+            end
+
+            if ischar(value)
+                normalizedDirection = strtrim(value);
+            end
+        end
+
+        function [leftPos, labelPos, rightPos] = navigationControlPositions(~, containerWidth)
+            buttonSize = 24;
+            sidePadding = 8;
+            bottomOffset = 3;
+            spacing = 8;
+            labelWidth = 70;
+            labelHeight = 18;
+
+            containerWidth = double(containerWidth);
+
+            leftPos = [sidePadding, bottomOffset, buttonSize, buttonSize];
+
+            rightX = containerWidth - sidePadding - buttonSize;
+            if rightX < sidePadding
+                rightX = sidePadding;
+            end
+            rightPos = [rightX, bottomOffset, buttonSize, buttonSize];
+
+            labelLeft = (containerWidth - labelWidth)/2;
+            minLabelLeft = leftPos(1) + leftPos(3) + spacing;
+            maxLabelLeft = rightPos(1) - spacing - labelWidth;
+
+            if maxLabelLeft < minLabelLeft
+                labelLeft = minLabelLeft;
+            else
+                labelLeft = max(minLabelLeft, min(labelLeft, maxLabelLeft));
+            end
+
+            labelBottom = bottomOffset + max((buttonSize - labelHeight)/2, 0);
+            labelPos = [labelLeft, labelBottom, labelWidth, labelHeight];
+        end
+
+        function html = createNavigationButtonHtml(~, direction)
+            if nargin < 2 || isempty(direction)
+                direction = 'left';
+            end
+
+            if strcmpi(direction,'left')
+                directionValue = 'left';
+                titleText = 'Previous page';
+                iconEntity = '&#x276E;';
+            else
+                directionValue = 'right';
+                titleText = 'Next page';
+                iconEntity = '&#x276F;';
+            end
+
+            buttonId = sprintf('navButton-%s', directionValue);
+            buttonLine = sprintf('<button type="button" id="%s" class="nav-button" title="%s" aria-label="%s">%s</button>', ...
+                buttonId, titleText, titleText, iconEntity);
+
+            directionConstLine = sprintf('  const direction = "%s";', directionValue);
+            buttonQueryLine = sprintf('  const button = document.getElementById("%s");', buttonId);
+
+            styleLines = {
+                '<style>'
+                'html,body{margin:0;padding:0;width:100%;height:100%;background:transparent;}'
+                'body{display:flex;align-items:center;justify-content:center;background:transparent;}'
+                '.nav-button{'
+                '  width:100%;'
+                '  height:100%;'
+                '  border-radius:50%;'
+                '  border:1px solid rgba(120,130,150,0.85);'
+                '  background:linear-gradient(135deg,#4b5568 0%,#1f2430 100%);'
+                '  color:#f2f4f8;'
+                '  font-family:"Segoe UI",sans-serif;'
+                '  font-size:16px;'
+                '  font-weight:600;'
+                '  display:flex;'
+                '  align-items:center;'
+                '  justify-content:center;'
+                '  cursor:pointer;'
+                '  box-shadow:0 2px 4px rgba(0,0,0,0.4);'
+                '  transition:background 0.15s ease,box-shadow 0.15s ease,transform 0.12s ease;'
+                '}'
+                '.nav-button:hover{'
+                '  background:linear-gradient(135deg,#5b6780 0%,#293041 100%);'
+                '  box-shadow:0 4px 8px rgba(90,130,255,0.35);'
+                '}'
+                '.nav-button:active{'
+                '  transform:scale(0.96);'
+                '}'
+                '.nav-button:focus-visible{'
+                '  outline:2px solid rgba(128,169,255,0.85);'
+                '  outline-offset:2px;'
+                '}'
+                '</style>'
+                };
+
+            scriptLines = {
+                '<script type="text/javascript">'
+                'function setup(htmlComponent) {'
+                buttonQueryLine
+                '  if (!button || !htmlComponent || typeof htmlComponent.sendEventToMATLAB !== "function") {'
+                '    return;'
+                '  }'
+                directionConstLine
+                '  function sendNavigationEvent() {'
+                '    htmlComponent.sendEventToMATLAB("navigate", direction);'
+                '  }'
+                '  button.addEventListener("click", sendNavigationEvent);'
+                '  button.addEventListener("keydown", function(event) {'
+                '    if (event.key === "Enter" || event.key === " " || event.key === "Spacebar" || event.key === "Space") {'
+                '      event.preventDefault();'
+                '      sendNavigationEvent();'
+                '    }'
+                '  });'
+                '}'
+                '</script>'
+                };
+
+            parts = [{'<!doctype html>'};
+                {'<html lang="en">'};
+                {'<head>'};
+                {'<meta charset="utf-8">'};
+                styleLines(:);
+                {'</head>'};
+                {'<body>'};
+                {buttonLine};
+                scriptLines(:);
+                {'</body>'};
+                {'</html>'}];
+
+            html = strjoin(parts, newline);
+        end
+
+    end
+
     %% Methods - Delete
     methods
         function delete( obj )
-            % Java Components 
-            %obj.AxisHandleQueue = [];
-
 
             % User Defined Objects
             try %#ok<*TRYNC>             
@@ -388,17 +574,6 @@ classdef AxisPanelCollection < matlab.mixin.Copyable & hgsetget
             try %#ok<*TRYNC>             
                 delete(obj.Parent);
             end      
-
-    %         % Data
-%             obj.SelectedPanel
-%             obj.BorderType    
-%     
-
-
-        
-        
-        
-        
 
         end % delete
     end

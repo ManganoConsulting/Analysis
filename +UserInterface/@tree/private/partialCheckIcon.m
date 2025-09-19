@@ -272,7 +272,7 @@ I = uint8(...
     0.9608    0.9569    0.9412;
     0.9961    0.9922    0.9725;
     1.0000    0.9725    0.9490];
-    
-    warning('off','MATLAB:im2java:functionToBeRemoved');
+
+ warning('off','MATLAB:im2java:functionToBeRemoved');
     jImage = im2java(I,map);
 end

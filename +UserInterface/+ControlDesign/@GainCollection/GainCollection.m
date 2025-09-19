@@ -5,10 +5,8 @@ classdef GainCollection < matlab.mixin.Copyable & hgsetget
         Parent
         Container
         GainTable
-        LabelComp
-        LabelCont
-        LabelCompLarge
-        LabelContLarge
+        Label
+        LabelLarge
         ContainerLarge
         GainTableLarge
         ParentLarge
@@ -174,14 +172,15 @@ classdef GainCollection < matlab.mixin.Copyable & hgsetget
             set(obj.Container,'ResizeFcn',@obj.reSize);
             
             panelPos = getpixelposition(obj.Container);
-            
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;Gains</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.LabelComp,obj.LabelCont] = javacomponent(jLabelview,[ 1 , panelPos(4) - 16 , panelPos(3) , 16 ], obj.Container );
+
+            obj.Label = uilabel('Parent',obj.Container,...
+                'Text','Gains',...
+                'FontName','Courier New',...
+                'FontColor',[1 1 1],...
+                'BackgroundColor',[55 96 146]/255,...
+                'HorizontalAlignment','left',...
+                'VerticalAlignment','bottom',...
+                'Position',[ 1 , panelPos(4) - 16 , panelPos(3) , 16 ]);
   
             obj.GainTable = uitable('Parent',obj.Container,...
                 'ColumnName',{'Gain','Value','Expression'},...
@@ -230,13 +229,15 @@ classdef GainCollection < matlab.mixin.Copyable & hgsetget
             
             panelPos = getpixelposition(obj.ContainerLarge);
             
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;Gains</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.LabelCompLarge,obj.LabelContLarge] = javacomponent(jLabelview,[ 1 , panelPos(4) - 16 , panelPos(3) , 16 ], obj.ContainerLarge);
+            labelStr = 'Gains';
+            obj.LabelLarge = uilabel('Parent',obj.ContainerLarge,...
+                'Text',labelStr,...
+                'FontName','Courier New',...
+                'FontColor',[1 1 1],...
+                'BackgroundColor',[55 96 146]/255,...
+                'HorizontalAlignment','left',...
+                'VerticalAlignment','bottom',...
+                'Position',[ 1 , panelPos(4) - 16 , panelPos(3) , 16 ]);
             
             obj.GainTableLarge = uitable('Parent',obj.ContainerLarge,...
                 'ColumnName',{'Gain','Value','Expression'},...
@@ -310,21 +311,19 @@ classdef GainCollection < matlab.mixin.Copyable & hgsetget
         function reSize( obj , ~ , ~ )
             panelPos = getpixelposition(obj.Container); 
 
-            obj.LabelCont.Units = 'Pixels';
-            obj.LabelCont.Position = [ 1 , panelPos(4) - 16 , panelPos(3) , 16 ];
-            
-            set(obj.GainTable,'Units','Pixels','Position',[ 1 , 40 , panelPos(3) - 5 , panelPos(4) - 60 ] );  
-            
-            set(obj.LargeViewButton,'Units','Pixels','Position',[ 1 , 5 , panelPos(3) - 5 , 26 ] );  
+            obj.Label.Position = [ 1 , panelPos(4) - 16 , panelPos(3) , 16 ];
+
+            set(obj.GainTable,'Position',[ 1 , 40 , panelPos(3) - 5 , panelPos(4) - 60 ] );
+
+            set(obj.LargeViewButton,'Position',[ 1 , 5 , panelPos(3) - 5 , 26 ] );
         end       
         
         function reSizeLarge( obj , ~ , ~ )
             panelPos = getpixelposition(obj.ParentLarge); 
 
-            obj.LabelContLarge.Units = 'Pixels';
-            obj.LabelContLarge.Position = [ 1 , panelPos(4) - 16 , panelPos(3) , 16 ];
-            
-            set(obj.GainTableLarge,'Units','Pixels','Position',[ 1 , 1 , panelPos(3) , panelPos(4) - 16 ] );  
+            obj.LabelLarge.Position = [ 1 , panelPos(4) - 16 , panelPos(3) , 16 ];
+
+            set(obj.GainTableLarge,'Position',[ 1 , 1 , panelPos(3) , panelPos(4) - 16 ] );
         end % reSizeLarge    
         
         function closeFigure_CB( obj , ~ , ~ )

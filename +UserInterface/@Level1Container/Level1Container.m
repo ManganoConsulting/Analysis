@@ -10,7 +10,10 @@ classdef Level1Container < matlab.mixin.Copyable & UserInterface.GraphicsObject
 
         RibbonPanel
         MainPanel
+        BottomPanel
         LogPanel
+        PromptPanel
+        PromptHtml
         Granola
         WarningMsg
         StartUpFlag = true
@@ -20,9 +23,10 @@ classdef Level1Container < matlab.mixin.Copyable & UserInterface.GraphicsObject
     properties (Constant , Abstract = true)
         ProjectType
     end % Public properties
-    
+
     %% Abstract properties - Data Storage
-    properties  
+    properties
+        PromptText char = ''
 
     end % Abstract properties
     
@@ -139,10 +143,10 @@ classdef Level1Container < matlab.mixin.Copyable & UserInterface.GraphicsObject
                 screensize = get(0,'ScreenSize');
                 xpos = ceil((screensize(3)-sz(2))/2); % center the figure on the screen horizontally
                 ypos = ceil((screensize(4)-sz(1))/2); % center the figure on the screen vertically
-                obj.Parent = figure('Name',['FLIGHT ',obj.ProjectType,' | ',obj.InternalVersionNumber],...%Control',...
+                obj.Parent = uifigure('Name',['FLIGHT ',obj.ProjectType,' | ',obj.InternalVersionNumber],...%Control',...
                                     'units','pixels',...
                                     'Position',[xpos, ypos, sz(2), sz(1)],...%[193 , 109 , 1384 , 960],...%[193,109,1368,768],
-                                    'Menubar','none',...   
+                                    'Menubar','none',...
                                     'Toolbar','none',...
                                     'NumberTitle','off',...
                                     'HandleVisibility', 'on',...
@@ -150,9 +154,8 @@ classdef Level1Container < matlab.mixin.Copyable & UserInterface.GraphicsObject
                                     'Tag',figID,...
                                     'CloseRequestFcn', @obj.closeFigure_CB);
  
-                if isa(obj.Parent,'matlab.ui.Figure')
-                    Utilities.enforceMinimumFigureSize(obj.Parent,[1384 960]);
-                end         
+                                
+                Utilities.setMinFigureSize(obj.Parent,[1384 960]);
             else
                 obj.Parent = parent;
             end
@@ -165,25 +168,42 @@ classdef Level1Container < matlab.mixin.Copyable & UserInterface.GraphicsObject
                 'Units','Pixels',...
                 'BorderType','none',...
                 'Position',[ 1 , position(4) - 93 , position(3), 93 ]);
-%             % Create Card Panel
-%             obj.MainCardPanel = UserInterface.CardPanel(2,'Parent',obj.Parent,...
-%                 'Units','Pixels',...
-%                 'Position',[1 , 100 , position(3) , position(4)-208 ]);
+
             % Create Main Container
             obj.MainPanel = uicontainer('Parent',obj.Parent,...
                 'Units','Pixels',...
-                'Position',[1 , 100 , position(3) , position(4) - 194 ]); 
-%             obj.ProjectScreen = UserInterface.StartUpScreen('RecentPrjFile',fullfile(obj.ApplicationDataFolder,'previousprojects.flt'),'Title',obj.ProjectType,'Parent',obj.MainCardPanel.Panel(1),...
-%                                                             'VersionNumber',obj.VersionNumber,...
-%                                                             'InternalVersionNumber',obj.InternalVersionNumber);   
-%             addlistener(obj.ProjectScreen,'NewProjectCreated',@obj.startupPrjCreated);
-%             addlistener(obj.ProjectScreen,'ProjectLoaded',@obj.startupPrjLoaded);
-            
-            obj.LogPanel = UserInterface.LogMessage('Parent',obj.Parent,...
+                'Position',[1 , 100 , position(3) , position(4) - 194 ]);
+
+            panelColor = obj.Parent.Color;
+
+            obj.BottomPanel = uipanel('Parent',obj.Parent,...
+                'Units','Pixels',...
+                'BorderType','none',...
+                'BackgroundColor',panelColor,...
+                'Position',[ 1 , 1 , position(3) , 100]);
+
+            obj.LogPanel = UserInterface.LogMessage('Parent',obj.BottomPanel,...
                 'Units','Pixels',...
                 'Position',[ 1 , 1 , position(3) , 100]);
+
+            obj.PromptPanel = uipanel('Parent',obj.BottomPanel,...
+                'Units','Pixels',...
+                'BorderType','none',...
+                'BackgroundColor',panelColor,...
+                'Position',[ 1 , 1 , 1 , 100]);
+
+            componentDir = fileparts(mfilename('fullpath'));
+            promptHtmlFile = fullfile(componentDir,'promptinput.html');
+            panelPosition = getpixelposition(obj.PromptPanel);
+            obj.PromptHtml = uihtml(obj.PromptPanel, ...
+                'HTMLSource',promptHtmlFile, ...
+                'DataChangedFcn',@(src,event)obj.handlePromptHtmlEvent(event.Data), ...
+                'Position',[0 0 panelPosition(3) panelPosition(4)]);
+
             addlistener(obj,'ShowLogMessageMain',@obj.showLogMessage_CB);
             addlistener(obj,'ClearLogMessageMain',@obj.clearLogMessage_CB);
+
+            layoutBottomPanel(obj);
         end % createView
 
     end
@@ -273,45 +293,7 @@ classdef Level1Container < matlab.mixin.Copyable & UserInterface.GraphicsObject
             filename = fullfile(obj.ApplicationDataFolder,'previousprojects.flt');
             Utilities.appendReplaceLineInFile( filename , obj.SavedProjectLocation , 6 );           
         end % add2PreviousProjects
-        
-%         function startupPrjCreated( obj , ~ , eventdata )
-%             [path,file,ext] = fileparts(eventdata.Object);
-%             notify(obj,'SaveProject',GeneralEventData( {path , [file,ext]}));
-%         end % startupPrjCreated    
-        
-%         function startupPrjLoaded( obj , ~ , eventdata )
-%             if ~exist(eventdata.Object,'file')
-%                 % Remove from recent projects
-%                 prevProjFile = fullfile(obj.ApplicationDataFolder,'previousprojects.flt');
-%                 Utilities.removeLineInFile( prevProjFile , eventdata.Object );  
-%                 launchStartup( obj );
-%                 msgbox('This project no longer exists.');
-%                 return;
-%             end
-% %             obj.MainCardPanel.SelectedPanel = 2;
-% %             if strcmp(obj.ProjectType,'Control')
-% %                 obj.JRPHComp.setSelectedIndex(1);    
-% %             else
-% %                 obj.RibbonObj.JRPHComp.setSelectedIndex(1);
-% %             end
-%             drawnow();
-%             [path,file,ext] = fileparts(eventdata.Object);
-%             loadProject( obj , path , [file,ext] );
-%         end % startupPrjLoaded
-%         
-%         function launchStartup( obj , parent )
-%             try
-%                 delete(obj.StartupScreen.Parent);
-%             end
-%             % Launch StartUp Screen
-%             obj.StartUpFlag = false;
-%             obj.StartupScreen = UserInterface.StartUpScreen('RecentPrjFile',fullfile(obj.ApplicationDataFolder,'previousprojects.flt'),'Title',obj.ProjectType);
-% %             pause(1.1);
-%             addlistener(obj.StartupScreen,'NewProjectCreated',@obj.startupPrjCreated);
-%             addlistener(obj.StartupScreen,'ProjectLoaded',@obj.startupPrjLoaded);
-%             uiwait(obj.StartupScreen.Parent);
-%         end % launchStartup
-        
+              
         function addProjectPath( obj , path )
             warn = warning('off','MATLAB:rmpath:DirNotFound'); 
             if ~isempty(obj.ProjectMatlabPath)
@@ -326,7 +308,6 @@ classdef Level1Container < matlab.mixin.Copyable & UserInterface.GraphicsObject
             logArray = cellfun(@isempty,allPaths);
             allPaths = allPaths(~logArray);
             allPaths = strjoin(allPaths,';');
-%             allPaths = strjoin([prjPaths,addPaths],';');
             if ~isempty(allPaths) && ~strcmp(allPaths(end),';')
                 allPaths = [allPaths,';'];   
             end
@@ -361,11 +342,15 @@ classdef Level1Container < matlab.mixin.Copyable & UserInterface.GraphicsObject
             
             set(obj.MainPanel,'Units','Pixels',...
                 'Position',[1 , 100 , position(3) , position(4) - 194 ]);
-                        
-            set(obj.LogPanel,'Units','Pixels',...
-                'Position',[ 1 , 1 , position(3) , 100]);
+
+            if ~isempty(obj.BottomPanel) && isvalid(obj.BottomPanel)
+                set(obj.BottomPanel,'Units','Pixels',...
+                    'Position',[ 1 , 1 , position(3) , 100]);
+            end
+
+            layoutBottomPanel(obj);
         end % reSize
-        
+
     end
     
     %% Methods - Protected
@@ -417,7 +402,7 @@ classdef Level1Container < matlab.mixin.Copyable & UserInterface.GraphicsObject
         
         function unDockAxis( obj , hobj , eventdata )
             
-            newfH  = figure( ...
+            newfH  = uifigure( ...
                 'Name', hobj.UserData.Title.String, ...
                 'NumberTitle', 'off');
 
@@ -433,31 +418,126 @@ classdef Level1Container < matlab.mixin.Copyable & UserInterface.GraphicsObject
         
         function changeAxisLimits( obj , hobj , eventdata )
             UserInterface.SetAxesProperties(hobj.UserData);
-%             xlim = hobj.UserData.XLim;
-%             ylim = hobj.UserData.YLim;
-%             
-%             
-%             prompt = {'X Lower Limit:','X Upper Limit:','Y Lower Limit:','Y Upper Limit:'};
-%             dlg_title = 'Input';
-%             num_lines = 1;
-%             defaultans = {num2str(xlim(1)),num2str(xlim(2)),num2str(ylim(1)),num2str(ylim(2))};
-%             answer = inputdlg(prompt,dlg_title,num_lines,defaultans); 
-%             if isempty(answer)
-%                 return;
-%             end
-%             try
-%                 newXlim = [str2double(answer{1}),str2double(answer{2})];
-%                 newYlim = [str2double(answer{3}),str2double(answer{4})];
-% 
-%                 hobj.UserData.XLim = newXlim;
-%                 hobj.UserData.YLim = newYlim; 
-%             end
         end % changeAxisLimits
 
     end
     
     %% Methods - Private
-    methods (Access = private)   
+    methods (Access = private)
+
+        function handlePromptHtmlEvent(obj, data)
+            if isempty(obj.PromptPanel) || ~isvalid(obj.PromptPanel)
+                return;
+            end
+
+            if nargin < 2 || isempty(data) || ~isstruct(data) || ~isfield(data,'type')
+                return;
+            end
+
+            eventType = string(data.type);
+
+            switch eventType
+                case "ready"
+                    if ~isempty(obj.PromptHtml) && isvalid(obj.PromptHtml)
+                        obj.PromptHtml.Data = struct( ...
+                            'type','init', ...
+                            'placeholder','Ask Control Design Co-pilot for help', ...
+                            'text',obj.PromptText);
+                    end
+
+                case "text-changed"
+                    if isfield(data,'text') && ~isempty(data.text)
+                        obj.PromptText = char(string(data.text));
+                    else
+                        obj.PromptText = '';
+                    end
+                    obj.promptTextValueChanged(obj.PromptHtml, struct('Value', obj.PromptText));
+
+                case "add-files"
+                    obj.promptAddFilesButtonPushed(obj.PromptHtml, struct('Value', obj.PromptText));
+
+                case "send"
+                    if isfield(data,'text') && ~isempty(data.text)
+                        obj.PromptText = char(string(data.text));
+                    else
+                        obj.PromptText = '';
+                    end
+                    obj.promptSendButtonPushed(obj.PromptHtml, struct('Value', obj.PromptText));
+                    obj.PromptText = '';
+                    if ~isempty(obj.PromptHtml) && isvalid(obj.PromptHtml)
+                        obj.PromptHtml.Data = struct('type','clear-text');
+                    end
+
+                otherwise
+                    % No action for unrecognised events yet.
+            end
+        end
+
+        function layoutBottomPanel(obj)
+
+            if isempty(obj.BottomPanel) || ~isvalid(obj.BottomPanel)
+                return;
+            end
+
+            bottomPos = getpixelposition(obj.BottomPanel);
+            totalWidth = bottomPos(3);
+            totalHeight = bottomPos(4);
+            spacing = 8;
+            minStatusWidth = 320;
+            minPromptWidth = 320;
+
+            availableWidth = max(0,totalWidth - spacing);
+
+            if availableWidth <= 0
+                statusWidth = 0;
+                promptWidth = 0;
+            elseif availableWidth >= (minStatusWidth + minPromptWidth)
+                desiredStatus = round(availableWidth * 0.55);
+                maxStatus = availableWidth - minPromptWidth;
+                statusWidth = min(max(minStatusWidth,desiredStatus),maxStatus);
+                promptWidth = availableWidth - statusWidth;
+            else
+                totalMin = minStatusWidth + minPromptWidth;
+                statusWidth = round(availableWidth * (minStatusWidth / totalMin));
+                promptWidth = availableWidth - statusWidth;
+            end
+
+            statusWidth = max(0,min(statusWidth,availableWidth));
+            promptWidth = max(0,availableWidth - statusWidth);
+
+            if ~isempty(obj.LogPanel) && ~isempty(obj.LogPanel.Container) && isvalid(obj.LogPanel.Container)
+                set(obj.LogPanel,'Units','Pixels',...
+                    'Position',[ 1 , 1 , statusWidth , totalHeight]);
+            end
+
+            if ~isempty(obj.PromptPanel) && isvalid(obj.PromptPanel)
+                promptX = 1 + statusWidth + spacing;
+                set(obj.PromptPanel,'Units','Pixels',...
+                    'Position',[ promptX , 1 , promptWidth , totalHeight]);
+                if promptWidth <= 0
+                    obj.PromptPanel.Visible = 'off';
+                else
+                    obj.PromptPanel.Visible = 'on';
+                end
+                if ~isempty(obj.PromptHtml) && isvalid(obj.PromptHtml)
+                    htmlWidth = max(promptWidth, 0);
+                    htmlHeight = max(totalHeight, 0);
+                    obj.PromptHtml.Position = [0 0 htmlWidth htmlHeight];
+                end
+            end
+        end
+
+        function promptAddFilesButtonPushed(obj, src, event) %#ok<INUSD>
+            % Callback reserved for integrating external file attachments.
+        end
+
+        function promptSendButtonPushed(obj, src, event) %#ok<INUSD>
+            % Callback reserved for sending prompt content to external services.
+        end
+
+        function promptTextValueChanged(obj, src, event) %#ok<INUSD>
+            % Callback reserved for handling prompt text edits before submission.
+        end
 
     end
     
@@ -473,24 +553,18 @@ classdef Level1Container < matlab.mixin.Copyable & UserInterface.GraphicsObject
                 delete(obj.MainPanel);
             end
             % User Defined Properties
-            try %#ok<*TRYNC>             
+            try %#ok<*TRYNC>
+                delete(obj.PromptHtml);
+            end
+            try %#ok<*TRYNC>
+                delete(obj.PromptPanel);
+            end
+            try %#ok<*TRYNC>
                 delete(obj.LogPanel);
             end
-%             try %#ok<*TRYNC>  
-%                 delete(obj.StartupScreen);
-%             end
-%             try %#ok<*TRYNC>  
-%                 delete(obj.ProjectScreen);
-%             end
-%             try %#ok<*TRYNC>  
-%                 delete(obj.Granola);
-%             end
-%             try %#ok<*TRYNC>  
-%                 delete(obj.MainCardPanel);
-%             end
-            % Data
-%             obj.WarningMsg
-%             obj.StartUpFlag  
+            try %#ok<*TRYNC>
+                delete(obj.BottomPanel);
+            end
 
         end % delete
     end
@@ -558,15 +632,5 @@ function warn = suppressWarnings()
     warn(end + 1) = warning('off','MATLAB:legend:IgnoringExtraEntries');
     warn(end + 1) = warning('off','Simulink:Data:WksGettingDataSource');
     warn(end + 1) = warning('off','MATLAB:rmpath:DirNotFound'); 
-%     warn(end + 1) = warning('off','Simulink:Data:WksGettingDataSource');
-%     warn(1) = warning('off','MATLAB:Java:ConvertFromOpaque'); 
-%     warn(2) = warning('off','MATLAB:uitree:DeprecatedFunction'); 
-%     warn(3) = warning('off','MATLAB:uitreenode:DeprecatedFunction'); 
-%     warn(4) = warning('off','MATLAB:hg:JavaSetHGProperty');
-
-%     warn(6) = warning('off','MATLAB:class:loadError');   
-%     warn(7) = warning('off','MATLAB:hg:PossibleDeprecatedJavaSetHGProperty');  
-%     warn(8) = warning('off','MATLAB:hg:ColorSpec_None');
-%     warn(9) = warning('off','MATLAB:uitabgroup:OldVersion');
 
 end % suppressWarnings

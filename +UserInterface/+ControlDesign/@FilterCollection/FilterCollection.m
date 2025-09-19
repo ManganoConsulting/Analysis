@@ -7,50 +7,16 @@ classdef FilterCollection < matlab.mixin.Copyable & hgsetget
         FilterContainer
         ButtonContainer
         FilterParameterContainer
-        
-        AddJButton
-        AddButtonComp
-        AddButtonCont
-        RemoveJButton
-        RemoveButtonComp
-        RemoveButtonCont
-        PlotJButton
-        PlotButtonComp
-        PlotButtonCont
-        ExportJButton
-        ExportButtonComp
-        ExportButtonCont
-        
-        FiltScroll
-        FiltTableModel
-        FiltJTable
-        FiltJTableH
-        FiltJScroll
-        FiltJHScroll
-        FiltHContainer
-        FiltTableComp
-        FiltTableCont
-        
-        FiltParamScroll
-        FiltParamTableModel
-        FiltParamJTable
-        FiltParamJTableH
-        FiltParamJScroll
-        FiltParamJHScroll
-        FiltParamHContainer
-        FiltParamTableComp
-        FiltParamTableCont
-        
-        FiltMapScroll
-        FiltMapTableModel
-        FiltMapJTable
-        FiltMapJTableH
-        FiltMapJScroll
-        FiltMapJHScroll
-        FiltMapHContainer
-        FiltMapTableComp
-        FiltMapTableCont
-        
+
+        AddButton
+        RemoveButton
+        PlotButton
+        ExportButton
+
+        FiltTable
+        FiltParamTable
+        FiltMapTable
+
         FiltParamTabPanel
         ParamTab
         MapTab
@@ -248,206 +214,112 @@ classdef FilterCollection < matlab.mixin.Copyable & hgsetget
     %% Methods - View
     methods     
         function createView( obj , parent )
-            import javax.swing.*;
             this_dir = fileparts( mfilename( 'fullpath' ) );
-            icon_dir = fullfile( this_dir,'..','..','Resources' );  
-            
+            icon_dir = fullfile( this_dir,'..','..','Resources' );
+
             if nargin == 1
-                obj.Parent = figure();
-            else 
+                obj.Parent = uifigure();
+            else
                 obj.Parent = parent;
             end
+
             % Main Container
-            obj.Container = uicontainer('Parent',obj.Parent,...
+            obj.Container = uipanel('Parent',obj.Parent,...
                 'Units', obj.Units,...
                 'Position',obj.Position);
-            set(obj.Container,'ResizeFcn',@obj.reSize);
-            
+
+            mainLayout = uigridlayout(obj.Container,[3 1],...
+                'RowHeight',{'1x',25,'fit'},...
+                'ColumnWidth',{'1x'},...
+                'RowSpacing',3,...
+                'Padding',[5 0 5 5]);
+
                 % Filter Container
-                obj.FilterContainer = uicontainer('Parent',obj.Parent);
-                set(obj.FilterContainer,'ResizeFcn',@obj.reSizeFilterC);
-                    updateFilterTable( obj );
+                obj.FilterContainer = uipanel(mainLayout);
+                obj.FilterContainer.Layout.Row = 1;
+                obj.FilterContainer.Layout.Column = 1;
+                updateFilterTable( obj );
 
                 % Button Container
-                obj.ButtonContainer = uicontainer('Parent',obj.Container);
-                set(obj.ButtonContainer,'ResizeFcn',@obj.reSizeButtonC);
-                
-                    % Add Button             
-                    addJButton = javaObjectEDT('com.mathworks.mwswing.MJButton');
-                    addJButton.setText('New   ');        
-                    addJButtonH = handle(addJButton,'CallbackProperties');
-                    set(addJButtonH, 'ActionPerformedCallback',@obj.addFilter)
-                    myIcon = fullfile(icon_dir,'New_16.png');
-                    addJButton.setIcon(javaObjectEDT('javax.swing.ImageIcon',myIcon));
-                    addJButton.setToolTipText('Add New Filter');
-                    addJButton.setFlyOverAppearance(true);
-                    addJButton.setBorder([]);
-                    addJButton.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
-                    addJButton.setVerticalTextPosition(javax.swing.SwingConstants.CENTER);
-                    addJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                    obj.AddJButton = addJButton;
-                    [obj.AddButtonComp,obj.AddButtonCont] = javacomponent(obj.AddJButton,[ ], obj.ButtonContainer );
-                    
+                obj.ButtonContainer = uipanel(mainLayout);
+                obj.ButtonContainer.Layout.Row = 2;
+                obj.ButtonContainer.Layout.Column = 1;
 
-                    % Remove Button             
-                    removeJButton = javaObjectEDT('com.mathworks.mwswing.MJButton');
-                    removeJButton.setText('Remove');        
-                    removeJButtonH = handle(removeJButton,'CallbackProperties');
-                    set(removeJButtonH, 'ActionPerformedCallback',@obj.removeFilter)
-                    myIcon = fullfile(icon_dir,'StopX_16.png');
-                    removeJButton.setIcon(javaObjectEDT('javax.swing.ImageIcon',myIcon));
-                    removeJButton.setToolTipText('Add New Item');
-                    removeJButton.setFlyOverAppearance(true);
-                    removeJButton.setBorder([]);
-                    %removeJButton.setVisible(false);
-                    removeJButton.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
-                    removeJButton.setVerticalTextPosition(javax.swing.SwingConstants.CENTER);
-                    removeJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                    obj.RemoveJButton = removeJButton;
-                    [obj.RemoveButtonComp,obj.RemoveButtonCont] = javacomponent(obj.RemoveJButton,[ ], obj.ButtonContainer );
+                buttonLayout = uigridlayout(obj.ButtonContainer,[1 5],...
+                    'ColumnWidth',{'fit','fit','fit','fit','1x'},...
+                    'RowHeight',{'fit'},...
+                    'ColumnSpacing',5,...
+                    'RowSpacing',0,...
+                    'Padding',[0 0 0 0]);
 
-                    % Plot Button             
-                    plotJButton = javaObjectEDT('com.mathworks.mwswing.MJButton');
-                    plotJButton.setText('Plot  ');        
-                    plotJButtonH = handle(plotJButton,'CallbackProperties');
-                    set(plotJButtonH, 'ActionPerformedCallback',@obj.plotFilter)
-                    myIcon = fullfile(icon_dir,'Figure_16.png');
-                    plotJButton.setIcon(javaObjectEDT('javax.swing.ImageIcon',myIcon));
-                    plotJButton.setToolTipText('Add New Item');
-                    plotJButton.setFlyOverAppearance(true);
-                    plotJButton.setBorder([]);
-                    %plotJButton.setVisible(false);
-                    plotJButton.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
-                    plotJButton.setVerticalTextPosition(javax.swing.SwingConstants.CENTER);
-                    plotJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                    obj.PlotJButton = plotJButton;
-                    [obj.PlotButtonComp,obj.PlotButtonCont] = javacomponent(obj.PlotJButton,[ ], obj.ButtonContainer );
-                    
-                    % Export Button             
-                    exportJButton = javaObjectEDT('com.mathworks.mwswing.MJButton');
-                    exportJButton.setText('Export');        
-                    exportJButtonH = handle(exportJButton,'CallbackProperties');
-                    set(exportJButtonH, 'ActionPerformedCallback',@obj.exportFilter)
-                    myIcon = fullfile(icon_dir,'Export_16.png');
-                    exportJButton.setIcon(javaObjectEDT('javax.swing.ImageIcon',myIcon));
-                    exportJButton.setToolTipText('Add New Item');
-                    exportJButton.setFlyOverAppearance(true);
-                    exportJButton.setBorder([]);
-                    %exportJButton.setVisible(false);
-                    exportJButton.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
-                    exportJButton.setVerticalTextPosition(javax.swing.SwingConstants.CENTER);
-                    exportJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                    obj.ExportJButton = exportJButton;
-                    [obj.ExportButtonComp,obj.ExportButtonCont] = javacomponent(obj.ExportJButton,[ ], obj.ButtonContainer );
-      
-            
+                    % Add Button
+                    obj.AddButton = uibutton(buttonLayout,'Text','New',...
+                        'Icon',fullfile(icon_dir,'New_16.png'),...
+                        'Tooltip','Add New Filter',...
+                        'ButtonPushedFcn',@obj.addFilter);
+                    obj.AddButton.Layout.Row = 1;
+                    obj.AddButton.Layout.Column = 1;
+
+                    % Remove Button
+                    obj.RemoveButton = uibutton(buttonLayout,'Text','Remove',...
+                        'Icon',fullfile(icon_dir,'StopX_16.png'),...
+                        'Tooltip','Remove Filter',...
+                        'ButtonPushedFcn',@obj.removeFilter);
+                    obj.RemoveButton.Layout.Row = 1;
+                    obj.RemoveButton.Layout.Column = 2;
+
+                    % Plot Button
+                    obj.PlotButton = uibutton(buttonLayout,'Text','Plot',...
+                        'Icon',fullfile(icon_dir,'Figure_16.png'),...
+                        'Tooltip','Plot Filter',...
+                        'ButtonPushedFcn',@obj.plotFilter);
+                    obj.PlotButton.Layout.Row = 1;
+                    obj.PlotButton.Layout.Column = 3;
+
+                    % Export Button
+                    obj.ExportButton = uibutton(buttonLayout,'Text','Export',...
+                        'Icon',fullfile(icon_dir,'Export_16.png'),...
+                        'Tooltip','Export Filters',...
+                        'ButtonPushedFcn',@obj.exportFilter);
+                    obj.ExportButton.Layout.Row = 1;
+                    obj.ExportButton.Layout.Column = 4;
+
                 % Filter Param Container
-                obj.FilterParameterContainer = uicontainer('Parent',obj.Parent);
-                set(obj.FilterParameterContainer,'ResizeFcn',@obj.reSizeFiltParamC);
-                obj.FiltParamTabPanel = uitabgroup('Parent',obj.FilterParameterContainer);%,'SelectionChangedFcn',@obj.updateSelectParamTab); 
-                    obj.ParamTab  = uitab('Parent',obj.FiltParamTabPanel);
-                    obj.ParamTab.Title = 'Parameters';
+                obj.FilterParameterContainer = uipanel(mainLayout);
+                obj.FilterParameterContainer.Layout.Row = 3;
+                obj.FilterParameterContainer.Layout.Column = 1;
+                obj.FiltParamTabPanel = uitabgroup('Parent',obj.FilterParameterContainer);
+                set(obj.FiltParamTabPanel,'Units','normalized','Position',[0 0 1 1]);
+                    obj.ParamTab  = uitab('Parent',obj.FiltParamTabPanel,'Title','Parameters');
 
-                    obj.MapTab  = uitab('Parent',obj.FiltParamTabPanel);
-                    obj.MapTab.Title = 'Mapping';
-                    
+                    obj.MapTab  = uitab('Parent',obj.FiltParamTabPanel,'Title','Mapping');
+
                     updateFiltParamTable( obj );
                     updateFiltMapTable( obj );
 
-         reSize( obj );
-            
         end % createView
 
         function updateFilterTable( obj )
 
-            % Remove Table
-            if ~isempty(obj.FiltTableCont)
-                delete(obj.FiltTableCont);
-%                 obj.ContextPane.plot(obj.FiltJScroll); %remove component from your jpanel in this case i used jpanel 
-%                 obj.ContextPane.revalidate(); 
-%                 obj.ContextPane.repaint();%repaint a JFrame jframe in this case 
+            if ~isempty(obj.FiltTable) && isvalid(obj.FiltTable)
+                delete(obj.FiltTable);
             end
 
-            
-            obj.FiltTableModel = javax.swing.table.DefaultTableModel(obj.FilterCollTableData,{'Name','Type'});
-            obj.FiltJTable = javaObjectEDT(javax.swing.JTable(obj.FiltTableModel));
-            obj.FiltJTableH = handle(javaObjectEDT(obj.FiltJTable), 'CallbackProperties');  % ensure that we're using EDT
-            obj.FiltJScroll = javaObjectEDT(javax.swing.JScrollPane(obj.FiltJTable));
-            [obj.FiltTableComp,obj.FiltTableCont] = javacomponent(obj.FiltJScroll,[], obj.FilterContainer );
+            obj.FiltTable = uitable('Parent',obj.FilterContainer,...
+                'Data',obj.FilterCollTableData,...
+                'ColumnName',{'Name','Type'},...
+                'ColumnEditable',[true true],...
+                'ColumnFormat',{'char',obj.FilterTypes},...
+                'CellSelectionCallback',@obj.mousePressedInFilterTable,...
+                'CellEditCallback',@obj.dataUpdatedInFilterTable);
+            set(obj.FiltTable,'Units','normalized','Position',[0 0 1 1]);
 
-
-            obj.FiltJScroll.setVerticalScrollBarPolicy(obj.FiltJScroll.VERTICAL_SCROLLBAR_AS_NEEDED);
-            obj.FiltJScroll.setHorizontalScrollBarPolicy(obj.FiltJScroll.HORIZONTAL_SCROLLBAR_NEVER);%(obj.JScroll.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-            %obj.FiltJTable.setAutoResizeMode( obj.FiltJTable.AUTO_RESIZE_OFF );
-            
-            % Set Callbacks
-            obj.FiltJTableH.MousePressedCallback = @obj.mousePressedInFilterTable;
-            JModelH = handle(obj.FiltJTable.getModel, 'CallbackProperties');
-            JModelH.TableChangedCallback     = @obj.dataUpdatedInFilterTable;       
-
-
-            w1 = 75; column0 = obj.FiltJTable.getColumnModel().getColumn(0);column0.setPreferredWidth(w1);column0.setMinWidth(w1);%column0.setMaxWidth(w1); 
-            w2 = 180;column1 = obj.FiltJTable.getColumnModel().getColumn(1);column1.setPreferredWidth(w2);column1.setMinWidth(w2);%column1.setMaxWidth(w2); 
-%             w3 = 120;column2 = obj.FiltJTable.getColumnModel().getColumn(2);column2.setPreferredWidth(w3);column2.setMinWidth(w3);column2.setMaxWidth(w3); 
-%             w4 = 20; column3 = obj.FiltJTable.getColumnModel().getColumn(3);column3.setPreferredWidth(w4);column3.setMinWidth(w4);column0.setMaxWidth(w4); 
-
-%             % Set Cell Renderer
-%             obj.FiltJTable.getColumnModel.getColumn(0).setCellRenderer(com.jidesoft.grid.BooleanCheckBoxCellRenderer); 
-%             obj.FiltJTable.getColumnModel.getColumn(0).setCellEditor(com.jidesoft.grid.BooleanCheckBoxCellEditor); 
-% 
-%             obj.FiltJTable.getColumnModel.getColumn(3).setCellRenderer(com.jidesoft.grid.BooleanCheckBoxCellRenderer); 
-%             obj.FiltJTable.getColumnModel.getColumn(3).setCellEditor(com.jidesoft.grid.BooleanCheckBoxCellEditor); 
-
-            comboBox = javax.swing.JComboBox(obj.FilterTypes);
-            comboBox.setEditable(false);
-
-            editor = javax.swing.DefaultCellEditor(comboBox);
-            obj.FiltJTable.getColumnModel.getColumn(1).setCellEditor(editor); 
-           % jtable.getColumnModel.getColumn(0).setCellEditor(editor);
-
-
-            
-% % %             % Set Column width and row colors
-% % %             cr = AlignColoredFieldCellRenderer;
-% % %             cr.setFgColor( java.awt.Color.black );
-% % %             for j = 0:1            
-% % %                 obj.FiltJTable.getColumnModel.getColumn(j).setCellRenderer(cr);
-% % %                 for i = 0:2:double(obj.FiltJTable.getRowCount)
-% % %                     cr.setCellBgColor( i,j,java.awt.Color.white ); 
-% % %                     %cr.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-% % %                 end
-% % %                 
-% % %             end     
-% % %             obj.FiltJTable.setGridColor(java.awt.Color.black);    
-% % %             
-% % %             for j = 0:1            
-% % %                 obj.FiltJTable.getColumnModel.getColumn(j).setCellRenderer(cr);
-% % %                 for i = 1:2:double(obj.FiltJTable.getRowCount)
-% % %                     cr.setCellBgColor( i,j,java.awt.Color( 246/255 , 243/255 , 237/255 )  ); 
-% % %                     %cr.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-% % %                 end
-% % %             end  
-
-            obj.FiltJTable.setGridColor(java.awt.Color.lightGray);
-
-            % Taken from: http://xtargets.com/snippets/posts/show/37
-            obj.FiltJTable.putClientProperty('terminateEditOnFocusLost', java.lang.Boolean.TRUE);
-            
-            obj.FiltJTable.repaint;
-            obj.FiltJTable.setVisible(true);
-
-            reSizeFilterC( obj , [] , [] );
-           
         end % updateFilterTable
         
         function updateFiltParamTable( obj )
 
-            % Remove Table
-            if ~isempty(obj.FiltParamTableCont)
-                delete(obj.FiltParamTableCont);
-%                 obj.ContextPane.plot(obj.FiltParamJScroll); %remove component from your jpanel in this case i used jpanel 
-%                 obj.ContextPane.revalidate(); 
-%                 obj.ContextPane.repaint();%repaint a JFrame jframe in this case 
+            if ~isempty(obj.FiltParamTable) && isvalid(obj.FiltParamTable)
+                delete(obj.FiltParamTable);
             end
 
             if ~isempty(obj.CurrentSelectedFilter)
@@ -455,75 +327,22 @@ classdef FilterCollection < matlab.mixin.Copyable & hgsetget
             else
                 selFilName = ' ';
             end
-            obj.FiltParamTableModel = javax.swing.table.DefaultTableModel(obj.FilterParamTableData,{selFilName,'Value'});
-            obj.FiltParamJTable = javaObjectEDT(javax.swing.JTable(obj.FiltParamTableModel));
-            obj.FiltParamJTableH = handle(javaObjectEDT(obj.FiltParamJTable), 'CallbackProperties');  % ensure that we're using EDT
-            obj.FiltParamJScroll = javaObjectEDT(javax.swing.JScrollPane(obj.FiltParamJTable));
-            [obj.FiltParamTableComp,obj.FiltParamTableCont] = javacomponent(obj.FiltParamJScroll,[0,0,1,1], obj.ParamTab );
-            set(obj.FiltParamTableCont,'Units','Normal','Position',[0,0,1,1]);
 
-            obj.FiltParamJScroll.setVerticalScrollBarPolicy(obj.FiltParamJScroll.VERTICAL_SCROLLBAR_AS_NEEDED);
-            obj.FiltParamJScroll.setHorizontalScrollBarPolicy(obj.FiltParamJScroll.HORIZONTAL_SCROLLBAR_NEVER);%(obj.JScroll.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-            %obj.FiltParamJTable.setAutoResizeMode( obj.FiltParamJTable.AUTO_RESIZE_OFF );
-            
-            % Set Callbacks
-            obj.FiltParamJTableH.MousePressedCallback = @obj.mousePressedInFiltParamTable;
-            JModelH = handle(obj.FiltParamJTable.getModel, 'CallbackProperties');
-            JModelH.TableChangedCallback     = @obj.dataUpdatedInFiltParamTable;       
+            obj.FiltParamTable = uitable('Parent',obj.ParamTab,...
+                'Data',obj.FilterParamTableData,...
+                'ColumnName',{selFilName,'Value'},...
+                'ColumnEditable',[false true],...
+                'CellSelectionCallback',@obj.mousePressedInFiltParamTable,...
+                'CellEditCallback',@obj.dataUpdatedInFiltParamTable);
 
+            set(obj.FiltParamTable,'Units','normalized','Position',[0 0 1 1]);
 
-            w1 = 140; column0 = obj.FiltParamJTable.getColumnModel().getColumn(0);column0.setPreferredWidth(w1);column0.setMinWidth(w1);%column0.setMaxWidth(w1); 
-            w2 = 100;column1 = obj.FiltParamJTable.getColumnModel().getColumn(1);column1.setPreferredWidth(w2);column1.setMinWidth(w2);%column1.setMaxWidth(w2); 
-%             w3 = 120;column2 = obj.FiltParamJTable.getColumnModel().getColumn(2);column2.setPreferredWidth(w3);column2.setMinWidth(w3);column2.setMaxWidth(w3); 
-%             w4 = 20; column3 = obj.FiltParamJTable.getColumnModel().getColumn(3);column3.setPreferredWidth(w4);column3.setMinWidth(w4);column0.setMaxWidth(w4); 
-
-
-            % Set Cell Renderer
-            nonEditCR = javax.swing.DefaultCellEditor(javax.swing.JTextField);
-            nonEditCR.setClickCountToStart(intmax); % =never.
-            obj.FiltParamJTable.getColumnModel.getColumn(0).setCellEditor(nonEditCR); 
-            
-
-            
-% %             % Set Column width and row colors
-% %             cr = AlignColoredFieldCellRenderer;
-% %             cr.setFgColor( java.awt.Color.black );
-% %             for j = 0:1            
-% %                 obj.FiltParamJTable.getColumnModel.getColumn(j).setCellRenderer(cr);
-% %                 for i = 0:2:double(obj.FiltParamJTable.getRowCount)
-% %                     cr.setCellBgColor( i,j,java.awt.Color.white ); 
-% %                     %cr.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-% %                 end
-% %                 
-% %             end     
-% %             obj.FiltParamJTable.setGridColor(java.awt.Color.black);    
-% %             
-% %             for j = 0:1            
-% %                 obj.FiltParamJTable.getColumnModel.getColumn(j).setCellRenderer(cr);
-% %                 for i = 1:2:double(obj.FiltParamJTable.getRowCount)
-% %                     cr.setCellBgColor( i,j,java.awt.Color( 246/255 , 243/255 , 237/255 )  ); 
-% %                     %cr.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-% %                 end
-% %             end  
-
-            obj.FiltParamJTable.setGridColor(java.awt.Color.lightGray);
-
-            % Taken from: http://xtargets.com/snippets/posts/show/37
-            obj.FiltParamJTable.putClientProperty('terminateEditOnFocusLost', java.lang.Boolean.TRUE);
-            
-            obj.FiltParamJTable.repaint;
-            obj.FiltParamJTable.setVisible(true);
-           
         end % updateFiltParamTable
         
         function updateFiltMapTable( obj )
 
-            % Remove Table
-            if ~isempty(obj.FiltMapTableCont)
-                delete(obj.FiltMapTableCont);
-%                 obj.ContextPane.plot(obj.FiltMapJScroll); %remove component from your jpanel in this case i used jpanel 
-%                 obj.ContextPane.revalidate(); 
-%                 obj.ContextPane.repaint();%repaint a JFrame jframe in this case 
+            if ~isempty(obj.FiltMapTable) && isvalid(obj.FiltMapTable)
+                delete(obj.FiltMapTable);
             end
 
             if ~isempty(obj.CurrentSelectedFilter)
@@ -531,64 +350,16 @@ classdef FilterCollection < matlab.mixin.Copyable & hgsetget
             else
                 selFilName = ' ';
             end
-            obj.FiltMapTableModel = javax.swing.table.DefaultTableModel(obj.FilterMapTableData,{selFilName,'Value'});
-            obj.FiltMapJTable = javaObjectEDT(javax.swing.JTable(obj.FiltMapTableModel));
-            obj.FiltMapJTableH = handle(javaObjectEDT(obj.FiltMapJTable), 'CallbackProperties');  % ensure that we're using EDT
-            obj.FiltMapJScroll = javaObjectEDT(javax.swing.JScrollPane(obj.FiltMapJTable));
-            [obj.FiltMapTableComp,obj.FiltMapTableCont] = javacomponent(obj.FiltMapJScroll,[], obj.MapTab );
-            set(obj.FiltMapTableCont,'Units','Normal','Position',[0,0,1,1]);
 
-            obj.FiltMapJScroll.setVerticalScrollBarPolicy(obj.FiltMapJScroll.VERTICAL_SCROLLBAR_AS_NEEDED);
-            obj.FiltMapJScroll.setHorizontalScrollBarPolicy(obj.FiltMapJScroll.HORIZONTAL_SCROLLBAR_NEVER);%(obj.JScroll.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-            %obj.FiltMapJTable.setAutoResizeMode( obj.FiltMapJTable.AUTO_RESIZE_OFF );
-            
-            % Set Callbacks
-            obj.FiltMapJTableH.MousePressedCallback = @obj.mousePressedInFiltMapTable;
-            JModelH = handle(obj.FiltMapJTable.getModel, 'CallbackProperties');
-            JModelH.TableChangedCallback     = @obj.dataUpdatedInFiltMapTable;       
+            obj.FiltMapTable = uitable('Parent',obj.MapTab,...
+                'Data',obj.FilterMapTableData,...
+                'ColumnName',{selFilName,'Value'},...
+                'ColumnEditable',[false true],...
+                'CellSelectionCallback',@obj.mousePressedInFiltMapTable,...
+                'CellEditCallback',@obj.dataUpdatedInFiltMapTable);
 
+            set(obj.FiltMapTable,'Units','normalized','Position',[0 0 1 1]);
 
-            w1 = 140; column0 = obj.FiltMapJTable.getColumnModel().getColumn(0);column0.setPreferredWidth(w1);column0.setMinWidth(w1);%column0.setMaxWidth(w1); 
-            w2 = 100;column1 = obj.FiltMapJTable.getColumnModel().getColumn(1);column1.setPreferredWidth(w2);column1.setMinWidth(w2);%column1.setMaxWidth(w2); 
-%             w3 = 120;column2 = obj.FiltMapJTable.getColumnModel().getColumn(2);column2.setPreferredWidth(w3);column2.setMinWidth(w3);column2.setMaxWidth(w3); 
-%             w4 = 20; column3 = obj.FiltMapJTable.getColumnModel().getColumn(3);column3.setPreferredWidth(w4);column3.setMinWidth(w4);column0.setMaxWidth(w4); 
-
-            % Set Cell Renderer
-            nonEditCR = javax.swing.DefaultCellEditor(javax.swing.JTextField);
-            nonEditCR.setClickCountToStart(intmax); % =never.
-            obj.FiltMapJTable.getColumnModel.getColumn(0).setCellEditor(nonEditCR);
-      
-
-            
-% %             % Set Column width and row colors
-% %             cr = AlignColoredFieldCellRenderer;
-% %             cr.setFgColor( java.awt.Color.black );
-% %             for j = 0:1            
-% %                 obj.FiltMapJTable.getColumnModel.getColumn(j).setCellRenderer(cr);
-% %                 for i = 0:2:double(obj.FiltMapJTable.getRowCount)
-% %                     cr.setCellBgColor( i,j,java.awt.Color.white ); 
-% %                     %cr.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-% %                 end
-% %                 
-% %             end     
-% %             obj.FiltMapJTable.setGridColor(java.awt.Color.black);    
-% %             
-% %             for j = 0:1            
-% %                 obj.FiltMapJTable.getColumnModel.getColumn(j).setCellRenderer(cr);
-% %                 for i = 1:2:double(obj.FiltMapJTable.getRowCount)
-% %                     cr.setCellBgColor( i,j,java.awt.Color( 246/255 , 243/255 , 237/255 )  ); 
-% %                     %cr.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-% %                 end
-% %             end  
-
-            obj.FiltMapJTable.setGridColor(java.awt.Color.lightGray);
-
-            % Taken from: http://xtargets.com/snippets/posts/show/37
-            obj.FiltMapJTable.putClientProperty('terminateEditOnFocusLost', java.lang.Boolean.TRUE);
-            
-            obj.FiltMapJTable.repaint;
-            obj.FiltMapJTable.setVisible(true);
-            
         end % updateFiltMapTable
         
     end
@@ -596,33 +367,33 @@ classdef FilterCollection < matlab.mixin.Copyable & hgsetget
     %% Methods - Filter Table Protected Callbacks
     methods (Access = protected)         
         
-        function mousePressedInFilterTable( obj , hModel , hEvent )
-            if ~hEvent.isMetaDown
-                rowSelected = hModel.getSelectedRow + 1;
+        function mousePressedInFilterTable( obj , ~ , event )
+            if ~isempty(event.Indices)
+                rowSelected = event.Indices(1);
                 obj.CurrentSelectedFilterRow = rowSelected;
-                
+
                 updateFiltParamTable( obj );
                 updateFiltMapTable( obj );
             end
         end % mousePressedInFilterTable
-        
-        function dataUpdatedInFilterTable( obj , hModel , hEvent ) 
 
-            modifiedRow = get(hEvent,'FirstRow');
-            modifiedCol = get(hEvent,'Column');
+        function dataUpdatedInFilterTable( obj , src , event ) %#ok<INUSD>
+
+            modifiedRow = event.Indices(1);
+            modifiedCol = event.Indices(2);
 
             switch modifiedCol
-                case 0 
-                    obj.Filters(modifiedRow + 1).Name   = hModel.getValueAt(modifiedRow,modifiedCol);
+                case 1
+                    obj.Filters(modifiedRow).Name   = event.EditData;
                     updateFiltParamTable( obj );
                     updateFiltMapTable( obj );
-                case 1
-                    obj.Filters(modifiedRow + 1).DisplayString = hModel.getValueAt(modifiedRow,modifiedCol);
+                case 2
+                    obj.Filters(modifiedRow).DisplayString = event.EditData;
                     updateFiltParamTable( obj );
                     updateFiltMapTable( obj );
             end
-            
-            
+
+
         end % dataUpdatedInFilterTable
     
     end
@@ -683,38 +454,37 @@ classdef FilterCollection < matlab.mixin.Copyable & hgsetget
     %% Methods - Filter Parameter Table Protected Callbacks
     methods (Access = protected)         
         
-        function mousePressedInFiltParamTable( obj , hModel , hEvent )
-            if ~hEvent.isMetaDown
-                rowSelected = hModel.getSelectedRow + 1;
+        function mousePressedInFiltParamTable( obj , ~ , event )
+            if ~isempty(event.Indices)
+                rowSelected = event.Indices(1);
                 obj.RowSelectedFiltParam = rowSelected;
-                
+
                 selFilter = obj.CurrentSelectedFilter;
                 if isempty(selFilter)
                     selFilter.CurrentPropertySelected = [];
                 else
-                    selFilter.CurrentPropertySelected = rowSelected; 
+                    selFilter.CurrentPropertySelected = rowSelected;
                 end
-                
+
                 name  = selFilter.CurrentPropertySelected;
                 value = num2str(selFilter.(selFilter.CurrentPropertySelected));
-                
-                obj.SelectedParameter = UserInterface.ControlDesign.Parameter('Name',name','String',value);
+
+                obj.SelectedParameter = UserInterface.ControlDesign.Parameter('Name',name,'String',value);
 
                 notify(obj,'ParameterUpdated',UserInterface.UserInterfaceEventData(obj.SelectedParameter));
 
             end
         end % mousePressedInFiltParamTable
-        
-        function dataUpdatedInFiltParamTable( obj , hModel , hEvent ) 
 
-            modifiedRow = get(hEvent,'FirstRow');
-            modifiedCol = get(hEvent,'Column');
-            
-            
+        function dataUpdatedInFiltParamTable( obj , src , event ) %#ok<INUSD>
+
+            modifiedRow = event.Indices(1);
+            modifiedCol = event.Indices(2);
+
             switch modifiedCol
-                case 1 
+                case 2
                     selFilter = obj.CurrentSelectedFilter;
-                    valueStr = hModel.getValueAt(modifiedRow,modifiedCol);
+                    valueStr = event.EditData;
                     value = str2double(valueStr);
                     if ~isnan(value)
                         selFilter.(selFilter.CurrentPropertySelected) = value;
@@ -722,8 +492,8 @@ classdef FilterCollection < matlab.mixin.Copyable & hgsetget
                         selFilter.(selFilter.CurrentPropertySelected) = [];
                     end
             end
-            
-            
+
+
         end % dataUpdatedInFiltParamTable
         
     end
@@ -731,30 +501,27 @@ classdef FilterCollection < matlab.mixin.Copyable & hgsetget
     %% Methods - Filter Map Table Protected Callbacks
     methods (Access = protected)         
         
-        function mousePressedInFiltMapTable( obj , hModel , hEvent )
-            if ~hEvent.isMetaDown
-                rowSelected = hModel.getSelectedRow + 1;
+        function mousePressedInFiltMapTable( obj , ~ , event )
+            if ~isempty(event.Indices)
+                rowSelected = event.Indices(1);
                 obj.RowSelectedFiltMap = rowSelected;
-
-
             end
         end % mousePressedInFiltMapTable
-        
-        function dataUpdatedInFiltMapTable( obj , hModel , hEvent ) 
 
-            modifiedRow = get(hEvent,'FirstRow');
-            modifiedCol = get(hEvent,'Column');
-            
-            
+        function dataUpdatedInFiltMapTable( obj , src , event ) %#ok<INUSD>
+
+            modifiedRow = event.Indices(1);
+            modifiedCol = event.Indices(2);
+
             switch modifiedCol
-                case 1 
+                case 2
                     selFilter = obj.CurrentSelectedFilter;
-                    valueStr = hModel.getValueAt(modifiedRow,modifiedCol);
-                    setMappingProperty( selFilter , modifiedRow + 1 , valueStr );
+                    valueStr = event.EditData;
+                    setMappingProperty( selFilter , modifiedRow , valueStr );
 
             end
-            
-            
+
+
         end % dataUpdatedInFiltMapTable
         
     end
@@ -774,16 +541,15 @@ classdef FilterCollection < matlab.mixin.Copyable & hgsetget
         end %reSize
         
         function reSizeFilterC( obj , ~ , ~ )
-            panelPos = getpixelposition(obj.FilterContainer); 
-            set(obj.FiltTableCont,'Units','Pixels','Position',[ 1 , 1 , panelPos(3) , panelPos(4)] ); 
+            panelPos = getpixelposition(obj.FilterContainer);
+            set(obj.FiltTable,'Units','Pixels','Position',[ 1 , 1 , panelPos(3) , panelPos(4)] );
         end %reSizeFilterC
-        
+
         function reSizeButtonC( obj , ~ , ~ )
-            %panelPos = getpixelposition(obj.ButtonContainer); 
-            set(obj.AddButtonCont,'Units','Pixels','Position',[ 1 , 7 , 70 , 20 ] ); 
-            set(obj.RemoveButtonCont,'Units','Pixels','Position',[ 70 , 7 , 70 , 20 ] ); 
-            set(obj.PlotButtonCont,'Units','Pixels','Position',[ 140 , 7 , 65 , 20 ] ); 
-            set(obj.ExportButtonCont,'Units','Pixels','Position',[ 205 , 7 , 65 , 20 ] ); 
+            set(obj.AddButton,'Units','Pixels','Position',[ 1 , 7 , 70 , 20 ] );
+            set(obj.RemoveButton,'Units','Pixels','Position',[ 70 , 7 , 70 , 20 ] );
+            set(obj.PlotButton,'Units','Pixels','Position',[ 140 , 7 , 65 , 20 ] );
+            set(obj.ExportButton,'Units','Pixels','Position',[ 205 , 7 , 65 , 20 ] );
         end %reSizeButtonC
         
         function reSizeFiltParamC( obj , ~ , ~ )
@@ -877,38 +643,35 @@ classdef FilterCollection < matlab.mixin.Copyable & hgsetget
         
         function enablePanel( obj , value )
             if value
-                obj.AddButtonComp.setEnabled(true);
-                obj.RemoveButtonComp.setEnabled(true);
-                obj.PlotButtonComp.setEnabled(true);
-                editCR = javaObjectEDT('javax.swing.DefaultCellEditor',javax.swing.JTextField);
-                obj.FiltParamJTable.getColumnModel.getColumn(1).setCellEditor(editCR);
-                obj.FiltParamJTable.repaint; 
-                obj.FiltMapJTable.getColumnModel.getColumn(1).setCellEditor(editCR);
-                obj.FiltMapJTable.repaint;  
-                
-                comboBox = javax.swing.JComboBox(obj.FilterTypes);
-                comboBox.setEditable(false);
-
-                editor = javax.swing.DefaultCellEditor(comboBox);
-                obj.FiltJTable.getColumnModel.getColumn(1).setCellEditor(editor); 
-                obj.FiltJTable.repaint; 
-                 
-                    
+                obj.AddButton.Enable = 'on';
+                obj.RemoveButton.Enable = 'on';
+                obj.PlotButton.Enable = 'on';
+                obj.ExportButton.Enable = 'on';
+                if ~isempty(obj.FiltParamTable)
+                    set(obj.FiltParamTable,'ColumnEditable',[false true]);
+                end
+                if ~isempty(obj.FiltMapTable)
+                    set(obj.FiltMapTable,'ColumnEditable',[false true]);
+                end
+                if ~isempty(obj.FiltTable)
+                    set(obj.FiltTable,'ColumnEditable',[true true]);
+                end
             else
-                obj.AddButtonComp.setEnabled(false);
-                obj.RemoveButtonComp.setEnabled(false);
-                obj.PlotButtonComp.setEnabled(false);
-                nonEditCR = javaObjectEDT('javax.swing.DefaultCellEditor',javax.swing.JTextField);
-                nonEditCR.setClickCountToStart(intmax); % =never.
-                obj.FiltParamJTable.getColumnModel.getColumn(1).setCellEditor(nonEditCR);
-                obj.FiltParamJTable.repaint;
-                obj.FiltMapJTable.getColumnModel.getColumn(1).setCellEditor(nonEditCR);
-                obj.FiltMapJTable.repaint;  
-
-                obj.FiltJTable.getColumnModel.getColumn(1).setCellEditor(nonEditCR);
-                obj.FiltJTable.repaint; 
+                obj.AddButton.Enable = 'off';
+                obj.RemoveButton.Enable = 'off';
+                obj.PlotButton.Enable = 'off';
+                obj.ExportButton.Enable = 'off';
+                if ~isempty(obj.FiltParamTable)
+                    set(obj.FiltParamTable,'ColumnEditable',[false false]);
+                end
+                if ~isempty(obj.FiltMapTable)
+                    set(obj.FiltMapTable,'ColumnEditable',[false false]);
+                end
+                if ~isempty(obj.FiltTable)
+                    set(obj.FiltTable,'ColumnEditable',[false false]);
+                end
             end
-            
+
         end % enablePanel
         
     end
@@ -916,115 +679,20 @@ classdef FilterCollection < matlab.mixin.Copyable & hgsetget
     %% Methods - Delete
     methods
         function delete_GUI_Only( obj )
-            % Java Components 
-            obj.AddJButton = [];
-            obj.AddButtonComp = [];
-            obj.RemoveJButton = [];
-            obj.RemoveButtonComp = [];
-            obj.PlotJButton = [];
-            obj.PlotButtonComp = [];
-            obj.FiltScroll = [];
-            obj.FiltTableModel = [];
-            obj.FiltJTable = [];
-            obj.FiltJTableH = [];
-            obj.FiltJScroll = [];
-            obj.FiltJHScroll = [];
-            obj.FiltTableComp = [];
-            obj.FiltParamScroll = [];
-            obj.FiltParamTableModel = [];
-            obj.FiltParamJTable = [];
-            obj.FiltParamJTableH = [];
-            obj.FiltParamJScroll = [];
-            obj.FiltParamJHScroll = [];
-            obj.FiltParamTableComp = [];
-            obj.FiltMapScroll = [];
-            obj.FiltMapTableModel = [];
-            obj.FiltMapJTable = [];       
-            obj.FiltMapJTableH = [];
-            obj.FiltMapJScroll = [];
-            obj.FiltMapJHScroll = [];
-            obj.FiltMapTableComp = [];
+            try, delete(obj.AddButton); end
+            try, delete(obj.RemoveButton); end
+            try, delete(obj.PlotButton); end
+            try, delete(obj.ExportButton); end
+            try, delete(obj.FiltTable); end
+            try, delete(obj.FiltParamTable); end
+            try, delete(obj.FiltMapTable); end
 
-        
-            % Javawrappers
-            % Check if container is already being deleted
-            if ~isempty(obj.AddButtonCont) && ishandle(obj.AddButtonCont) && strcmp(get(obj.AddButtonCont, 'BeingDeleted'), 'off')
-                delete(obj.AddButtonCont)
-            end
-            % Check if container is already being deleted
-            if ~isempty(obj.RemoveButtonCont) && ishandle(obj.RemoveButtonCont) && strcmp(get(obj.RemoveButtonCont, 'BeingDeleted'), 'off')
-                delete(obj.RemoveButtonCont)
-            end
-            % Check if container is already being deleted
-            if ~isempty(obj.PlotButtonCont) && ishandle(obj.PlotButtonCont) && strcmp(get(obj.PlotButtonCont, 'BeingDeleted'), 'off')
-                delete(obj.PlotButtonCont)
-            end
-            % Check if container is already being deleted
-            if ~isempty(obj.FiltHContainer) && ishandle(obj.FiltHContainer) && strcmp(get(obj.FiltHContainer, 'BeingDeleted'), 'off')
-                delete(obj.FiltHContainer)
-            end
-            % Check if container is already being deleted
-            if ~isempty(obj.FiltTableCont) && ishandle(obj.FiltTableCont) && strcmp(get(obj.FiltTableCont, 'BeingDeleted'), 'off')
-                delete(obj.FiltTableCont)
-            end
-            % Check if container is already being deleted
-            if ~isempty(obj.FiltParamHContainer) && ishandle(obj.FiltParamHContainer) && strcmp(get(obj.FiltParamHContainer, 'BeingDeleted'), 'off')
-                delete(obj.FiltParamHContainer)
-            end
-            % Check if container is already being deleted
-            if ~isempty(obj.FiltParamTableCont) && ishandle(obj.FiltParamTableCont) && strcmp(get(obj.FiltParamTableCont, 'BeingDeleted'), 'off')
-                delete(obj.FiltParamTableCont)
-            end
-            % Check if container is already being deleted
-            if ~isempty(obj.FiltMapHContainer) && ishandle(obj.FiltMapHContainer) && strcmp(get(obj.FiltMapHContainer, 'BeingDeleted'), 'off')
-                delete(obj.FiltMapHContainer)
-            end
-            % Check if container is already being deleted
-            if ~isempty(obj.FiltMapTableCont) && ishandle(obj.FiltMapTableCont) && strcmp(get(obj.FiltMapTableCont, 'BeingDeleted'), 'off')
-                delete(obj.FiltMapTableCont)
-            end
-
-
-            % User Defined Objects
-            try %#ok<*TRYNC>             
-                delete(obj.ButtonContainer);
-            end
-
-
-    %          % Matlab Components
-            try %#ok<*TRYNC>             
-                delete(obj.ButtonContainer);
-            end
-            try %#ok<*TRYNC>             
-                delete(obj.FiltParamTabPanel);
-            end
-            try %#ok<*TRYNC>             
-                delete(obj.ParamTab);
-            end
-            try %#ok<*TRYNC>             
-                delete(obj.MapTab);
-            end
-            try %#ok<*TRYNC>             
-                delete(obj.FilterParameterContainer);
-            end
-            try %#ok<*TRYNC>             
-                delete(obj.Container);
-            end
-            
-            try %#ok<*TRYNC>             
-                delete(obj.FilterContainer);
-            end
- 
-        
-        
-        
-        
-
-        
-        
-        
-        
-        
+            try, delete(obj.ButtonContainer); end
+            try, delete(obj.FilterContainer); end
+            try, delete(obj.FilterParameterContainer); end
+            try, delete(obj.FiltParamTabPanel); end
+            try, delete(obj.ParamTab); end
+            try, delete(obj.MapTab); end
         end % delete_GUI_Only
     end
     

@@ -22,7 +22,7 @@ function jImage = folderIcon()
     1.0000    1.0000    1.0000;
     1.0000    1.0000    1.0000;
     1.0000    1.0000    1.0000];
-
+    
  warning('off','MATLAB:im2java:functionToBeRemoved');
     jImage = im2java(I,map);
 

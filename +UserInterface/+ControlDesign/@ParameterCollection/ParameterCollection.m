@@ -4,19 +4,15 @@ classdef ParameterCollection < matlab.mixin.Copyable & hgsetget
     properties (Transient = true)  
         Parent
         Container
+        MainLayout
         ButtonContainer
 
  
         FullViewButton
         
     
-        SelectedTableModel
-        SelectedJTable
-        SelectedJTableH
-        SelectedJScroll
-        SelectedJHScroll
-        SelectedHContainer
-        
+        SelectedTable
+
         ReInitButton
         
         CurrentSelectedParamter UserInterface.ControlDesign.Parameter = UserInterface.ControlDesign.Parameter.empty
@@ -25,14 +21,11 @@ classdef ParameterCollection < matlab.mixin.Copyable & hgsetget
     
     %% Public properties - Object Handles Full View
     properties (Transient = true)  
-        Frame  
-        TableModel
-        JTable
-        JTableH
-        JScroll
-        AddJButton
-        RemoveJButton
-        FullParameterTableHeader = {'D','Name','Value','G'}  
+        Frame
+        FullTable
+        AddButton
+        RemoveButton
+        FullParameterTableHeader = {'D','Name','Value','G'}
         ContextPane
     end % Public properties
       
@@ -207,78 +200,67 @@ classdef ParameterCollection < matlab.mixin.Copyable & hgsetget
             else 
                 obj.Parent = parent;
             end
-            obj.Container = uicontainer('Parent',obj.Parent,...
+            obj.Container = uipanel('Parent',obj.Parent,...
                 'Units', obj.Units,...
                 'Position',obj.Position);
-            set(obj.Container,'ResizeFcn',@obj.reSize);
+
+            obj.MainLayout = uigridlayout(obj.Container,[2 1]);
+            obj.MainLayout.RowHeight = {'1x','fit'};
+            obj.MainLayout.ColumnWidth = {'1x'};
+            obj.MainLayout.RowSpacing = 5;
+            obj.MainLayout.ColumnSpacing = 5;
+            obj.MainLayout.Padding = [5 5 5 25];
+
             updateSelectedTable( obj )
+
             % Button Container
-            obj.ButtonContainer = uicontainer('Parent',obj.Container);
-            set(obj.ButtonContainer,'ResizeFcn',@obj.reSizeButtonC);
-            obj.FullViewButton = uicontrol(...
-                'Parent',obj.ButtonContainer,...
-                'Style','push',...
-                'String','Edit',...
-                'Callback',@obj.launchFullView_CB); 
-            obj.ReInitButton = uicontrol(...
-                'Parent',obj.ButtonContainer,...
-                'Style','push',...
-                'String','Re-Initialize Parameters',...
+            obj.ButtonContainer = uigridlayout(obj.MainLayout,[1 2]);
+            obj.ButtonContainer.Layout.Row = 2;
+            obj.ButtonContainer.Layout.Column = 1;
+            obj.ButtonContainer.RowHeight = {'fit'};
+            obj.ButtonContainer.ColumnWidth = {'1x','1x'};
+            obj.ButtonContainer.RowSpacing = 0;
+            obj.ButtonContainer.ColumnSpacing = 5;
+            obj.ButtonContainer.Padding = [0 0 0 0];
+            obj.FullViewButton = uibutton(...
+                obj.ButtonContainer,...
+                'Text','Edit',...
+                'ButtonPushedFcn',@obj.launchFullView_CB);
+            obj.FullViewButton.Layout.Row = 1;
+            obj.FullViewButton.Layout.Column = 1;
+            obj.ReInitButton = uibutton(...
+                obj.ButtonContainer,...
+                'Text','Re-Initialize Parameters',...
                 'Enable',obj.ReInitBtnEnable,...
-                'Callback',@obj.reInit_CB); 
-            
-            % Force resize
-            obj.reSize();
-            
+                'ButtonPushedFcn',@obj.reInit_CB);
+            obj.ReInitButton.Layout.Row = 1;
+            obj.ReInitButton.Layout.Column = 2;
+
         end % createView
-        
+
         function updateSelectedTable( obj )
 
-            % Remove Table
-            try
-                delete(obj.SelectedHContainer);
-                drawnow();
+            % Remove existing table
+            if ~isempty(obj.SelectedTable) && isvalid(obj.SelectedTable)
+                delete(obj.SelectedTable);
             end
-            
-            obj.SelectedTableModel = javaObjectEDT('javax.swing.table.DefaultTableModel',obj.SubParameterTableData,{'Parameter','Value'});
-            obj.SelectedJTable = javaObjectEDT('javax.swing.JTable',obj.SelectedTableModel);
-            obj.SelectedJTableH = handle(javaObjectEDT(obj.SelectedJTable), 'CallbackProperties');  % ensure that we're using EDT
-            obj.SelectedJScroll = javaObjectEDT('javax.swing.JScrollPane',obj.SelectedJTable);
-            [obj.SelectedJHScroll,obj.SelectedHContainer] = javacomponent(obj.SelectedJScroll, [], obj.Container);
 
-            obj.SelectedJScroll.setVerticalScrollBarPolicy(obj.SelectedJScroll.VERTICAL_SCROLLBAR_AS_NEEDED);
-            obj.SelectedJScroll.setHorizontalScrollBarPolicy(obj.SelectedJScroll.HORIZONTAL_SCROLLBAR_NEVER);%(obj.JScroll.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-            %obj.SelectedJTable.setAutoResizeMode( obj.SelectedJTable.AUTO_RESIZE_OFF );
-            obj.SelectedJTable.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
-            
-            % Set Callbacks
-
-            obj.SelectedJTableH.MousePressedCallback = @obj.mousePressedInSelectedTable;
-            SelectedJModelH = handle(obj.SelectedJTable.getModel, 'CallbackProperties');
-            SelectedJModelH.TableChangedCallback     = @obj.dataUpdatedInSelectedTable;       
-
-
-            w1 = 115; column0 = obj.SelectedJTable.getColumnModel().getColumn(0);column0.setPreferredWidth(w1);column0.setMinWidth(w1);%column0.setMaxWidth(w1); 
-            w2 = 150;column1 = obj.SelectedJTable.getColumnModel().getColumn(1);column1.setPreferredWidth(w2);column1.setMinWidth(w2);%column1.setMaxWidth(w2); 
-            
-            nonEditCR = javaObjectEDT('javax.swing.DefaultCellEditor',javax.swing.JTextField);
-            nonEditCR.setClickCountToStart(intmax); % =never.
-            obj.SelectedJTable.getColumnModel.getColumn(0).setCellEditor(nonEditCR); 
-            
-            obj.SelectedJTable.setGridColor(java.awt.Color.lightGray);
-
-            % Taken from: http://xtargets.com/snippets/posts/show/37
-            obj.SelectedJTable.putClientProperty('terminateEditOnFocusLost', java.lang.Boolean.TRUE);
-            
-            obj.SelectedJTable.repaint;
-            obj.SelectedJTable.setVisible(true);
-
-            panelPos = getpixelposition(obj.Container); 
-            if ~isempty(obj.Container)
-                set(obj.SelectedHContainer,'Units','Pixels','Position',[ 1 , 26 , panelPos(3) - 5 , panelPos(4) - 47 ] ); 
+            if isempty(obj.MainLayout) || ~isvalid(obj.MainLayout)
+                return;
             end
-            drawnow();pause(0.1);
-            %reSize( obj );
+
+            obj.SelectedTable = uitable('Parent',obj.MainLayout,...
+                'Data',obj.SubParameterTableData,...
+                'ColumnName',{'Parameter','Value'},...
+                'ColumnEditable',[false true],...
+                'CellSelectionCallback',@obj.mousePressedInSelectedTable,...
+                'CellEditCallback',@obj.dataUpdatedInSelectedTable);
+
+            obj.SelectedTable.Layout.Row = 1;
+            obj.SelectedTable.Layout.Column = 1;
+
+            obj.SelectedTable.ColumnWidth = {115,150};
+            obj.SelectedTable.RowName = {};
         end % updateSelectedTable
         
     end 
@@ -286,41 +268,29 @@ classdef ParameterCollection < matlab.mixin.Copyable & hgsetget
     %% Methods - Selected Parameter Callbacks
     methods   
       
-        function dataUpdatedInSelectedTable(obj , hModel , hEvent )
-            modifiedRow = get(hEvent,'FirstRow');
-            modifiedCol = get(hEvent,'Column');
-            switch modifiedCol
-               
-                case 1 % Value change
-                    rowInd = modifiedRow;
-                    hSelParam = obj.SelectDisplayParameters(rowInd + 1);
-                    hSelParam.ValueString = num2str(hModel.getValueAt(modifiedRow,1));
+        function dataUpdatedInSelectedTable(obj , ~ , event )
+            if isempty(event.Indices)
+                return;
+            end
+            rowInd = event.Indices(1);
+            colInd = event.Indices(2);
+            switch colInd
+                case 2 % Value change
+                    hSelParam = obj.SelectDisplayParameters(rowInd);
+                    hSelParam.ValueString = num2str(event.EditData);
                     if hSelParam.Global
                         notify(obj,'GlobalIdentified',UserInterface.UserInterfaceEventData(hSelParam));
                     end
             end
         end % dataUpdatedInSelectedTable
 
-        function mousePressedInSelectedTable( obj , hModel , hEvent )
+        function mousePressedInSelectedTable( obj , ~ , event )
 
-            if ~hEvent.isMetaDown
-                rowSelected = hModel.getSelectedRow + 1;
-
-%                     obj.CurrentSelectedRow = rowSelected;
-
-                    if ~isempty(obj.SelectDisplayParameters)
-                        obj.CurrentSelectedParamter = obj.SelectDisplayParameters(rowSelected);
-                        
-                        
-%                         obj.CurrentSelectedParamter = obj.SelectDisplayParameters(obj.CurrentSelectedRow);
-
-%                         notify(obj,'ParameterUpdated',UserInterface.UserInterfaceEventData(obj.CurrentSelectedParamter));
-% %                         if ~strcmpi(obj.CurrentSelectedParamter.Name,'none')
-% %                             notify(obj,'ShowLogMessage',UserInterface.LogMessageEventData(['Slider Parameter changed to: ''',obj.CurrentSelectedParamter.Name,'''.'],'info'));
-% %                         else
-% %                             notify(obj,'ShowLogMessage',UserInterface.LogMessageEventData('Slider Not Available.','info'));
-% %                         end
-                    end
+            if ~isempty(event.Indices)
+                rowSelected = event.Indices(1);
+                if ~isempty(obj.SelectDisplayParameters)
+                    obj.CurrentSelectedParamter = obj.SelectDisplayParameters(rowSelected);
+                end
             end
         end % mousePressedInSelectedTable
         
@@ -330,26 +300,10 @@ classdef ParameterCollection < matlab.mixin.Copyable & hgsetget
             createFullView( obj );
         end % launchFullView_CB 
         
-        function reSize( obj , ~ , ~ ) 
-            try 
-                panelPos = getpixelposition(obj.Container); 
-                set(obj.ButtonContainer,'Units','Pixels','Position',[ 1 , 1 , panelPos(3) - 5 , 25 ] );  
-                set(obj.SelectedHContainer,'Units','Pixels','Position',[ 1 , 26 , panelPos(3) - 5 , panelPos(4) - 60 ] ); 
-            end
-        end %reSize
-        
-        function reSizeButtonC( obj , ~ , ~ )
-            try
-                panelPos = getpixelposition(obj.ButtonContainer); 
-                set(obj.FullViewButton,'Units','Pixels','Position',[ 1 , 1 , panelPos(3)/2 , panelPos(4) ] ); 
-                set(obj.ReInitButton,'Units','Pixels','Position',[ panelPos(3)/2 , 1 , panelPos(3)/2 , panelPos(4) ] ); 
-            end
-        end %reSizeButtonC
-        
         function reInit_CB( obj , ~ , ~ )
             notify(obj,'ReInitButtonPressed');%,UserInterface.UserInterfaceEventData(obj.Title));
 %             obj.ReInit = hobj.Value;
-        end % reInit_CB 
+        end % reInit_CB
         
     end 
     
@@ -362,213 +316,51 @@ classdef ParameterCollection < matlab.mixin.Copyable & hgsetget
     methods   
 
         function createFullView( obj )
-         
-            import javax.swing.*;
-            %import java.awt.BorderLayout.*;
-            
-            this_dir = fileparts( mfilename( 'fullpath' ) );
-            icon_dir = fullfile( this_dir,'..','..','Resources' );  
-              
+
             if ~isempty(obj.Frame) && isvalid(obj.Frame)
                 return;
             end
-            
-            obj.Frame  = figure('Name',obj.Title,...
-                                    'units','pixels',...
-                                    'Menubar','none',...   
-                                    'Toolbar','none',...
-                                    'NumberTitle','off',...
-                                    'HandleVisibility', 'on',...
-                                    'Visible','on',...%'WindowStyle','modal',...'Resize','off',...
-                                    'CloseRequestFcn', @obj.closeFullView);
-                                
-            obj.ContextPane = javaObjectEDT('javax.swing.JPanel');
-            obj.ContextPane.setLayout(java.awt.GridBagLayout);%obj.ContextPane.setLayout([]);
-            pane = obj.ContextPane;
-            %pane.setComponentOrientation(java.awt.ComponentOrientation.RIGHT_TO_LEFT);
-	
-%             GBagC = java.awt.GridBagConstraints();
-    
-            % Add title h
-            labelStr = ['<html><font color="white" face="Courier New">&nbsp;',obj.Title,' Parameters</html>'];
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            %pane.add(jLabelview , java.awt.BorderLayout.PAGE_START);%pane.add(jLabelview);
-            %jLabelview.setBounds(0,0,330,16);
-            
-            GBagC = java.awt.GridBagConstraints();
-            GBagC.fill = java.awt.GridBagConstraints.HORIZONTAL;
-            GBagC.ipadx = 0; 
-            GBagC.ipady = 0;  
-            GBagC.weightx = 0.0;   
-            GBagC.weighty = 0.0;   
-            GBagC.anchor = java.awt.GridBagConstraints.PAGE_START; 
-        % 	GBagC.insets = java.awt.Insets(10,0,0,0); 
-            GBagC.gridx = 0;  
-            GBagC.gridy = 0; 
-            GBagC.gridheight = 1;   
-            GBagC.gridwidth = 2;  	  
-            pane.add(jLabelview, GBagC);
-            
-            
-                        
-            % Create Parameter Table
-            updateFullViewTable( obj )
-            
-            
-            % Add Button             
-            addJButton = javaObjectEDT('com.mathworks.mwswing.MJButton');
-            addJButton.setText('New');        
-            addJButtonH = handle(addJButton,'CallbackProperties');
-            set(addJButtonH, 'ActionPerformedCallback',@obj.addParameter)
-            myIcon = fullfile(icon_dir,'New_24.png');
-            addJButton.setIcon(javax.swing.ImageIcon(myIcon));
-            addJButton.setToolTipText('Add New Item');
-            addJButton.setFlyOverAppearance(true);
-            addJButton.setBorder([]);
-            addJButton.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
-            addJButton.setVerticalTextPosition(javax.swing.SwingConstants.CENTER);
-            addJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-            %addJButton.setPreferredSize(java.awt.Dimension(10, 125));
-            %pane.add(addJButton);
-            %addJButton.setBounds(10,385,125,30);
-            obj.AddJButton = addJButton;
-            
-            GBagC = java.awt.GridBagConstraints();
-            GBagC.fill = java.awt.GridBagConstraints.BOTH;
-            GBagC.ipadx = 0; 
-            GBagC.ipady = 0;  
-            GBagC.weightx = 1.0;   
-            GBagC.weighty = 0.001;   
-        % 	GBagC.anchor = java.awt.GridBagConstraints.PAGE_END; 
-        % 	GBagC.insets = java.awt.Insets(10,0,0,0); 
-            GBagC.gridx = 0;  
-            GBagC.gridy = 2; 
-            GBagC.gridheight = 1;   
-            GBagC.gridwidth = 1;  	  
-            pane.add(addJButton, GBagC);
-            
-            
-            % Remove Button             
-            removeJButton = javaObjectEDT('com.mathworks.mwswing.MJButton');
-            removeJButton.setText('Remove');        
-            removeJButtonH = handle(removeJButton,'CallbackProperties');
-            set(removeJButtonH, 'ActionPerformedCallback',@obj.removeParameter)
-            myIcon = fullfile(icon_dir,'StopX_24.png');
-            removeJButton.setIcon(javax.swing.ImageIcon(myIcon));
-            removeJButton.setToolTipText('Add New Item');
-            removeJButton.setFlyOverAppearance(true);
-            removeJButton.setBorder([]);
-            %removeJButton.setVisible(false);
-            removeJButton.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
-            removeJButton.setVerticalTextPosition(javax.swing.SwingConstants.CENTER);
-            removeJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-            %pane.add(removeJButton);
-            %removeJButton.setBounds(150,385,125,30);
-            obj.RemoveJButton = removeJButton;
-             
-            GBagC = java.awt.GridBagConstraints();
-            GBagC.fill = java.awt.GridBagConstraints.BOTH;
-            GBagC.ipadx = 0; 
-            GBagC.ipady = 0;  
-            GBagC.weightx = 1.0;   
-            GBagC.weighty = 0.001;   
-        % 	GBagC.anchor = java.awt.GridBagConstraints.PAGE_END; 
-        % 	GBagC.insets = java.awt.Insets(10,0,0,0); 
-            GBagC.gridx = 1;  
-            GBagC.gridy = 2; 
-            GBagC.gridheight = 1;   
-            GBagC.gridwidth = 1;  	  
-            pane.add(removeJButton, GBagC);
-                       
-            % Resize and reposition the window
-            width = 300;
-            height = 465;
-            pos = getpixelposition(obj.Frame);
-            obj.Frame.Position = [ pos(1) , pos(2) , width , height ];
-            [CPComp,CPCont] = javacomponent(obj.ContextPane,[ 0 , 0 , width , height ], obj.Frame );
-            set(CPCont,'Units','Normal');
-            set(CPCont,'Position',[0,0,1,1]);
-            obj.ContextPane.setVisible(true);
+
+            obj.Frame = uifigure('Name',obj.Title,...
+                                  'Position',[100 100 300 465],...
+                                  'CloseRequestFcn',@obj.closeFullView);
+
+            obj.ContextPane = uigridlayout(obj.Frame,[2 1]);
+            obj.ContextPane.RowHeight = {'1x','fit'};
+            obj.ContextPane.ColumnWidth = {'1x'};
+
+            updateFullViewTable( obj );
+
+            buttonLayout = uigridlayout(obj.ContextPane,[1 2]);
+            buttonLayout.Layout.Row = 2;
+            buttonLayout.Layout.Column = 1;
+
+            obj.AddButton = uibutton(buttonLayout,'Text','New',...
+                'ButtonPushedFcn',@obj.addParameter);
+            obj.RemoveButton = uibutton(buttonLayout,'Text','Remove',...
+                'ButtonPushedFcn',@obj.removeParameter);
+            obj.RemoveButton.Visible = 'off';
 
         end % createFullView
         
         function updateFullViewTable( obj )
 
-            % Remove Table
-            if ~isempty(obj.JScroll)
-                obj.ContextPane.remove(obj.JScroll); %remove component from your jpanel in this case i used jpanel 
-                obj.ContextPane.revalidate(); 
-                obj.ContextPane.repaint();%repaint a JFrame jframe in this case 
+            if ~isempty(obj.FullTable) && isvalid(obj.FullTable)
+                delete(obj.FullTable);
             end
 
-            
-            obj.TableModel = javaObjectEDT('javax.swing.table.DefaultTableModel',obj.FullParameterTableData,obj.FullParameterTableHeader);
-            obj.JTable = javaObjectEDT('javax.swing.JTable',obj.TableModel);
-            obj.JTableH = handle(javaObjectEDT(obj.JTable), 'CallbackProperties');  % ensure that we're using EDT
-            obj.JScroll = javaObjectEDT('javax.swing.JScrollPane',obj.JTable);
-            %obj.JScroll.setPreferredSize(java.awt.Dimension(25, 10));
-            %obj.ContextPane.add(obj.JScroll);
-            %obj.JScroll.setBounds(10,25,280,350);
+            obj.FullTable = uitable(obj.ContextPane,...
+                'Data',obj.FullParameterTableData,...
+                'ColumnName',obj.FullParameterTableHeader,...
+                'ColumnEditable',[true false true true],...
+                'ColumnFormat',{'logical','char','char','logical'},...
+                'CellSelectionCallback',@obj.mousePressedInFullTable,...
+                'CellEditCallback',@obj.dataUpdatedInFullTable);
 
-            GBagC = java.awt.GridBagConstraints();
-            GBagC.fill = java.awt.GridBagConstraints.BOTH;
-            GBagC.ipadx = 0; 
-            GBagC.ipady = 0;  
-            GBagC.weightx = 1.0;   
-            GBagC.weighty = 1.0;   
-            %GBagC.anchor = java.awt.GridBagConstraints.PAGE_START; 
-            GBagC.insets = java.awt.Insets(10,0,0,0); 
-            GBagC.gridx = 0;  
-            GBagC.gridy = 1; 
-            GBagC.gridheight = 1;   
-            GBagC.gridwidth = 2;  	  
-            obj.ContextPane.add(obj.JScroll, GBagC);
-            
-            
-            
-            obj.JScroll.setVerticalScrollBarPolicy(obj.JScroll.VERTICAL_SCROLLBAR_AS_NEEDED);
-            obj.JScroll.setHorizontalScrollBarPolicy(obj.JScroll.HORIZONTAL_SCROLLBAR_NEVER);
-            %obj.JTable.setAutoResizeMode( obj.JTable.AUTO_RESIZE_OFF );
-            obj.JTable.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
-            
-            % Set Callbacks
-            obj.JTableH.MousePressedCallback = @obj.mousePressedInFullTable;
-            JModelH = handle(obj.JTable.getModel, 'CallbackProperties');
-            JModelH.TableChangedCallback     = @obj.dataUpdatedInFullTable; 
-            
-
-            w1 = 20; column0 = obj.JTable.getColumnModel().getColumn(0);column0.setPreferredWidth(w1);column0.setMinWidth(w1);column0.setMaxWidth(w1); 
-            w2 = 100;column1 = obj.JTable.getColumnModel().getColumn(1);column1.setPreferredWidth(w2);column1.setMinWidth(w2);%column1.setMaxWidth(w2); 
-            w3 = 120;column2 = obj.JTable.getColumnModel().getColumn(2);column2.setPreferredWidth(w3);column2.setMinWidth(w3);%column2.setMaxWidth(w3); 
-            w4 = 60; column3 = obj.JTable.getColumnModel().getColumn(3);column3.setPreferredWidth(20);column3.setMinWidth(20);column3.setMaxWidth(60); 
-
-            % Set Cell Renderer
-            obj.JTable.getColumnModel.getColumn(0).setCellRenderer(com.jidesoft.grid.BooleanCheckBoxCellRenderer); 
-            obj.JTable.getColumnModel.getColumn(0).setCellEditor(com.jidesoft.grid.BooleanCheckBoxCellEditor); 
-            
-            nonEditCR = javaObjectEDT('javax.swing.DefaultCellEditor',javax.swing.JTextField);
-            nonEditCR.setClickCountToStart(intmax); % =never.
-            obj.JTable.getColumnModel.getColumn(1).setCellEditor(nonEditCR); 
-
-            obj.JTable.getColumnModel.getColumn(3).setCellRenderer(com.jidesoft.grid.BooleanCheckBoxCellRenderer); 
-            obj.JTable.getColumnModel.getColumn(3).setCellEditor(com.jidesoft.grid.BooleanCheckBoxCellEditor); 
-             
-
-            
-            obj.JTable.setGridColor(java.awt.Color.lightGray);    
-
-            % Taken from: http://xtargets.com/snippets/posts/show/37
-            obj.JTable.putClientProperty('terminateEditOnFocusLost', java.lang.Boolean.TRUE);
-            
-            obj.JTable.repaint;
-            obj.JTable.setVisible(true);
-            obj.ContextPane.repaint;
-            obj.ContextPane.revalidate();
-            drawnow();pause(0.1);
+            obj.FullTable.Layout.Row = 1;
+            obj.FullTable.Layout.Column = 1;
+            obj.FullTable.RowName = {};
+            obj.FullTable.ColumnWidth = {20,100,120,60};
 
         end % updateFullViewTable
         
@@ -577,38 +369,41 @@ classdef ParameterCollection < matlab.mixin.Copyable & hgsetget
     %% Methods - Full Parameter Callbacks
     methods  
         
-        function mousePressedInFullTable( obj , hModel , hEvent )
-            if ~hEvent.isMetaDown
-                rowSelected = hModel.getSelectedRow + 1;
+        function mousePressedInFullTable( obj , ~ , event )
+            if ~isempty(event.Indices)
+                rowSelected = event.Indices(1);
                 obj.RowSelectedInFull = rowSelected;
 
                 if obj.AvaliableParameterSelection(obj.RowSelectedInFull).UserDefined
-                    obj.RemoveJButton.setVisible(true);
+                    obj.RemoveButton.Visible = 'on';
                 else
-                    obj.RemoveJButton.setVisible(false);
+                    obj.RemoveButton.Visible = 'off';
                 end
             end
         end % mousePressedInFullTable
-        
-        function dataUpdatedInFullTable( obj , hModel , hEvent ) 
 
-            modifiedRow = get(hEvent,'FirstRow');
-            modifiedCol = get(hEvent,'Column');
-            
-            initState = obj.AvaliableParameterSelection(modifiedRow + 1).Global;
-            
-            switch modifiedCol
-                case 0 
-                    obj.AvaliableParameterSelection(modifiedRow + 1).Displayed   = hModel.getValueAt(modifiedRow,modifiedCol);
-                case 2
-                    obj.AvaliableParameterSelection(modifiedRow + 1).ValueString = hModel.getValueAt(modifiedRow,modifiedCol);
-                case 3
-                    obj.AvaliableParameterSelection(modifiedRow + 1).Global = hModel.getValueAt(modifiedRow,modifiedCol);
+        function dataUpdatedInFullTable( obj , ~ , event )
+
+            if isempty(event.Indices)
+                return;
             end
-            
-            if obj.AvaliableParameterSelection(modifiedRow + 1).Global || initState
-                notify(obj,'GlobalIdentified',UserInterface.UserInterfaceEventData(obj.AvaliableParameterSelection(modifiedRow + 1)));
-            
+            modifiedRow = event.Indices(1);
+            modifiedCol = event.Indices(2);
+
+            initState = obj.AvaliableParameterSelection(modifiedRow).Global;
+
+            switch modifiedCol
+                case 1
+                    obj.AvaliableParameterSelection(modifiedRow).Displayed   = logical(event.EditData);
+                case 3
+                    obj.AvaliableParameterSelection(modifiedRow).ValueString = event.EditData;
+                case 4
+                    obj.AvaliableParameterSelection(modifiedRow).Global = logical(event.EditData);
+            end
+
+            if obj.AvaliableParameterSelection(modifiedRow).Global || initState
+                notify(obj,'GlobalIdentified',UserInterface.UserInterfaceEventData(obj.AvaliableParameterSelection(modifiedRow)));
+
             end
         end % dataUpdatedInFullTable
         
@@ -639,7 +434,7 @@ classdef ParameterCollection < matlab.mixin.Copyable & hgsetget
                 elseif length(obj.AvaliableParameterSelection) == 1 && obj.RowSelectedInFull == 1
                     obj.AvaliableParameterSelection = UserInterface.ControlDesign.Parameter.empty;
                 end
-                obj.RemoveJButton.setVisible(false);
+                obj.RemoveButton.Visible = 'off';
                 updateFullViewTable(obj);
             end
             
@@ -980,24 +775,11 @@ classdef ParameterCollection < matlab.mixin.Copyable & hgsetget
         function enablePanel( obj , value )
             if value
                 set(obj.FullViewButton,'Enable','on');
-%                 set(obj.ReInitButton,'Enable','on');
-                editCR = javaObjectEDT('javax.swing.DefaultCellEditor',javax.swing.JTextField);
-                obj.SelectedJTable.getColumnModel.getColumn(1).setCellEditor(editCR);
-                obj.SelectedJTable.repaint;  
-
+                obj.SelectedTable.ColumnEditable = [false true];
             else
-              	set(obj.FullViewButton,'Enable','off');
-%                 set(obj.ReInitButton,'Enable','off');
-                nonEditCR = javaObjectEDT('javax.swing.DefaultCellEditor',javax.swing.JTextField);
-                nonEditCR.setClickCountToStart(intmax); % =never.
-                obj.SelectedJTable.getColumnModel.getColumn(1).setCellEditor(nonEditCR);
-                obj.SelectedJTable.repaint;
-                
-                
-      
-                
+                set(obj.FullViewButton,'Enable','off');
+                obj.SelectedTable.ColumnEditable = [false false];
             end
-            
         end % enablePanel
     end
     
@@ -1017,61 +799,16 @@ classdef ParameterCollection < matlab.mixin.Copyable & hgsetget
     %% Methods - Delete
     methods
         function delete_GUI_Only( obj )
-            % Java Components 
-            try
-            obj.SelectedTableModel = [];
-            obj.SelectedJTable = [];
-            obj.SelectedJTableH = [];
-            obj.SelectedJScroll = [];
-            obj.SelectedJHScroll = [];
-            end
-            
-            try
-            obj.TableModel = [];
-            obj.JTable = [];
-            obj.JTableH = [];
-            obj.JScroll = [];
-            end
-            try
-            obj.AddJButton = [];
-            obj.RemoveJButton = [];
-            end
-            try
-            obj.ContextPane = [];
-            end
-
-
-            % Javawrappers
-            try
-                % Check if container is already being deleted
-                if ~isempty(obj.SelectedHContainer) && ishandle(obj.SelectedHContainer) && strcmp(get(obj.SelectedHContainer, 'BeingDeleted'), 'off')
-                    delete(obj.SelectedHContainer)
-                end
-            end
-
-
-            % User Defined Objects
-            try %#ok<*TRYNC>             
-                delete(obj.ButtonContainer);
-            end
-
-
-    %          % Matlab Components
-            try %#ok<*TRYNC>             
-                delete(obj.ButtonContainer);
-            end
-            try %#ok<*TRYNC>             
-                delete(obj.FullViewButton);
-                delete(obj.ReInitButton);
-            end
-            try %#ok<*TRYNC>             
-                delete(obj.Frame);
-            end
-            try %#ok<*TRYNC>             
-                delete(obj.Container);
-            end
- 
-  
+            try, delete(obj.SelectedTable); end
+            try, delete(obj.FullTable); end
+            try, delete(obj.AddButton); end
+            try, delete(obj.RemoveButton); end
+            try, delete(obj.ContextPane); end
+            try, delete(obj.MainLayout); end
+            try, delete(obj.ButtonContainer); end
+            try, delete(obj.FullViewButton); delete(obj.ReInitButton); end
+            try, delete(obj.Frame); end
+            try, delete(obj.Container); end
         end % delete_GUI_Only
     end
     

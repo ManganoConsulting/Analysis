@@ -40,8 +40,8 @@ if ~isempty(existingState)
     setappdata(fig, appDataKey, existingState);
 else
     state = struct(...
-        'MinSize', minSize,
-        'OriginalCallback', fig.SizeChangedFcn,
+        'MinSize', minSize,...
+        'OriginalCallback', fig.SizeChangedFcn,...
         'Enforcing', false);
     setappdata(fig, appDataKey, state);
     fig.SizeChangedFcn = @(src, evt)localSizeChangedProxy(src, evt, appDataKey);

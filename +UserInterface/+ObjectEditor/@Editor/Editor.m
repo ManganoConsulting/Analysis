@@ -146,13 +146,7 @@ classdef Editor < UserInterface.Collection
             obj.Figure.MenuBar = 'None';
             obj.Figure.NumberTitle = 'off';
             
-            warn = warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
-            if ~( strcmp(version('-release'),'2015b') || strcmp(version('-release'),'2016a')  || strcmp(version('-release'),'2016a')  || strcmp(version('-release'),'2023a'))
-                jFig = get(handle(obj.Figure), 'JavaFrame');
-                pause(0.1);
-                jFig.fHG2Client.getWindow.setMinimumSize(java.awt.Dimension( 487 , 675 ));       
-            end
-            warning(warn);
+            Utilities.setMinFigureSize(obj.Figure,[487 675]);
             if ~isempty(parent)
                 obj.Parent = parent;
             end

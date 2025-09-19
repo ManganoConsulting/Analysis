@@ -83,11 +83,9 @@ classdef DYNMain < handle
                 % UserInterface.Utilities.enableDisableFig(obj.Figure, false);
 
 
-                if ~( strcmp(version('-release'),'2015b') || strcmp(version('-release'),'2016a') )
-                    jFig = get(handle(obj.Figure), 'JavaFrame');
-                    pause(0.1);
-                    jFig.fHG2Client.getWindow.setMinimumSize(java.awt.Dimension( 1384 , 960 ));       
-                end
+                if isa(obj.Figure,'matlab.ui.Figure')
+                    Utilities.enforceMinimumFigureSize(obj.Figure,[1384 960]);
+                end   
 
                 obj.ToolObj = UserInterface.StabilityControl.Main(obj.Figure,obj.App.Granola,obj.App.VersionNumber,obj.App.InternalVersionNumber); 
                 

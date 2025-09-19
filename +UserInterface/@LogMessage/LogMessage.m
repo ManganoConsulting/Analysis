@@ -26,10 +26,11 @@ classdef LogMessage < matlab.mixin.Copyable & hgsetget
     end
     
     %% Private properties
-    properties ( Access = private )  
+    properties ( Access = private )
         PrivatePosition
         PrivateUnits
         PrivateVisible
+        LogHTML = ''
     end % Private properties
         
     %% Read-only properties
@@ -139,37 +140,28 @@ classdef LogMessage < matlab.mixin.Copyable & hgsetget
                 'Position',obj.Position);
             set(obj.Container,'ResizeFcn',@obj.reSize);
             pos = getpixelposition(obj.Container);
-            
-            
-%             obj.Label_TB = uicontrol(...
-%                 'Parent',obj.Container,...
-%                 'Style','text',...
-%                 'String','Status Window',...
-%                 'BackgroundColor', [ 0 , 0 , 102/255 ],...
-%                 'ForegroundColor', [ 1 , 1, 1 ],...
-%                 'Units','Pixels',...
-%                 'FontSize',8,...
-%                 'FontName','Courier New',...
-%                 'Position',[ 6 , pos(4) - 15 , pos(3) , 15 ]);
-            
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;Status Window</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.LabelComp,obj.LabelCont] = javacomponent(jLabelview,[ 1 , pos(4) - 18 , pos(3) , 18 ], obj.Container );
 
+            % Create label at top of panel
+            labelColor = [55 96 146] / 255;
+            obj.LabelComp = uilabel('Parent',obj.Container,...
+                'Text','Status Window',...
+                'BackgroundColor',labelColor,...
+                'FontColor',[1 1 1],...
+                'FontName','Courier New',...
+                'HorizontalAlignment','left',...
+                'VerticalAlignment','bottom',...
+                'Position',[1, pos(4) - 18, pos(3), 18]);
+            obj.LabelCont = obj.LabelComp;
+            obj.Label_TB = obj.LabelComp;
 
-            obj.LogTextComp = javaObjectEDT('javax.swing.JTextPane');
-            obj.LogTextComp.setEditable(false);
-            set(obj.LogTextComp,'HyperlinkUpdateCallback',@obj.linkLogCallbackFcn);
-            %logTextCBProp = handle(obj.LogTextComp,'CallbackProperties');
-                
-%             [obj.LogTextScrollComp,obj.LogTextScrollCont] = javacomponent(javaObjectEDT(javax.swing.JScrollPane(obj.LogTextComp)),[ 1 , 1 , pos(3) , pos(4) ], obj.Container  );
-            [obj.LogTextScrollComp,obj.LogTextScrollCont] = javacomponent(javaObjectEDT(javax.swing.JScrollPane(obj.LogTextComp)),[ 1 , 1 , pos(3) , pos(4) - 18 ], obj.Container  );
-%             obj.LogTextScrollCont.Units = 'Normal';
-%             obj.LogTextScrollCont.Position = [ 0 , 0 , 1 , 1 ];
+            % Create html component for log messages
+            this_dir = fileparts( mfilename( 'fullpath' ) );
+            html_file = fullfile(this_dir,'logview.html');
+            obj.LogTextComp = uihtml('Parent',obj.Container,...
+                'HTMLSource',html_file,...
+                'Position',[1, 1, pos(3), pos(4) - 18]);
+            obj.LogTextScrollComp = [];
+            obj.LogTextScrollCont = obj.LogTextComp;
         end % createView
     end
     
@@ -179,14 +171,7 @@ classdef LogMessage < matlab.mixin.Copyable & hgsetget
         function logMessage( obj , text , severity )
             this_dir = fileparts( mfilename( 'fullpath' ) );
             icon_dir = fullfile( this_dir,'..','Resources' );
-            %fullfile(icon_dir,'New_24.png');
-            % Ensure we have an HTML-ready editbox
-            HTMLclassname = 'javax.swing.text.html.HTMLEditorKit';
-            if ~isa(obj.LogTextComp.getEditorKit,HTMLclassname)
-              obj.LogTextComp.setContentType('text/html');
-            end
 
-            % Parse the severity and prepare the HTML message segment
             if nargin<3,  severity='info';  end
             switch lower(severity(1))
               case 'i',  icon = 'info_16.gif'; color='gray';
@@ -194,42 +179,32 @@ classdef LogMessage < matlab.mixin.Copyable & hgsetget
               case 'e',  icon = 'stop_32.png';       color='red';
               otherwise, icon = 'demoicon.gif';        color='red';
             end
-            %icon = fullfile(matlabroot,'toolbox/matlab/icons',icon);
             icon = fullfile(icon_dir,icon);
             iconTxt =['<img src="file:///',icon,'" height=16 width=16>'];
-            msgTxt = ['&nbsp;<font color=',color,'>',text,'</font>'];
+            msgTxt = ['&nbsp;<span style="color:',color,'">',text,'</span>'];
+
             if obj.ShowDateTime == 1
-                newText =  [iconTxt ,'&nbsp;', datestr(now,'HH:MM:SS') , ' - ' ,msgTxt ];
+                timeStr = datestr(now,'HH:MM:SS');
+                newText =  ['<div>',iconTxt ,'&nbsp;', timeStr , ' - ' ,msgTxt ,'</div>'];
             elseif obj.ShowDateTime == 2
-                newText =  [iconTxt ,'&nbsp;', char(datetime) , ' - ' ,msgTxt ];
+                timeStr = char(datetime);
+                newText =  ['<div>',iconTxt ,'&nbsp;', timeStr , ' - ' ,msgTxt ,'</div>'];
             else
-            newText =  [iconTxt ,'&nbsp;', char(datetime) , ' - ' ,msgTxt ];
+                newText =  ['<div>',iconTxt ,'&nbsp;', msgTxt ,'</div>'];
             end
 
-% 
-%                endPosition = obj.LogTextComp.getDocument.getLength;
-%             if endPosition>0, newText=['<br/>' newText];  end
-% 
-%                % Place the HTML message segment at the bottom of the editbox
-%                currentHTML = char(obj.LogTextComp.getText);
-%                obj.LogTextComp.setText(strrep(currentHTML,'</body>',newText));
-%                endPosition = obj.LogTextComp.getDocument.getLength;
-%                obj.LogTextComp.setCaretPosition(endPosition); % end of content
-
-            % Place the HTML message segment at the bottom of the editbox
-            Doc = obj.LogTextComp.getDocument();
-            obj.LogTextComp.getEditorKit().read(java.io.StringReader(newText), Doc, Doc.getLength());
-            obj.LogTextComp.setCaretPosition(Doc.getLength());
-        end % logMessage      
+            obj.LogHTML = [obj.LogHTML, newText];
+            obj.LogTextComp.Data = struct('type','add','message',newText);
+        end % logMessage
 
         function clearLog( obj )
-            obj.LogTextComp.setText('</body>');
+            obj.LogHTML = '';
+            obj.LogTextComp.Data = struct('type','clear');
         end % clearLog
-        
+
         function toFile( obj , filename )
-            
-            currentHTML = char(obj.LogTextComp.getText);
-            modifiedStr = strrep(currentHTML, '<img', '<br/><img');
+
+            modifiedStr = strrep(obj.LogHTML, '<img', '<br/><img');
             fileID = fopen(filename,'wt');
             fprintf(fileID,'%s\n',modifiedStr);
             fclose(fileID);
@@ -254,14 +229,11 @@ classdef LogMessage < matlab.mixin.Copyable & hgsetget
         end % update
 
         function reSize( obj , ~ , ~ ) 
-            set(obj.Container,'Units',obj.Units,'Position',obj.Position ); 
+            set(obj.Container,'Units',obj.Units,'Position',obj.Position );
             pos = getpixelposition(obj.Container);
 
-            obj.LogTextScrollCont.Units = 'Pixels';
-            obj.LogTextScrollCont.Position = [ 1 , 1 , pos(3) , pos(4) - 18 ];
-            
-            obj.LabelCont.Units = 'Pixels';
-            obj.LabelCont.Position = [ 1 , pos(4) - 18 , pos(3) , 18 ];
+            obj.LogTextComp.Position = [ 1 , 1 , pos(3) , pos(4) - 18 ];
+            obj.LabelComp.Position = [ 1 , pos(4) - 18 , pos(3) , 18 ];
         end %reSize
           
         function cpObj = copyElement(obj)
@@ -290,18 +262,18 @@ classdef LogMessage < matlab.mixin.Copyable & hgsetget
             if ishandle(obj.LabelCont) && strcmp(get(obj.LabelCont, 'BeingDeleted'), 'off')
                 delete(obj.LabelCont)
             end
-            
-            
-            
-            % Remove references to the java objects
+
+            % Remove references to the ui objects
             obj.Parent = [];
             obj.LogTextComp = [];
             obj.LogTextScrollComp = [];
+            obj.LogTextScrollCont = [];
             obj.Label_TB = [];
             obj.LabelComp = [];
+            obj.LabelCont = [];
             drawnow() % force repaint
         end % delete
-    end  
+    end
     
     
     
