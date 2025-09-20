@@ -1,116 +1,53 @@
 classdef ToolRibbon < handle & UserInterface.GraphicsObject
-        
+
     %% Version
-    properties  
+    properties
         VersionNumber
         InternalVersionNumber
-    end % Version 
-    
+    end % Version
+
     %% Public properties - Object Handles
-    properties (Transient = true) 
-        %Parent
-        
-        JRibbonPanel
-        JRPHComp
-        JRPHCont
-        
-        NewJButton
-        OpenJButton
-        LoadJButton
-        SaveJButton
-        RunJButton
-        RunSelJButton
-        ClrTblSelJButton
-        MainJButton
-        TrimEditJButton
-        ModelEditJButton
-        ReqEditJButton
-        AnalysisEditJButton
-        UnitsSelComboBox
-        SimReqEditJButton
-        
-        ShowInvalidTrimJCheckbox
-        ShowLogSignalsJCheckbox
-        UseAllCombinationsJCheckbox
+    properties (Transient = true)
+        RibbonHtml matlab.ui.container.Html
+        ParentSizeListener event.listener
+    end
 
-        PlotJButton
-
-        GenerateReportJButton
-
-    end % Public properties
-  
     %% Public properties - Data Storage
-    properties       
+    properties
         CurrSelToolRibbion  = 1
         ToolRibbionSelectedText = 'Main'
-        TextColorMain   = [0 0 0]
-        TextColorMethod = [0 0 0]
-        TextColorRq     = [0 0 0]
-        TextColorGains  = [0 0 0]
-        TextColorRootLocus = [0 0 0]
-        TextColorFilter = [0 0 0]
-        ButtonColorMain   = [0.8 0.8 0.8]
-        ButtonColorMethod = [0.8 0.8 0.8]
-        ButtonColorRq     = [0.8 0.8 0.8]
-        ButtonColorGains  = [0.8 0.8 0.8]
-        ButtonColorRootLocus = [0.8 0.8 0.8]
-        ButtonColorFilter = [0.8 0.8 0.8]
-        
-        
         NumberOfPlotPerPageReq = 4
         NumberOfPlotPerPagePostSim = 4
-        
         ShowLoggedSignalsState = false
-        ShowInvalidTrimState = 1
+        ShowInvalidTrimState = 'Show Valid Trims'
         UseAllCombinationsState = true
-        
         TrimSettings
+        CurrentUnits char = 'English - US'
     end % Public properties
-        
-    %% Read-only properties
-    properties ( GetAccess = public, SetAccess = private )
-        
-    end % Read-only properties
-    
+
     %% Private properties
-    properties ( Access = private )
-        BrowseStartDir = pwd %mfilename('fullpath')
+    properties (Access = private)
+        RibbonAssets struct = struct()
+        RibbonReady logical = false
     end % Private properties
-    
-    %% Hidden Properties
-    properties (Hidden = true)
-        
 
-    end % Hidden properties
-
-    %% Dependant properties
-    properties (Dependent = true, SetAccess = private)
-        
-    end % Dependant properties
-    
     %% Events
     events
         PanelChange
         SaveWorkspace
         LoadWorkspace
         NewWorkspace
-        
+
         LoadConfiguration
         NewConfiguration
         SaveOperCond
         RunSave
-%         SaveOnly
         Run
-        
+
         LoadBatchRun
         UnitsChanged
         ClearTable
-%         LoadTrimDefinition
-%         LoadLinMdlDefinition
-%         LoadMethod
-%         LoadSimulation
-%         LoadSimulationObj
-%         LoadPostSimulationObj
+
         NewTrimObject
         NewLinearModelObject
         NewMethodObject
@@ -122,1192 +59,1018 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
         ExportTable
 
         GenerateReport
-        
+
         NewProject
         LoadProject
         CloseProject
-        
-%         ShowInvalidTrim
+
         ShowLogSignals
         UseAllCombinations
         Add2Batch
         NewAnalysis
         LoadAnalysisObject
-        
+
         SetNumPlotsPlts
         SetNumPlotsPostPlts
-        
+
         ShowTrimsChanged
-        
+
         TrimSettingsChanged
     end
-    
+
     %% Methods - Constructor
-    methods      
-        function obj = ToolRibbon(mainobj,ver,internalver,trimOpt)
-            
+    methods
+        function obj = ToolRibbon(mainobj, ver, internalver, trimOpt)
+
             obj.VersionNumber = ver;
             obj.InternalVersionNumber = internalver;
             obj.Parent = mainobj;
             obj.TrimSettings = trimOpt;
-            
-            backgroundColor = java.awt.Color(210/255,210/255,210/255); % java.awt.Color.lightGray
-            
-            % Create the Home Pane
-        
-            this_dir = fileparts( mfilename( 'fullpath' ) );
-            icon_dir = fullfile( this_dir,'..','..','Resources' );
-            
-            obj.JRibbonPanel = javaObjectEDT('javax.swing.JPanel');
-            obj.JRibbonPanel.setLayout([]);
-            % Configuration Section
-            labelStr = '<html><font color="gray" face="Courier New">FILE</html>';
-            jLabel = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabel.setOpaque(true);
-            jLabel.setBackground(java.awt.Color.lightGray);
-            jLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-            obj.JRibbonPanel.add(jLabel);
-            jLabel.setBounds(0,76,163,16);
-            
-                % New Button             
-                newJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSSplitButton');
-                newJButton.setText('New');        
-                newJButtonH = handle(newJButton,'CallbackProperties');
-                set(newJButtonH, 'ActionPerformedCallback',@obj.newTrimObj_CB);
-                set(newJButtonH, 'DropDownActionPerformedCallback',@obj.fileNew_CB);
-                myIcon = fullfile(icon_dir,'New_24.png');
-                newJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                newJButton.setToolTipText('Create New Item');
-                %newJButton.setIconTextGap(0);
-                %newJButton.setFlyOverAppearance(true);
-                newJButton.setBorder([]);
-                newJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                newJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                obj.JRibbonPanel.add(newJButton);
-                newJButton.setBounds(5,3,35,71);
-                obj.NewJButton = newJButton;
+            obj.ShowInvalidTrimState = obj.resolveTrimState(obj.ShowInvalidTrimState);
 
-                % Open Button             
-                openJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSSplitButton');
-                openJButton.setText('Open');        
-                openJButtonH = handle(openJButton,'CallbackProperties');
-                set(openJButtonH, 'ActionPerformedCallback',@obj.openTrimObj_CB)
-                set(openJButtonH, 'DropDownActionPerformedCallback',@obj.fileOpen_CB);
-                myIcon = fullfile(icon_dir,'Open_24.png');
-                openJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                openJButton.setToolTipText('Open');
-                %openJButton.setFlyOverAppearance(true);
-                openJButton.setBorder([]);
-                openJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                openJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                obj.JRibbonPanel.add(openJButton);
-                openJButton.setBounds(45,3 ,35, 71);
-                obj.OpenJButton = openJButton;    
-                
-                % Load Button             
-                loadJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSSplitButton');
-                loadJButton.setText('Load');        
-                loadJButtonH = handle(loadJButton,'CallbackProperties');
-                set(loadJButtonH, 'ActionPerformedCallback',@obj.loadTrimObj_CB)
-                set(loadJButtonH, 'DropDownActionPerformedCallback',@obj.fileLoad_CB);
-                myIcon = fullfile(icon_dir,'LoadArrow_24.png');
-                loadJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                loadJButton.setToolTipText('Load');
-                %loadJButton.setFlyOverAppearance(true);
-                loadJButton.setBorder([]);
-                loadJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                loadJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                obj.JRibbonPanel.add(loadJButton);
-                loadJButton.setBounds(85,3 ,35, 71);
-                obj.LoadJButton = loadJButton;
-                  
-                % Save Button             
-                saveJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSSplitButton');
-                saveJButton.setText('Save');        
-                saveJButtonH = handle(saveJButton,'CallbackProperties');
-                set(saveJButtonH, 'ActionPerformedCallback',@obj.saveWorkspace_CB)
-                set(saveJButtonH, 'DropDownActionPerformedCallback',@obj.fileSave_CB);
-                myIcon = fullfile(icon_dir,'Save_Dirty_24.png');
-                saveJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                saveJButton.setToolTipText('Open existing workspace');
-                %saveJButton.setFlyOverAppearance(true);
-                saveJButton.setBorder([]);
-                saveJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                saveJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                obj.JRibbonPanel.add(saveJButton);
-                saveJButton.setBounds(125,3 ,35, 71);
-                obj.SaveJButton = saveJButton;
-
-            
-                
-            % Break    
-            labelStr = '<html><i><font color="gray"></html>';
-            jLabelbk1 = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelbk1.setOpaque(true);
-            jLabelbk1.setBackground(java.awt.Color.lightGray);
-            jLabelbk1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-            obj.JRibbonPanel.add(jLabelbk1);
-            jLabelbk1.setBounds(165,3,2,90);
-
-                
-            labelStr = '<html><font color="gray" face="Courier New">RUN</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color.lightGray);
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-            obj.JRibbonPanel.add(jLabelview);
-            jLabelview.setBounds(169,76,45,16);
-
-            
-                % Run Button             
-                runJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSSplitButton');
-                runJButton.setText('Run');        
-                runJButtonH = handle(runJButton,'CallbackProperties');
-                set(runJButtonH, 'ActionPerformedCallback',@obj.runAndSave_CB)
-                set(runJButtonH, 'DropDownActionPerformedCallback',@obj.runRibbion_CB);
-                myIcon = fullfile(icon_dir,'RunSave_24.png');
-                runJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                runJButton.setToolTipText('Run and Save');
-                %runJButton.setFlyOverAppearance(true);
-                runJButton.setBorder([]);
-                runJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                %runJButton.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-                %runJButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-                runJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                runJButton.setIconTextGap(0);
-                obj.JRibbonPanel.add(runJButton);
-                runJButton.setBounds(172,3,40,71);
-                obj.RunJButton = runJButton;
-                
-%                 % RunSel Button             
-%                 runSelJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-%                 runSelJButton.setText('');        
-%                 runSelJButtonH = handle(runSelJButton,'CallbackProperties');
-%                 set(runSelJButtonH, 'ActionPerformedCallback',@obj.runRibbion_CB)
-%                 myIcon = fullfile(icon_dir,'arrowDown_16.png');
-%                 runSelJButton.setIcon(javax.swing.ImageIcon(myIcon));
-%                 runSelJButton.setToolTipText('Run');
-%                 runSelJButton.setFlyOverAppearance(true);
-%                 runSelJButton.setBorder([]);
-%                 runSelJButton.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-%                 runSelJButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-%                 runSelJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-%                 obj.JRibbonPanel.add(runSelJButton);
-%                 runSelJButton.setBounds(172,49,40,15);
-%                 obj.RunSelJButton = runSelJButton;
-            
-            % Break    
-            labelStr = '<html><i><font color="gray"></html>';
-            jLabelbk1 = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelbk1.setOpaque(true);
-            jLabelbk1.setBackground(java.awt.Color.lightGray);
-            jLabelbk1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-            obj.JRibbonPanel.add(jLabelbk1);
-            jLabelbk1.setBounds(217,3,2,90);
-
-            
-            labelStr = '<html><font color="gray" face="Courier New">ACTIONS</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color.lightGray);
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-            obj.JRibbonPanel.add(jLabelview);
-            jLabelview.setBounds(222,76,125,16);
-            
-                addBatchJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-                addBatchJButton.setText('Add New Run Cases');        
-                addBatchJButtonH = handle(addBatchJButton,'CallbackProperties');
-                set(addBatchJButtonH, 'ActionPerformedCallback',@obj.batchAdd_CB)
-                myIcon = fullfile(icon_dir,'New_16.png');
-                addBatchJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                addBatchJButton.setToolTipText('Add Run Cases');
-                %addBatchJButton.setFlyOverAppearance(true);
-                addBatchJButton.setBorder([]);
-                addBatchJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.HORIZONTAL);
-                addBatchJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                %addBatchJButton.setFont(java.awt.Font('Arial', java.awt.Font.PLAIN, 10));
-                obj.JRibbonPanel.add(addBatchJButton);
-                addBatchJButton.setBounds(224,3,120,20);
-%                 [obj.AddBatchJButtonHComp,obj.AddBatchJButtonHCont] = javacomponent(addBatchJButton, [ ], handle(obj.Parent));  
-            
-
-
-                % Clear Button             
-                clrTblButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-                clrTblButton.setText('Table Options');        
-                clrTblButtonH = handle(clrTblButton,'CallbackProperties');
-                set(clrTblButtonH, 'ActionPerformedCallback',@obj.clearTable_CB)
-                myIcon = fullfile(icon_dir,'Clean_16.png');
-                clrTblButton.setIcon(javax.swing.ImageIcon(myIcon));
-                clrTblButton.setToolTipText('Switch to Home View');
-                %clrTblButton.setFlyOverAppearance(true);
-                clrTblButton.setBorder([]);
-                clrTblButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.HORIZONTAL);
-                clrTblButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                obj.JRibbonPanel.add(clrTblButton);
-                clrTblButton.setBounds(224,29,95,20);
-                obj.MainJButton = clrTblButton;
-
-                % Generate Report Button
-                genRptButton = javaObjectEDT('com.mathworks.toolstrip.components.TSSplitButton');
-                genRptButton.setText('Generate Report');
-                genRptButtonH = handle(genRptButton,'CallbackProperties');
-                set(genRptButtonH,'ActionPerformedCallback',@obj.generateReportMenu_CB);
-                set(genRptButtonH,'DropDownActionPerformedCallback',@obj.generateReportMenu_CB);
-                myIcon = fullfile(icon_dir,'report_app_24.png');
-                genRptButton.setIcon(javax.swing.ImageIcon(myIcon));
-                genRptButton.setToolTipText('Generate analysis report');
-                genRptButton.setBorder([]);
-                genRptButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.HORIZONTAL);
-                genRptButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                obj.JRibbonPanel.add(genRptButton);
-                genRptButton.setBounds(224,53,120,20);
-                obj.GenerateReportJButton = genRptButton;
-
-                % ClearSel Button
-                clrTblSelJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-                clrTblSelJButton.setText('');
-                clrTblSelJButtonH = handle(clrTblSelJButton,'CallbackProperties');
-                set(clrTblSelJButtonH, 'ActionPerformedCallback',@obj.clearSelect_CB)
-                myIcon = fullfile(icon_dir,'arrowDown_16.png');
-                clrTblSelJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                clrTblSelJButton.setToolTipText('Clear');
-                %clrTblSelJButton.setFlyOverAppearance(true);
-                clrTblSelJButton.setBorder([]);
-                clrTblSelJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                clrTblSelJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                obj.JRibbonPanel.add(clrTblSelJButton);
-                clrTblSelJButton.setBounds(319,29,25,20);
-                obj.ClrTblSelJButton = clrTblSelJButton;
-                
-            % Break    
-            labelStr = '<html><i><font color="gray"></html>';
-            jLabelbk1 = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelbk1.setOpaque(true);
-            jLabelbk1.setBackground(java.awt.Color.lightGray);
-            jLabelbk1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-            obj.JRibbonPanel.add(jLabelbk1);
-            jLabelbk1.setBounds(349,3,2,90);
-
-            
-            labelStr = '<html><font color="gray" face="Courier New">EDITOR</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color.lightGray);
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-            obj.JRibbonPanel.add(jLabelview);
-            jLabelview.setBounds(354,76,200,16);
-  
-                % Analysis Button             
-                analysisEditJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-                analysisEditJButton.setText('Task');        
-                analysisEditJButtonH = handle(analysisEditJButton,'CallbackProperties');
-                set(analysisEditJButtonH, 'ActionPerformedCallback',@obj.createNewAnalysis_CB)
-                myIcon = fullfile(icon_dir,'analysis_24.png');
-                analysisEditJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                analysisEditJButton.setToolTipText('Open Analysis Task Editor');
-                %analysisEditJButton.setFlyOverAppearance(true);
-                analysisEditJButton.setBorder([]);
-                analysisEditJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                analysisEditJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                obj.JRibbonPanel.add(analysisEditJButton);
-                analysisEditJButton.setBounds(357,3 ,35, 71);
-                obj.AnalysisEditJButton = analysisEditJButton;  
-            
-                % Trim Button             
-                trimEditJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-                trimEditJButton.setText('Trim');        
-                trimEditJButtonH = handle(trimEditJButton,'CallbackProperties');
-                set(trimEditJButtonH, 'ActionPerformedCallback',@obj.newTrimObj_CB)
-                myIcon = fullfile(icon_dir,'airplaneTrim_24.png');
-                trimEditJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                trimEditJButton.setToolTipText('Open Trim Definition Editor');
-                %trimEditJButton.setFlyOverAppearance(true);
-                trimEditJButton.setBorder([]);
-                trimEditJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                trimEditJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                obj.JRibbonPanel.add(trimEditJButton);
-                trimEditJButton.setBounds(397,3 ,35, 71);
-                obj.TrimEditJButton = trimEditJButton;  
-                
-                % LinMdl Button             
-                modelEditJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-                modelEditJButton.setText('Model');        
-                modelEditJButtonH = handle(modelEditJButton,'CallbackProperties');
-                set(modelEditJButtonH, 'ActionPerformedCallback',@obj.newLinMdlObj_CB)
-                myIcon = fullfile(icon_dir,'linmdl_24.png');
-                modelEditJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                modelEditJButton.setToolTipText('Open Linear Model Editor');
-                %modelEditJButton.setFlyOverAppearance(true);
-                modelEditJButton.setBorder([]);
-                modelEditJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                modelEditJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                obj.JRibbonPanel.add(modelEditJButton);
-                modelEditJButton.setBounds(437,3 ,35, 71);
-                obj.ModelEditJButton = modelEditJButton;  
-                
-                % LinMdl Button             
-                reqEditJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-                reqEditJButton.setText('Req');        
-                reqEditJButtonH = handle(reqEditJButton,'CallbackProperties');
-                set(reqEditJButtonH, 'ActionPerformedCallback',@obj.newMethodObj_CB)
-                myIcon = fullfile(icon_dir,'InOut_24.png');
-                reqEditJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                reqEditJButton.setToolTipText('Open Requirement Editor');
-                %reqEditJButton.setFlyOverAppearance(true);
-                reqEditJButton.setBorder([]);
-                reqEditJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                reqEditJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                obj.JRibbonPanel.add(reqEditJButton);
-                reqEditJButton.setBounds(477,3 ,35, 71);
-                obj.ReqEditJButton = reqEditJButton;    
-                
-                % LinMdl Button             
-                simReqEditJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-                simReqEditJButton.setText('Sim');        
-                simReqEditJButtonH = handle(simReqEditJButton,'CallbackProperties');
-                set(simReqEditJButtonH, 'ActionPerformedCallback',@obj.newNonLinSimObj_CB)
-                myIcon = fullfile(icon_dir,'Simulink_24.png');
-                simReqEditJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                simReqEditJButton.setToolTipText('Open Requirement Editor');
-                %simReqEditJButton.setFlyOverAppearance(true);
-                simReqEditJButton.setBorder([]);
-                simReqEditJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                simReqEditJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                obj.JRibbonPanel.add(simReqEditJButton);
-                simReqEditJButton.setBounds(517,3 ,35, 71);
-                obj.SimReqEditJButton = simReqEditJButton;  
-                
-                
-            % Break    
-            labelStr = '<html><i><font color="gray"></html>';
-            jLabelbk1 = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelbk1.setOpaque(true);
-            jLabelbk1.setBackground(java.awt.Color.lightGray);
-            jLabelbk1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-            obj.JRibbonPanel.add(jLabelbk1);
-            jLabelbk1.setBounds(557,3,2,90);
-
-            
-            labelStr = '<html><font color="gray" face="Courier New">OPTIONS</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color.lightGray);
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-            obj.JRibbonPanel.add(jLabelview);
-            jLabelview.setBounds(562,76,160,16);   
-            
-                % Show History Button             
-                showInvalidTrimJCheckbox = javaObjectEDT('com.mathworks.toolstrip.components.TSComboBox');
-%                 showInvalidTrimJCheckbox = javaObjectEDT('com.mathworks.toolstrip.components.TSCheckBox');
-%                 showInvalidTrimJCheckbox.setText('Show Invalid Trims');        
-                showInvalidTrimJCheckboxH = handle(showInvalidTrimJCheckbox,'CallbackProperties');
-                set(showInvalidTrimJCheckboxH, 'ActionPerformedCallback',@obj.showInvalidTrimCheckbox_CB)
-                showInvalidTrimJCheckbox.setToolTipText('Show Invalid Trims');
-%                 showInvalidTrimJCheckbox.setBorder([]);
-%                 showInvalidTrimJCheckbox.setMargin(java.awt.Insets(0, 0, 0, 0));
-                model = javax.swing.DefaultComboBoxModel({'Show All Trims','Show Valid Trims','Show Invalid Trims'});
-                showInvalidTrimJCheckbox.setModel(model);  
-                obj.JRibbonPanel.add(showInvalidTrimJCheckbox);
-                showInvalidTrimJCheckbox.setBounds(565,3 ,135, 15);
-                obj.ShowInvalidTrimJCheckbox = showInvalidTrimJCheckbox;
-%                 obj.ShowInvalidTrimJCheckbox.setSelected(obj.ShowInvalidTrimState);
-                
-                
-                
-                        % Show History Button             
-        plotsJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-        plotsJButton.setText('Settings');        
-        plotsJButtonH = handle(plotsJButton,'CallbackProperties');
-        set(plotsJButtonH, 'ActionPerformedCallback',@obj.settingsButton_CB)
-        myIcon = fullfile(icon_dir,'Settings_16.png');
-        plotsJButton.setIcon(javaObjectEDT('javax.swing.ImageIcon',myIcon));
-        plotsJButton.setToolTipText('Settings');
-        plotsJButton.setFlyOverAppearance(true);
-        plotsJButton.setBorder([]);
-        plotsJButton.setIconTextGap(2);
-        plotsJButton.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
-        plotsJButton.setVerticalTextPosition(javax.swing.SwingConstants.CENTER);
-        plotsJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-        obj.JRibbonPanel.add(plotsJButton);
-        plotsJButton.setBounds(733,25 ,90, 28);
-        obj.PlotJButton = plotsJButton; 
-        
-                
-                % Display Log Signals in Trim Button             
-                showLogSignalsJCheckbox = javaObjectEDT('com.mathworks.toolstrip.components.TSCheckBox');
-                showLogSignalsJCheckbox.setText('Display Log Signals');        
-                showLogSignalsJCheckboxH = handle(showLogSignalsJCheckbox,'CallbackProperties');
-                set(showLogSignalsJCheckboxH, 'ActionPerformedCallback',@obj.showLogSignalsCheckbox_CB)
-                showLogSignalsJCheckbox.setToolTipText('Show logged signals');
-                showLogSignalsJCheckbox.setBorder([]);
-                showLogSignalsJCheckbox.setMargin(java.awt.Insets(0, 0, 0, 0));
-                obj.JRibbonPanel.add(showLogSignalsJCheckbox);
-                showLogSignalsJCheckbox.setBounds(565,20 ,135, 15);
-                obj.ShowLogSignalsJCheckbox = showLogSignalsJCheckbox;
-                obj.ShowLogSignalsJCheckbox.setSelected(obj.ShowLoggedSignalsState);
-
-                % Use All Combinations Button
-                useAllCombinationsJCheckbox = javaObjectEDT('com.mathworks.toolstrip.components.TSCheckBox');
-                useAllCombinationsJCheckbox.setText('Use All Combinations');
-                useAllCombinationsJCheckboxH = handle(useAllCombinationsJCheckbox,'CallbackProperties');
-                set(useAllCombinationsJCheckboxH, 'ActionPerformedCallback',@obj.useAllCombinationsCheckbox_CB)
-                useAllCombinationsJCheckbox.setToolTipText('Use every combination');
-                useAllCombinationsJCheckbox.setBorder([]);
-                useAllCombinationsJCheckbox.setMargin(java.awt.Insets(0, 0, 0, 0));
-                obj.JRibbonPanel.add(useAllCombinationsJCheckbox);
-                useAllCombinationsJCheckbox.setBounds(565,37 ,135, 15);
-                obj.UseAllCombinationsJCheckbox = useAllCombinationsJCheckbox;
-                obj.UseAllCombinationsJCheckbox.setSelected(obj.UseAllCombinationsState);
-                
-                
-            % Break    
-            labelStr = '<html><i><font color="gray"></html>';
-            jLabelbk1 = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelbk1.setOpaque(true);
-            jLabelbk1.setBackground(java.awt.Color.lightGray);
-            jLabelbk1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-            obj.JRibbonPanel.add(jLabelbk1);
-            jLabelbk1.setBounds(725,3,2,90);
-
-            
-            labelStr = '<html><font color="gray" face="Courier New">SETTINGS</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color.lightGray);
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-            obj.JRibbonPanel.add(jLabelview);
-            jLabelview.setBounds(729,76,125,16);
-
-            
-                unitsSelComboBoxText = javaObjectEDT('javax.swing.JTextField');
-                unitsSelComboBoxText.setText('Units');
-                unitsSelComboBoxText.setBorder(javax.swing.BorderFactory.createEmptyBorder());
-                unitsSelComboBoxText.setToolTipText('Select Units');
-                unitsSelComboBoxText.setBackground(backgroundColor);
-                unitsSelComboBoxText.setEditable(false);   
-                obj.JRibbonPanel.add(unitsSelComboBoxText);
-                unitsSelComboBoxText.setBounds(733,3,30,20);
-
-                unitsSelComboBox = javaObjectEDT('javax.swing.JComboBox');
-                unitsSelComboBoxH = handle(unitsSelComboBox,'CallbackProperties');
-                set(unitsSelComboBoxH, 'ActionPerformedCallback',@obj.unitsSel_CB);  
-                unitsSelComboBox.setToolTipText('Select Units');
-                unitsSelComboBox.setEditable(false);
-                model = javax.swing.DefaultComboBoxModel({'English - US','SI'});
-                unitsSelComboBox.setModel(model);     
-                obj.JRibbonPanel.add(unitsSelComboBox);
-                unitsSelComboBox.setBounds(763,3,90,20);
-                obj.UnitsSelComboBox = unitsSelComboBox;
-                
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%          
-                
-        % Show History Button             
-        plotsJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-        plotsJButton.setText('Settings');        
-        plotsJButtonH = handle(plotsJButton,'CallbackProperties');
-        set(plotsJButtonH, 'ActionPerformedCallback',@obj.settingsButton_CB)
-        myIcon = fullfile(icon_dir,'Settings_16.png');
-        plotsJButton.setIcon(javaObjectEDT('javax.swing.ImageIcon',myIcon));
-        plotsJButton.setToolTipText('Settings');
-        plotsJButton.setFlyOverAppearance(true);
-        plotsJButton.setBorder([]);
-        plotsJButton.setIconTextGap(2);
-        plotsJButton.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
-        plotsJButton.setVerticalTextPosition(javax.swing.SwingConstants.CENTER);
-        plotsJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-        obj.JRibbonPanel.add(plotsJButton);
-        plotsJButton.setBounds(733,25 ,90, 28);
-        obj.PlotJButton = plotsJButton; 
-                
-                
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%             
-                
-                
-            % Break    
-            labelStr = '<html><i><font color="gray"></html>';
-            jLabelbk1 = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelbk1.setOpaque(true);
-            jLabelbk1.setBackground(java.awt.Color.lightGray);
-            jLabelbk1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-            obj.JRibbonPanel.add(jLabelbk1);
-            jLabelbk1.setBounds(857,3,2,90);    
-
-            positionRibbon = getpixelposition(obj.Parent);
-            [obj.JRPHComp,obj.JRPHCont] = javacomponent(obj.JRibbonPanel,[ 0 , 0 , positionRibbon(3) , positionRibbon(4) ], obj.Parent );
-
-
-            obj.JRibbonPanel.setBackground(backgroundColor);
+            obj.buildRibbon();
         end % ToolRibbon
     end % Constructor
 
-    %% Methods - Property Access
+    %% Methods - Public API
     methods
-
-    end % Property access methods
-
-    %% Methods - Ordinary
-    methods 
-        
-    end
-    
-    %% Methods - Callbacks
-    methods 
-        
         function setShowLoggedSignals(obj, state)
-            obj.ShowLoggedSignalsState = state;
-           obj.ShowLogSignalsJCheckbox.setSelected(obj.ShowLoggedSignalsState); 
+            if nargin < 2
+                state = obj.ShowLoggedSignalsState;
+            end
+            obj.ShowLoggedSignalsState = logical(state);
+            obj.sendRibbonState();
         end % setShowLoggedSignals
-        
+
         function setShowInvalidTrim(obj, state)
-            obj.ShowInvalidTrimState = state;
-           obj.ShowInvalidTrimJCheckbox.setSelectedItem(obj.ShowInvalidTrimState);
+            if nargin < 2
+                state = obj.ShowInvalidTrimState;
+            end
+            obj.ShowInvalidTrimState = obj.resolveTrimState(state);
+            obj.sendRibbonState();
         end % setShowInvalidTrim
 
         function setUseAllCombinations(obj, state)
-            obj.UseAllCombinationsState = state;
-            obj.UseAllCombinationsJCheckbox.setSelected(obj.UseAllCombinationsState);
+            if nargin < 2
+                state = obj.UseAllCombinationsState;
+            end
+            obj.UseAllCombinationsState = logical(state);
+            obj.sendRibbonState();
         end % setUseAllCombinations
-        
-        function createNewAnalysis_CB( obj , ~ , ~ )
+
+        function setUnits(obj, units)
+            if nargin < 2 || isempty(units)
+                units = obj.CurrentUnits;
+            end
+            obj.CurrentUnits = char(units);
+            obj.sendRibbonState();
+        end % setUnits
+
+        function createNewAnalysis_CB(obj, varargin) %#ok<INUSD>
             notify(obj,'NewAnalysis');
         end % createNewAnalysis_CB
-        
-        function showLogSignalsCheckbox_CB( obj , ~ , eventdata )
-            obj.ShowLoggedSignalsState = eventdata.getSource.isSelected;
-            notify(obj,'ShowLogSignals',GeneralEventData(eventdata.getSource.isSelected));
-        end % showLogSignalsCheckbox_CB
 
-        function useAllCombinationsCheckbox_CB( obj , ~ , eventdata )
-            obj.UseAllCombinationsState = eventdata.getSource.isSelected;
-            notify(obj,'UseAllCombinations',GeneralEventData(eventdata.getSource.isSelected));
-        end % useAllCombinationsCheckbox_CB
-        
-        function showInvalidTrimCheckbox_CB( obj , hobj , eventdata )
-%             obj.ShowInvalidTrimState = eventdata.getSource.isSelected;
-%             notify(obj,'ShowInvalidTrim',GeneralEventData(eventdata.getSource.isSelected));
-           notify(obj,'ShowTrimsChanged',UserInterface.UserInterfaceEventData(char(hobj.getSelectedItem))); 
-        end % showInvalidTrimCheckbox_CB
-        
-        function tabPanelChanged( obj , ~ , eventdata )
-            notify(obj,'TabPanelChanged',GeneralEventData(eventdata));
-        end % tabPanelChanged
-        
-        function clearSelect_CB( obj , hobj , ~ )
-            hobj.setSelected(true);
-            this_dir = fileparts( mfilename( 'fullpath' ) );
-            icon_dir = fullfile( this_dir,'..','..','Resources' );
-            
-
-            runSaveIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'RunSave_24.png'));
-            clrIon = javax.swing.ImageIcon(fullfile(icon_dir,'Clean_16.png'));
-            
-            jmenu = javax.swing.JPopupMenu;
-            jmenuh = handle(jmenu,'CallbackProperties');
-            set(jmenuh,'PopupMenuWillBecomeInvisibleCallback',{@obj.popUpMenuCancelled,hobj}); 
-
-            
-            menuItem1 = javax.swing.JMenuItem('<html>Clear Table',clrIon);
-            menuItem1h = handle(menuItem1,'CallbackProperties');
-            set(menuItem1h,'ActionPerformedCallback',@obj.clearTable_CB);
-
-            menuItem2 = javax.swing.JMenu('<html>Export Table');
-            
-                menuItem2_1 = javax.swing.JMenuItem('<html>Export to Mat',runSaveIcon);
-                menuItem2_1h = handle(menuItem2_1,'CallbackProperties');
-                set(menuItem2_1h,'ActionPerformedCallback',@obj.exportTable_CB); 
-            
-                menuItem2_2 = javax.swing.JMenuItem('<html>Export to CSV',runSaveIcon);
-                menuItem2_2h = handle(menuItem2_2,'CallbackProperties');
-                set(menuItem2_2h,'ActionPerformedCallback',@obj.exportTableCSV_CB); 
-                
-                menuItem2_3 = javax.swing.JMenuItem('<html>Export to M script',runSaveIcon);
-                menuItem2_3h = handle(menuItem2_3,'CallbackProperties');
-                set(menuItem2_3h,'ActionPerformedCallback',@obj.exportTableM_CB);             
-                
-            menuItem2.add(menuItem2_1);        
-            menuItem2.add(menuItem2_2);        
-            menuItem2.add(menuItem2_3);  
-            
-            
-            % Add all menu items to the context menu
-            jmenu.add(menuItem1);
-            jmenu.add(menuItem2);
-            
-            jmenu.show(obj.ClrTblSelJButton, -95 , 20 );
-            jmenu.repaint;      
-        end % clearSelect_CB   
-        
-        function batchAdd_CB( obj , hobj , eventdata )
-            notify(obj,'Add2Batch');
-        end % batchAdd_CB
-                
-        function unitsSel_CB( obj , hobj , ~ )
-            notify(obj,'UnitsChanged',UserInterface.UserInterfaceEventData(char(hobj.getSelectedItem))); 
-        end % unitsSel_CB 
-        
-        function newProject_CB( obj , ~ , ~)
-            notify(obj,'NewProject');
-        end % newProject_CB
-        
-        function loadProject_CB( obj , ~ , ~)
-            notify(obj,'LoadProject');
-        end % loadProject_CB
-        
-        function closeProject_CB( obj , ~ , ~)
-            notify(obj,'CloseProject');
-        end % closeProject_CB
-        
-        function fileNew_CB( obj , hobj , ~)
-            hobj.setSelected(true);
-            this_dir = fileparts( mfilename( 'fullpath' ) );
-            icon_dir = fullfile( this_dir,'..','..','Resources' );
-
-            analysisIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'analysis_24.png'));
-            LMObjIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'linmdl_24.png'));
-            methObjIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'InOut_24.png'));
-            NLSimObjIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'Simulink_24.png'));
-            trimIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'airplaneTrim_24.png'));
-            
-            jmenu = javax.swing.JPopupMenu;
-            jmenuh = handle(jmenu,'CallbackProperties');
-            jmenuh.PopupMenuWillBecomeInvisibleCallback = {@obj.popUpMenuCancelled,hobj};
-            
-            menuItem1 = javax.swing.JMenuItem('<html>Task',analysisIcon);
-            menuItem1h = handle(menuItem1,'CallbackProperties');
-            menuItem1h.ActionPerformedCallback = @obj.createNewAnalysis_CB;            
-            
-            menuItem2 = javax.swing.JMenuItem('<html>Trim',trimIcon);
-            menuItem2h = handle(menuItem2,'CallbackProperties');
-            menuItem2h.ActionPerformedCallback = @obj.newTrimObj_CB;      
-            
-            menuItem3 = javax.swing.JMenuItem('<html>Linear Model',LMObjIcon);
-            menuItem3h = handle(menuItem3,'CallbackProperties');
-            set(menuItem3h,'ActionPerformedCallback',@obj.newLinMdlObj_CB);
-               
-            menuItem4 = javax.swing.JMenuItem('<html>Requirement',methObjIcon);
-            menuItem4h = handle(menuItem4,'CallbackProperties');
-            menuItem4h.ActionPerformedCallback = @obj.newMethodObj_CB;  
-            
-            menuItem5 = javax.swing.JMenuItem('<html>Simulation Requirement',NLSimObjIcon);
-            menuItem5h = handle(menuItem5,'CallbackProperties');
-            menuItem5h.ActionPerformedCallback = @obj.newNonLinSimObj_CB;
-            
-            
-            % Add all menu items to the context menu
-            jmenu.add(menuItem1);
-            jmenu.add(menuItem2);
-            jmenu.add(menuItem3);
-            jmenu.add(menuItem4);
-            jmenu.add(menuItem5);
-
-            jmenu.show(hobj, 0 , 69 );
-            jmenu.repaint;       
-        end % fileNew_CB    
-        
-        function fileOpen_CB( obj , hobj , ~)
-            hobj.setSelected(true);
-            this_dir = fileparts( mfilename( 'fullpath' ) );
-            icon_dir = fullfile( this_dir,'..','..','Resources' );
-
-            analysisIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'analysis_24.png'));
-            LMObjIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'linmdl_24.png'));
-            methObjIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'InOut_24.png'));
-            NLSimObjIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'Simulink_24.png'));
-            trimIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'airplaneTrim_24.png'));
-            
-            jmenu = javax.swing.JPopupMenu;
-            jmenuh = handle(jmenu,'CallbackProperties');
-            jmenuh.PopupMenuWillBecomeInvisibleCallback = {@obj.popUpMenuCancelled,hobj};
-            
-            menuItem1 = javax.swing.JMenuItem('<html>Task',analysisIcon);
-            menuItem1h = handle(menuItem1,'CallbackProperties');
-            menuItem1h.ActionPerformedCallback = @obj.openAnalysisObj_CB;  
-
-            menuItem2 = javax.swing.JMenuItem('<html>Trim',trimIcon);
-            menuItem2h = handle(menuItem2,'CallbackProperties');
-            menuItem2h.ActionPerformedCallback = @obj.openTrimObj_CB;      
-            
-            menuItem3 = javax.swing.JMenuItem('<html>Linear Model',LMObjIcon);
-            menuItem3h = handle(menuItem3,'CallbackProperties');
-            set(menuItem3h,'ActionPerformedCallback',@obj.openLinMdlObj_CB);
-               
-            menuItem4 = javax.swing.JMenuItem('<html>Requirement',methObjIcon);
-            menuItem4h = handle(menuItem4,'CallbackProperties');
-            menuItem4h.ActionPerformedCallback = @obj.openMethodObj_CB;    
-            
-            menuItem5 = javax.swing.JMenuItem('<html>Simulation Requirement',NLSimObjIcon);
-            menuItem5h = handle(menuItem5,'CallbackProperties');
-            menuItem5h.ActionPerformedCallback = @obj.openNonLinSimObj_CB; 
-            
-            
-            % Add all menu items to the context menu
-            jmenu.add(menuItem1);
-            jmenu.add(menuItem2);
-            jmenu.add(menuItem3);
-            jmenu.add(menuItem4);
-            jmenu.add(menuItem5);
-
-            jmenu.show(hobj, 0 , 69 );
-            jmenu.repaint;       
-        end % fileOpen_CB     
-
-        function fileLoad_CB( obj , hobj , ~)
-            hobj.setSelected(true);
-            this_dir = fileparts( mfilename( 'fullpath' ) );
-            icon_dir = fullfile( this_dir,'..','..','Resources' );
-            
-            savePrjIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'LoadProject_24.png'));
-            analysisIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'analysis_24.png'));
-            
-            jmenu = javax.swing.JPopupMenu;
-            jmenuh = handle(jmenu,'CallbackProperties');
-            jmenuh.PopupMenuWillBecomeInvisibleCallback = {@obj.popUpMenuCancelled,hobj};
-            
-
-            
-            menuItem6 = javax.swing.JMenuItem('<html>Project',savePrjIcon);
-            menuItem6h = handle(menuItem6,'CallbackProperties');
-            menuItem6h.ActionPerformedCallback = @obj.loadWorkspace_CB; 
-            
-            menuItem11 = javax.swing.JMenuItem('<html>Task',analysisIcon);
-            menuItem11h = handle(menuItem11,'CallbackProperties');
-            menuItem11h.ActionPerformedCallback = @obj.loadAnalysisObj_CB;   
-            
-            
-            % Add all menu items to the context menu
-            jmenu.add(menuItem6);
-            jmenu.add(menuItem11);
-
-            jmenu.show(hobj, 0 , 69 );
-            jmenu.repaint;       
-        end % fileLoad_CB   
-        
-        function fileSave_CB( obj , hobj , ~)    
-            hobj.setSelected(true);
-            this_dir = fileparts( mfilename( 'fullpath' ) );
-            icon_dir = fullfile( this_dir,'..','..','Resources' );
-            
-            %obj.SaveJButton.setFlyOverAppearance(false);
-
-            
-            saveGainIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'Save_Dirty_24.png'));
-            saveWorkspaceIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'SaveProject_24.png'));
-
-            
-            jmenu = javax.swing.JPopupMenu;
-            jmenuh = handle(jmenu,'CallbackProperties');
-            set(jmenuh,'PopupMenuWillBecomeInvisibleCallback',{@obj.popUpMenuCancelled,hobj});
-
-            saveJmenu = javax.swing.JMenu('<html>Save Operating Conditions');
-            saveJmenu.setIcon(saveGainIcon);
-            
-            menuItem11 = javax.swing.JMenuItem('<html>All',saveGainIcon);
-            menuItem11h = handle(menuItem11,'CallbackProperties');
-            set(menuItem11h,'ActionPerformedCallback',{@obj.saveOperCond_CB,1});
-            saveJmenu.add(menuItem11);
-            
-            menuItem21 = javax.swing.JMenuItem('<html>Valid Only',saveGainIcon);
-            menuItem21h = handle(menuItem21,'CallbackProperties');
-            set(menuItem21h,'ActionPerformedCallback',{@obj.saveOperCond_CB,0});
-            saveJmenu.add(menuItem21);
-
-            menuItem2 = javax.swing.JMenuItem('<html>Save Project',saveWorkspaceIcon);
-            menuItem2h = handle(menuItem2,'CallbackProperties');
-            set(menuItem2h,'ActionPerformedCallback',@obj.saveWorkspace_CB); 
-      
-            % Add all menu items to the context menu
-            jmenu.add(menuItem2);
-            jmenu.add(saveJmenu);
-
-            %SaveJButton
-            jmenu.show(hobj, 0 , 69 );
-            jmenu.repaint;    
-                    
-        end % fileSave_CB
-        
-        function runRibbion_CB( obj , hobj , ~ )
-            hobj.setSelected(true);
-            this_dir = fileparts( mfilename( 'fullpath' ) );
-            icon_dir = fullfile( this_dir,'..','..','Resources' );
-            
-            runIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'Run_24.png'));
-            runSaveIcon  = javax.swing.ImageIcon(fullfile(icon_dir,'RunSave_24.png'));
-            
-            jmenu = javax.swing.JPopupMenu;
-            jmenuh = handle(jmenu,'CallbackProperties');
-            set(jmenuh,'PopupMenuWillBecomeInvisibleCallback',{@obj.popUpMenuCancelled,hobj});
-
-            
-            menuItem1 = javax.swing.JMenuItem('<html>Run',runIcon);
-            menuItem1h = handle(menuItem1,'CallbackProperties');
-            set(menuItem1h,'ActionPerformedCallback',@obj.run_CB);
-
-
-            menuItem2 = javax.swing.JMenuItem('<html>Run and Save',runSaveIcon);
-            menuItem2h = handle(menuItem2,'CallbackProperties');
-            set(menuItem2h,'ActionPerformedCallback',@obj.runAndSave_CB); 
-            
-
-            % Add all menu items to the context menu
-            jmenu.add(menuItem1);
-            jmenu.add(menuItem2);
-
-            
-            jmenu.show(hobj, 0 , 69 );
-            jmenu.repaint;   
-        end % runRibbion_CB
-        
-        function popUpMenuCancelled( obj , ~ , ~ , comp )
-            comp.setSelected(false);
-        end % popUpMenuCancelled
-        
-        function clearTable_CB( obj , ~ , ~ )
-            notify(obj,'ClearTable');
-        end % clearTable_CB
-
-        function methodButton_CB( gui , ~ , ~ )
-            gui.CurrSelToolRibbion  = 2;
-            gui.ToolRibbionSelectedText = 'Method';
-            gui.TextColorMain   = [0 0 0];
-            gui.TextColorMethod = [0 0 1];
-
-
-            gui.ButtonColorMain   = [0.8 0.8 0.8];
-            gui.ButtonColorMethod = [0 0 1];
-
-            gui.update; 
-        end % methodButton_CB
-           
-        function newWorkspace_CB( gui , ~ , ~ )
-            
-        end % newWorkspace_CB       
-          
-        function newTrimObj_CB( obj , ~ , ~ )
+        function newTrimObj_CB(obj, varargin) %#ok<INUSD>
             notify(obj,'NewTrimObject');
         end % newTrimObj_CB
-        
-        function newLinMdlObj_CB( obj , ~ , ~ )
-            notify(obj,'NewLinearModelObject');  
+
+        function newLinMdlObj_CB(obj, varargin) %#ok<INUSD>
+            notify(obj,'NewLinearModelObject');
         end % newLinMdlObj_CB
-        
-        function newMethodObj_CB( obj , ~ , ~ )
-            notify(obj,'NewMethodObject'); 
+
+        function newMethodObj_CB(obj, varargin) %#ok<INUSD>
+            notify(obj,'NewMethodObject');
         end % newMethodObj_CB
-        
-        function newNonLinSimObj_CB( obj , ~ , ~ )
+
+        function newNonLinSimObj_CB(obj, varargin) %#ok<INUSD>
             notify(obj,'NewSimulationReqObject');
         end % newNonLinSimObj_CB
-        
-        function newPostSimObj_CB( obj , ~ , ~ )
+
+        function newPostSimObj_CB(obj, varargin) %#ok<INUSD>
             notify(obj,'NewPostSimulationReqObject');
-        end % newPostSimObj_CB    
-        
-        function openAnalysisObj_CB( obj , ~ , ~ )
-            notify(obj,'OpenObject',GeneralEventData('Analysis'));   
+        end % newPostSimObj_CB
+
+        function openAnalysisObj_CB(obj, varargin) %#ok<INUSD>
+            notify(obj,'OpenObject',GeneralEventData('Analysis'));
         end % openAnalysisObj_CB
-    
-        function openTrimObj_CB( obj , ~ , ~ )
-            notify(obj,'OpenObject',GeneralEventData('Trim'));   
+
+        function openTrimObj_CB(obj, varargin) %#ok<INUSD>
+            notify(obj,'OpenObject',GeneralEventData('Trim'));
         end % openTrimObj_CB
-        
-        function openLinMdlObj_CB( obj , ~ , ~ )
+
+        function openLinMdlObj_CB(obj, varargin) %#ok<INUSD>
             notify(obj,'OpenObject',GeneralEventData('Linear Model'));
         end % openLinMdlObj_CB
-        
-        function openMethodObj_CB( obj , ~ , ~ )
+
+        function openMethodObj_CB(obj, varargin) %#ok<INUSD>
             notify(obj,'OpenObject',GeneralEventData('Requirement'));
         end % openMethodObj_CB
-        
-        function openNonLinSimObj_CB( obj , ~ , ~ )
+
+        function openNonLinSimObj_CB(obj, varargin) %#ok<INUSD>
             notify(obj,'OpenObject',GeneralEventData('Simulation Requirement'));
         end % openNonLinSimObj_CB
-        
-        function openPostNonLinSimObj_CB( obj , ~ , ~ )
+
+        function openPostNonLinSimObj_CB(obj, varargin) %#ok<INUSD>
             notify(obj,'OpenObject',GeneralEventData('Post Simulation Requirement'));
         end % openPostNonLinSimObj_CB
-        
-        function loadAnalysisObj_CB( obj , ~ , ~ )
+
+        function loadAnalysisObj_CB(obj, varargin) %#ok<INUSD>
             notify(obj,'LoadAnalysisObject');
         end % loadAnalysisObj_CB
-        
-        function loadSimulation_CB( obj , ~ , ~ )
-            notify(obj,'LoadSimulation');
-        end % loadSimulation_CB
-        
-        function loadWorkspace_CB( obj , ~ , ~)
+
+        function loadWorkspace_CB(obj, varargin) %#ok<INUSD>
             notify(obj,'LoadWorkspace');
         end % loadWorkspace_CB
-            
-        function batchRun_CB( gui , ~ , ~)
-            notify(gui,'LoadBatchRun');
-        end % batchRun_CB
-        
-        function saveOperCond_CB( gui , ~ , ~ , saveType)
-            notify(gui,'SaveOperCond',GeneralEventData(saveType));          
-        end % saveOperCond_CB
-        
-        function saveWorkspace_CB( gui , ~ , ~ )
-            notify(gui,'SaveWorkspace');          
-        end % saveWorkspace_CB
-        
-        function run_CB( obj , ~ , ~ )
-            notify(obj,'Run');
 
+        function batchRun_CB(obj, varargin) %#ok<INUSD>
+            notify(obj,'LoadBatchRun');
+        end % batchRun_CB
+
+        function batchAdd_CB(obj, varargin) %#ok<INUSD>
+            notify(obj,'Add2Batch');
+        end % batchAdd_CB
+
+        function saveOperCond_CB(obj, varargin)
+            saveType = obj.extractNumericArg(varargin);
+            if isempty(saveType)
+                saveType = 1;
+            end
+            notify(obj,'SaveOperCond',GeneralEventData(saveType));
+        end % saveOperCond_CB
+
+        function saveWorkspace_CB(obj, varargin) %#ok<INUSD>
+            notify(obj,'SaveWorkspace');
+        end % saveWorkspace_CB
+
+        function run_CB(obj, varargin) %#ok<INUSD>
+            notify(obj,'Run');
         end % run_CB
-        
-        function runAndSave_CB( obj , ~ , ~ )
+
+        function runAndSave_CB(obj, varargin) %#ok<INUSD>
             notify(obj,'RunSave');
         end % runAndSave_CB
 
-        function generateReportMenu_CB( obj , hobj , ~ )
-            hobj.setSelected(true);
-            jmenu = javax.swing.JPopupMenu;
-            jmenuh = handle(jmenu,'CallbackProperties');
-            jmenuh.PopupMenuWillBecomeInvisibleCallback = {@obj.popUpMenuCancelled,hobj};
+        function clearTable_CB(obj, varargin) %#ok<INUSD>
+            notify(obj,'ClearTable');
+        end % clearTable_CB
 
-            pdfItem   = javax.swing.JMenuItem('<html>PDF');
-            pdfItemh  = handle(pdfItem,'CallbackProperties');
-            set(pdfItemh,'ActionPerformedCallback',{@obj.generateReport_CB,'PDF'});
-
-            wordItem  = javax.swing.JMenuItem('<html>MS Word');
-            wordItemh = handle(wordItem,'CallbackProperties');
-            set(wordItemh,'ActionPerformedCallback',{@obj.generateReport_CB,'MS Word'});
-
-            jmenu.add(pdfItem);
-            jmenu.add(wordItem);
-
-            jmenu.show(hobj, 0 , 20 );
-            % jmenu.show(hobj, 0 , 69 );
-            jmenu.repaint;
-        end % generateReportMenu_CB
-
-        function exportTable_CB( obj , ~ , ~ )
+        function exportTable_CB(obj, varargin) %#ok<INUSD>
             notify(obj,'ExportTable',UserInterface.UserInterfaceEventData('mat'));
         end % exportTable_CB
-        
-        function exportTableCSV_CB( obj , ~ , ~ )
+
+        function exportTableCSV_CB(obj, varargin) %#ok<INUSD>
             notify(obj,'ExportTable',UserInterface.UserInterfaceEventData('csv'));
-        end % exportTableCSV_CB   
-        
-        function exportTableM_CB( obj , ~ , ~ )
-            notify(obj,'ExportTable',UserInterface.UserInterfaceEventData('m'));
         end % exportTableCSV_CB
 
-        function generateReport_CB( obj , ~ , ~ , format )
-            if nargin < 4
-                format = 'PDF';
+        function exportTableM_CB(obj, varargin) %#ok<INUSD>
+            notify(obj,'ExportTable',UserInterface.UserInterfaceEventData('m'));
+        end % exportTableM_CB
+
+        function generateReport_CB(obj, varargin)
+            format = 'PDF';
+            for k = 1:numel(varargin)
+                candidate = varargin{k};
+                if ischar(candidate) || isstring(candidate)
+                    format = char(candidate);
+                    break;
+                end
             end
             notify(obj,'GenerateReport',UserInterface.UserInterfaceEventData(format));
         end % generateReport_CB
 
-        function settingsButton_CB( obj , ~ , ~ )
-            this_dir = fileparts( mfilename( 'fullpath' ) );
-            icon_dir = fullfile( this_dir,'..','..','Resources' );
-                        
-            obj.PlotJButton.setFlyOverAppearance(false);
-            
-            settingsIcon = javaObjectEDT('javax.swing.ImageIcon',fullfile(icon_dir,'Settings_16.png'));
-            exportIcon   = javaObjectEDT('javax.swing.ImageIcon',fullfile(icon_dir,'Figure_16.png'));
-            checkIcon    = javaObjectEDT('javax.swing.ImageIcon',fullfile(icon_dir,'check_16.png'));
-            
-            
-            
-            jmenu = javaObjectEDT('javax.swing.JPopupMenu');
-            jmenuh = handle(jmenu,'CallbackProperties');
-%             set(jmenuh,'PopupMenuWillBecomeInvisibleCallback',{@obj.popUpMenuCancelled,'Plot'});
-
-                plotTrimSettingsJmenu = javaObjectEDT('javax.swing.JMenuItem','<html>Trim Settings');
-                plotTrimSettingsJmenu.setIcon(settingsIcon); 
-                plotTrimSettingsJmenuh = handle(plotTrimSettingsJmenu,'CallbackProperties');
-                plotTrimSettingsJmenuh.ActionPerformedCallback = @obj.setTrimSettings;
-
-            
-                plotTopJmenu = javax.swing.JMenu('<html>Plots Per Page');
-                plotTopJmenu.setIcon(exportIcon);  
-            
-                plotJmenu = javax.swing.JMenu('<html>All');
-                plotJmenu.setIcon(exportIcon);
-                    menuItem1 = javaObjectEDT('javax.swing.JMenuItem','<html>1');
-                    menuItem1h = handle(menuItem1,'CallbackProperties');
-                    menuItem1h.ActionPerformedCallback = {@obj.setNumPlotsAll,1};
-                    plotJmenu.add(menuItem1);
-                    menuItem2 = javaObjectEDT('javax.swing.JMenuItem','<html>2');
-                    menuItem2h = handle(menuItem2,'CallbackProperties');
-                    menuItem2h.ActionPerformedCallback = {@obj.setNumPlotsAll,2};
-                    plotJmenu.add(menuItem2);
-                    menuItem3 = javaObjectEDT('javax.swing.JMenuItem','<html>4');
-                    menuItem3h = handle(menuItem3,'CallbackProperties');
-                    menuItem3h.ActionPerformedCallback = {@obj.setNumPlotsAll,4};
-                    plotJmenu.add(menuItem3);
-                    
-                    
-                    allPlots = isequal(obj.NumberOfPlotPerPageReq,...
-                                obj.NumberOfPlotPerPagePostSim);
-                    if allPlots
-                        switch obj.NumberOfPlotPerPageReq
-                            case 1
-                                menuItem1h.setIcon(checkIcon);
-                            case 2
-                                menuItem2h.setIcon(checkIcon);
-                            case 4
-                                menuItem3h.setIcon(checkIcon);
-                        end
-                    end
-                    
-                    
-                plotJmenuReq = javax.swing.JMenu('<html>Requirements');
-                plotJmenuReq.setIcon(exportIcon);
-                    menuItem1 = javaObjectEDT('javax.swing.JMenuItem','<html>1');
-                    menuItem1h = handle(menuItem1,'CallbackProperties');
-                    menuItem1h.ActionPerformedCallback = {@obj.setNumPlotsPlts,1};
-                    plotJmenuReq.add(menuItem1);
-                    menuItem2 = javaObjectEDT('javax.swing.JMenuItem','<html>2');
-                    menuItem2h = handle(menuItem2,'CallbackProperties');
-                    menuItem2h.ActionPerformedCallback = {@obj.setNumPlotsPlts,2};
-                    plotJmenuReq.add(menuItem2);
-                    menuItem3 = javaObjectEDT('javax.swing.JMenuItem','<html>4');
-                    menuItem3h = handle(menuItem3,'CallbackProperties');
-                    menuItem3h.ActionPerformedCallback = {@obj.setNumPlotsPlts,4};
-                    plotJmenuReq.add(menuItem3);
-                    
-                    switch obj.NumberOfPlotPerPageReq
-                        case 1
-                            menuItem1h.setIcon(checkIcon);
-                        case 2
-                            menuItem2h.setIcon(checkIcon);
-                        case 4
-                            menuItem3h.setIcon(checkIcon);
-                    end
-                    
-                plotJmenuPS = javax.swing.JMenu('<html>Post Simulation');
-                plotJmenuPS.setIcon(exportIcon);
-                    menuItem1 = javaObjectEDT('javax.swing.JMenuItem','<html>1');
-                    menuItem1h = handle(menuItem1,'CallbackProperties');
-                    menuItem1h.ActionPerformedCallback = {@obj.setNumPlotsPostPlts,1};
-                    plotJmenuPS.add(menuItem1);
-                    menuItem2 = javaObjectEDT('javax.swing.JMenuItem','<html>2');
-                    menuItem2h = handle(menuItem2,'CallbackProperties');
-                    menuItem2h.ActionPerformedCallback = {@obj.setNumPlotsPostPlts,2};
-                    plotJmenuPS.add(menuItem2);
-                    menuItem3 = javaObjectEDT('javax.swing.JMenuItem','<html>4');
-                    menuItem3h = handle(menuItem3,'CallbackProperties');
-                    menuItem3h.ActionPerformedCallback = {@obj.setNumPlotsPostPlts,4};
-                    plotJmenuPS.add(menuItem3);
-                    
-                    switch obj.NumberOfPlotPerPagePostSim
-                        case 1
-                            menuItem1h.setIcon(checkIcon);
-                        case 2
-                            menuItem2h.setIcon(checkIcon);
-                        case 4
-                            menuItem3h.setIcon(checkIcon);
-                    end
-
-
-            plotTopJmenu.add(plotJmenu);
-            plotTopJmenu.add(plotJmenuReq);
-            plotTopJmenu.add(plotJmenuPS);
-
-            
-            jmenu.add(plotTopJmenu);
-            jmenu.add(plotTrimSettingsJmenu);
-            %SaveJButton
-            jmenu.show(obj.PlotJButton, 0 , 28 );
-            jmenu.repaint;   
-        end % settingsButton_CB
-        
-        function setNumPlotsPlts( obj , ~ , ~ , numbPlots )
+        function setNumPlotsPlts(obj, varargin)
+            numbPlots = obj.extractNumericArg(varargin);
+            if isempty(numbPlots)
+                return;
+            end
             obj.NumberOfPlotPerPageReq = numbPlots;
-            notify(obj,'SetNumPlotsPlts',UserInterface.UserInterfaceEventData(numbPlots)); 
-            
-%             setOrientation( obj.AxisColl , numbPlots );            
-%             obj.NumberOfPlotPerPagePlts = numbPlots;
-            
+            notify(obj,'SetNumPlotsPlts',UserInterface.UserInterfaceEventData(numbPlots));
+            obj.sendRibbonState();
         end % setNumPlotsPlts
-        
-        function setNumPlotsPostPlts( obj , ~ , ~ , numbPlots )
+
+        function setNumPlotsPostPlts(obj, varargin)
+            numbPlots = obj.extractNumericArg(varargin);
+            if isempty(numbPlots)
+                return;
+            end
             obj.NumberOfPlotPerPagePostSim = numbPlots;
-            notify(obj,'SetNumPlotsPostPlts',UserInterface.UserInterfaceEventData(numbPlots)); 
-%             setOrientation( obj.PostSimAxisColl , numbPlots );            
-%             obj.NumberOfPlotPerPageStab = numbPlots;
-            
+            notify(obj,'SetNumPlotsPostPlts',UserInterface.UserInterfaceEventData(numbPlots));
+            obj.sendRibbonState();
         end % setNumPlotsPostPlts
-        
-        function setNumPlotsAll( obj , ~ , ~ , numbPlots )
-            
-            notify(obj,'SetNumPlotsPlts',UserInterface.UserInterfaceEventData(numbPlots)); 
-            drawnow();pause(0.01);
-            notify(obj,'SetNumPlotsPostPlts',UserInterface.UserInterfaceEventData(numbPlots)); 
-            
-            
-            
+
+        function setNumPlotsAll(obj, varargin)
+            numbPlots = obj.extractNumericArg(varargin);
+            if isempty(numbPlots)
+                return;
+            end
             obj.NumberOfPlotPerPageReq = numbPlots;
             obj.NumberOfPlotPerPagePostSim = numbPlots;
-            
+            notify(obj,'SetNumPlotsPlts',UserInterface.UserInterfaceEventData(numbPlots));
+            notify(obj,'SetNumPlotsPostPlts',UserInterface.UserInterfaceEventData(numbPlots));
+            obj.sendRibbonState();
         end % setNumPlotsAll
-        
-        function setTrimSettings( obj , ~ , ~ )
-            
-            
-%             objH = UserInterface.StabilityControl.TrimOptions;
-%             uiwait(objH.Parent);
+
+        function setTrimSettings(obj, varargin) %#ok<INUSD>
+            if isempty(obj.TrimSettings)
+                return;
+            end
             obj.TrimSettings.createView();
             uiwait(obj.TrimSettings.Parent);
-            
-            notify(obj,'TrimSettingsChanged',UserInterface.UserInterfaceEventData(obj.TrimSettings)); 
-
+            notify(obj,'TrimSettingsChanged',UserInterface.UserInterfaceEventData(obj.TrimSettings));
         end % setTrimSettings
-        
-    end % Ordinary Methods
-    
-    %% Methods - Protected
-    methods (Access = protected)       
-        function update(obj)    
-            
-            set(obj.SelectPageText,'String',obj.ToolRibbionSelectedText);
 
-            set(obj.MainText,'ForegroundColor',obj.TextColorMain);
-            set(obj.LinmdlText,'ForegroundColor',obj.TextColorMethod);
-            set(obj.RqText,'ForegroundColor',obj.TextColorRq);
-            set(obj.GainsText,'ForegroundColor',obj.TextColorGains);
-            set(obj.RootLocusText,'ForegroundColor',obj.TextColorRootLocus);
-            set(obj.FilterText,'ForegroundColor',obj.TextColorFilter);
+        function newProject_CB(obj, varargin) %#ok<INUSD>
+            notify(obj,'NewProject');
+        end % newProject_CB
 
-        end
+        function loadProject_CB(obj, varargin) %#ok<INUSD>
+            notify(obj,'LoadProject');
+        end % loadProject_CB
+
+        function closeProject_CB(obj, varargin) %#ok<INUSD>
+            notify(obj,'CloseProject');
+        end % closeProject_CB
     end
-    
+
+    %% Methods - Private helpers
+    methods (Access = private)
+        function buildRibbon(obj)
+            if isempty(obj.Parent) || ~isgraphics(obj.Parent)
+                return;
+            end
+
+            obj.RibbonAssets = obj.buildRibbonAssets();
+            obj.RibbonReady = false;
+
+            parentPos = getpixelposition(obj.Parent);
+            if isempty(parentPos)
+                parentPos = [0 0 860 93];
+            end
+            width = max(parentPos(3),1);
+            height = max(parentPos(4),1);
+
+            obj.RibbonHtml = uihtml(obj.Parent,...
+                'HTMLSource',obj.buildRibbonHtml(),...
+                'Position',[0 0 width height]);
+            obj.RibbonHtml.DataChangedFcn = @(~,evt)obj.handleRibbonEvent(evt.Data);
+
+            try
+                obj.ParentSizeListener = addlistener(obj.Parent,'SizeChanged',@(~,~)obj.updateRibbonGeometry());
+            catch
+                obj.ParentSizeListener = [];
+            end
+
+            obj.updateRibbonGeometry();
+        end % buildRibbon
+
+        function handleRibbonEvent(obj, payload)
+            if ~isstruct(payload) || ~isfield(payload,'type')
+                return;
+            end
+
+            msgType = lower(char(string(payload.type)));
+            switch msgType
+                case 'ready'
+                    obj.RibbonReady = true;
+                    obj.sendRibbonConfig();
+                    obj.sendRibbonState();
+
+                case 'command'
+                    if ~isfield(payload,'command')
+                        return;
+                    end
+                    cmd = lower(char(string(payload.command)));
+                    option = '';
+                    if isfield(payload,'option') && ~isempty(payload.option)
+                        option = lower(char(string(payload.option)));
+                    end
+                    value = [];
+                    if isfield(payload,'value')
+                        rawVal = payload.value;
+                        if ischar(rawVal) || isstring(rawVal)
+                            numericVal = str2double(rawVal);
+                            if ~isnan(numericVal)
+                                rawVal = numericVal;
+                            else
+                                rawVal = char(rawVal);
+                            end
+                        end
+                        value = rawVal;
+                    end
+                    obj.executeCommand(cmd, option, value);
+
+                case 'toggle'
+                    if ~isfield(payload,'target')
+                        return;
+                    end
+                    target = lower(char(string(payload.target)));
+                    value = false;
+                    if isfield(payload,'value')
+                        value = logical(payload.value);
+                    end
+                    switch target
+                        case 'showlog'
+                            obj.ShowLoggedSignalsState = value;
+                            notify(obj,'ShowLogSignals',GeneralEventData(value));
+                        case 'useall'
+                            obj.UseAllCombinationsState = value;
+                            notify(obj,'UseAllCombinations',GeneralEventData(value));
+                    end
+                    obj.sendRibbonState();
+
+                case 'select'
+                    if ~isfield(payload,'target') || ~isfield(payload,'value')
+                        return;
+                    end
+                    target = lower(char(string(payload.target)));
+                    switch target
+                        case 'showinvalid'
+                            label = obj.resolveTrimState(payload.value);
+                            obj.ShowInvalidTrimState = label;
+                            notify(obj,'ShowTrimsChanged',UserInterface.UserInterfaceEventData(label));
+                        case 'units'
+                            units = char(string(payload.value));
+                            obj.CurrentUnits = units;
+                            notify(obj,'UnitsChanged',UserInterface.UserInterfaceEventData(units));
+                    end
+                    obj.sendRibbonState();
+
+                case 'request'
+                    if isfield(payload,'subject') && strcmpi(char(string(payload.subject)),'state')
+                        obj.sendRibbonState();
+                    end
+            end
+        end % handleRibbonEvent
+
+        function executeCommand(obj, cmd, option, value)
+            if nargin < 3 || isempty(option)
+                option = '';
+            end
+            switch cmd
+                case 'new'
+                    if isempty(option)
+                        option = 'trim';
+                    end
+                    switch option
+                        case {'analysis','task'}
+                            obj.createNewAnalysis_CB();
+                        case 'model'
+                            obj.newLinMdlObj_CB();
+                        case {'requirement','req'}
+                            obj.newMethodObj_CB();
+                        case {'simulation','sim'}
+                            obj.newNonLinSimObj_CB();
+                        otherwise
+                            obj.newTrimObj_CB();
+                    end
+
+                case 'open'
+                    if isempty(option)
+                        option = 'trim';
+                    end
+                    switch option
+                        case {'analysis','task'}
+                            obj.openAnalysisObj_CB();
+                        case 'model'
+                            obj.openLinMdlObj_CB();
+                        case {'requirement','req'}
+                            obj.openMethodObj_CB();
+                        case {'simulation','sim'}
+                            obj.openNonLinSimObj_CB();
+                        otherwise
+                            obj.openTrimObj_CB();
+                    end
+
+                case 'load'
+                    if isempty(option) || strcmp(option,'project')
+                        obj.loadWorkspace_CB();
+                    elseif any(strcmp(option,{'task','analysis'}))
+                        obj.loadAnalysisObj_CB();
+                    end
+
+                case 'save'
+                    if isempty(option) || strcmp(option,'project')
+                        obj.saveWorkspace_CB();
+                    elseif strcmp(option,'opercond-all')
+                        obj.saveOperCond_CB(1);
+                    elseif strcmp(option,'opercond-valid')
+                        obj.saveOperCond_CB(0);
+                    end
+
+                case 'run'
+                    if strcmp(option,'run')
+                        obj.run_CB();
+                    else
+                        obj.runAndSave_CB();
+                    end
+
+                case 'batch'
+                    obj.batchAdd_CB();
+
+                case 'table'
+                    if isempty(option) || strcmp(option,'clear')
+                        obj.clearTable_CB();
+                    elseif strcmp(option,'export-mat')
+                        obj.exportTable_CB();
+                    elseif strcmp(option,'export-csv')
+                        obj.exportTableCSV_CB();
+                    elseif strcmp(option,'export-m')
+                        obj.exportTableM_CB();
+                    end
+
+                case 'report'
+                    if strcmp(option,'word')
+                        obj.generateReport_CB('MS Word');
+                    else
+                        obj.generateReport_CB('PDF');
+                    end
+
+                case 'editor'
+                    if any(strcmp(option,{'analysis','task'}))
+                        obj.createNewAnalysis_CB();
+                    elseif strcmp(option,'model')
+                        obj.newLinMdlObj_CB();
+                    elseif any(strcmp(option,{'requirement','req'}))
+                        obj.newMethodObj_CB();
+                    elseif any(strcmp(option,{'simulation','sim'}))
+                        obj.newNonLinSimObj_CB();
+                    else
+                        obj.newTrimObj_CB();
+                    end
+
+                case 'settings'
+                    if strcmp(option,'trim-settings')
+                        obj.setTrimSettings();
+                    elseif strcmp(option,'plots-all')
+                        obj.setNumPlotsAll(value);
+                    elseif strcmp(option,'plots-req')
+                        obj.setNumPlotsPlts(value);
+                    elseif any(strcmp(option,{'plots-post','plots-sim'}))
+                        obj.setNumPlotsPostPlts(value);
+                    end
+            end
+        end % executeCommand
+
+        function sendRibbonConfig(obj)
+            if isempty(obj.RibbonHtml) || ~isvalid(obj.RibbonHtml) || ~obj.RibbonReady
+                return;
+            end
+
+            obj.RibbonHtml.Data = struct('type','config','icons',obj.RibbonAssets);
+        end % sendRibbonConfig
+
+        function sendRibbonState(obj)
+            if isempty(obj.RibbonHtml) || ~isvalid(obj.RibbonHtml) || ~obj.RibbonReady
+                return;
+            end
+
+            state = struct();
+            state.showLogSignals = logical(obj.ShowLoggedSignalsState);
+            state.useAllCombinations = logical(obj.UseAllCombinationsState);
+            state.showInvalidTrim = char(obj.ShowInvalidTrimState);
+            state.units = char(obj.CurrentUnits);
+            state.numPlotsReq = obj.NumberOfPlotPerPageReq;
+            state.numPlotsPost = obj.NumberOfPlotPerPagePostSim;
+            if obj.NumberOfPlotPerPageReq == obj.NumberOfPlotPerPagePostSim
+                state.numPlotsAll = obj.NumberOfPlotPerPageReq;
+            else
+                state.numPlotsAll = 0;
+            end
+
+            obj.RibbonHtml.Data = struct('type','state','state',state);
+        end % sendRibbonState
+
+        function updateRibbonGeometry(obj)
+            if isempty(obj.Parent) || ~isgraphics(obj.Parent) || isempty(obj.RibbonHtml) || ~isvalid(obj.RibbonHtml)
+                return;
+            end
+
+            parentPos = getpixelposition(obj.Parent);
+            if isempty(parentPos)
+                parentPos = [0 0 1 1];
+            end
+            width = max(parentPos(3),1);
+            height = max(parentPos(4),1);
+            obj.RibbonHtml.Position = [0 0 width height];
+        end % updateRibbonGeometry
+
+        function html = buildRibbonHtml(~)
+            lines = {
+                '<!doctype html>'
+                '<html lang="en">'
+                '<head>'
+                '<meta charset="utf-8">'
+                '<meta name="viewport" content="width=device-width, initial-scale=1">'
+                '<style>'
+                'html,body{margin:0;padding:0;height:100%;background:transparent;font-family:"Segoe UI",Tahoma,Arial,sans-serif;font-size:12px;color:#1f1f1f;}'
+                '.ribbon-surface{position:absolute;inset:0;display:flex;align-items:flex-start;gap:10px;padding:6px 10px;background:linear-gradient(180deg,#f8f8f8 0%,#e3e3e3 100%);border-bottom:1px solid #bcbcbc;box-sizing:border-box;}'
+                '.group{display:flex;flex-direction:column;min-width:160px;padding:4px 8px 6px;background:rgba(255,255,255,0.95);border:1px solid #c3c3c3;border-radius:4px;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset;}'
+                '.group-body{display:flex;gap:8px;}'
+                '.group-body.column{flex-direction:column;}'
+                '.group-label{margin-top:4px;text-align:center;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#6b6b6b;}'
+                '.button-base{display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid transparent;border-radius:4px;background:linear-gradient(180deg,#ffffff 0%,#e6e6e6 100%);box-shadow:0 1px 0 rgba(255,255,255,0.9) inset;color:#1f1f1f;cursor:pointer;transition:all .12s ease;}'
+                '.button-base:hover{border-color:#8fb7df;box-shadow:0 0 0 1px rgba(151,189,232,0.45) inset,0 1px 2px rgba(0,0,0,0.15);}'
+                '.button-base:active{border-color:#6f9bd3;background:linear-gradient(180deg,#dbeaff 0%,#c4dcf7 100%);}'
+                '.button-base:focus-visible{outline:2px solid #0e67d2;outline-offset:1px;}'
+                '.button-vertical{flex-direction:column;min-width:74px;height:74px;padding:6px 8px;}'
+                '.button-horizontal{flex-direction:row;justify-content:flex-start;padding:6px 12px;}'
+                '.label{text-transform:uppercase;font-size:10px;font-weight:600;letter-spacing:0.6px;color:#2c2c2c;}'
+                '.label.small{text-transform:none;font-size:11px;font-weight:600;letter-spacing:0.2px;}'
+                '.icon-box{width:36px;height:36px;border-radius:6px;background:linear-gradient(180deg,#fefefe 0%,#ededed 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 0 rgba(255,255,255,0.9) inset;}'
+                '.icon-box.small{width:20px;height:20px;border-radius:4px;}'
+                '.icon-box img{width:24px;height:24px;image-rendering:-webkit-optimize-contrast;}'
+                '.icon-box.small img{width:16px;height:16px;}'
+                '.split{display:flex;position:relative;}'
+                '.split-main{border-radius:4px;}'
+                '.split.vertical .split-main{border-top-right-radius:0;border-bottom-right-radius:0;}'
+                '.split.vertical .split-trigger{border-top-left-radius:0;border-bottom-left-radius:0;}'
+                '.split.horizontal .split-main{border-top-right-radius:0;border-bottom-right-radius:0;}'
+                '.split.horizontal .split-trigger{border-top-left-radius:0;border-bottom-left-radius:0;height:100%;}'
+                '.split-trigger{display:flex;align-items:center;justify-content:center;padding:0 6px;min-width:24px;border:1px solid transparent;border-radius:4px;background:linear-gradient(180deg,#fdfdfd 0%,#e6e6e6 100%);cursor:pointer;transition:all .12s ease;margin-left:-1px;}'
+                '.split-trigger:hover{border-color:#8fb7df;box-shadow:0 0 0 1px rgba(151,189,232,0.45) inset;}'
+                '.split-trigger:focus-visible{outline:2px solid #0e67d2;outline-offset:1px;}'
+                '.split.vertical .split-trigger,.split.horizontal .split-trigger{align-self:stretch;}'
+                '.caret{width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:6px solid #2f2f2f;}'
+                '.menu{position:absolute;top:100%;left:0;margin-top:4px;display:none;flex-direction:column;min-width:170px;background:#ffffff;border:1px solid #c3c3c3;border-radius:4px;box-shadow:0 12px 28px rgba(0,0,0,0.18);padding:4px 0;z-index:100;}'
+                '.menu.open{display:flex;}'
+                '.menu-item{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:12px;color:#1f1f1f;background:transparent;border:none;text-align:left;cursor:pointer;}'
+                '.menu-item:hover{background:#e5f1fb;}'
+                '.menu-item.selected{background:#d0e5f8;}'
+                '.menu-item:focus{outline:1px solid #0e67d2;}'
+                '.menu-label{padding:6px 12px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:#6b6b6b;}'
+                '.menu-separator{height:1px;background:#d5d5d5;margin:4px 8px;}'
+                '.field{display:flex;flex-direction:column;gap:4px;font-size:11px;color:#1f1f1f;}'
+                '.field.inline{flex-direction:row;align-items:center;gap:6px;}'
+                '.field-label{font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:#545454;}'
+                'select{font:11px "Segoe UI",Tahoma,Arial,sans-serif;padding:3px 6px;border:1px solid #b2b2b2;border-radius:3px;background:#ffffff;color:#1f1f1f;min-width:135px;}'
+                'select:focus{outline:1px solid #0e67d2;outline-offset:0;}'
+                '.checkbox{display:flex;align-items:center;gap:6px;font-size:11px;color:#1f1f1f;}'
+                '.checkbox input{margin:0;}'
+                '</style>'
+                '</head>'
+                '<body>'
+                '<div class="ribbon-surface" id="ribbonSurface">'
+                '  <div class="group" data-group="file">'
+                '    <div class="group-body">'
+                '      <div class="split vertical">'
+                '        <button type="button" class="button-base button-vertical split-main" data-role="primary" data-command="new" title="Create new item">'
+                '          <span class="icon-box"><img id="icon-new" alt="New" /></span>'
+                '          <span class="label">New</span>'
+                '        </button>'
+                '        <button type="button" class="split-trigger" data-menu="menu-new" aria-haspopup="menu" aria-expanded="false" title="New options">'
+                '          <span class="caret"></span>'
+                '        </button>'
+                '        <div class="menu" id="menu-new" role="menu">'
+                '          <button type="button" class="menu-item" data-command="new" data-option="analysis">Task</button>'
+                '          <button type="button" class="menu-item" data-command="new" data-option="trim">Trim</button>'
+                '          <button type="button" class="menu-item" data-command="new" data-option="model">Linear Model</button>'
+                '          <button type="button" class="menu-item" data-command="new" data-option="requirement">Requirement</button>'
+                '          <button type="button" class="menu-item" data-command="new" data-option="simulation">Simulation Requirement</button>'
+                '        </div>'
+                '      </div>'
+                '      <div class="split vertical">'
+                '        <button type="button" class="button-base button-vertical split-main" data-role="primary" data-command="open" title="Open existing item">'
+                '          <span class="icon-box"><img id="icon-open" alt="Open" /></span>'
+                '          <span class="label">Open</span>'
+                '        </button>'
+                '        <button type="button" class="split-trigger" data-menu="menu-open" aria-haspopup="menu" aria-expanded="false" title="Open options">'
+                '          <span class="caret"></span>'
+                '        </button>'
+                '        <div class="menu" id="menu-open" role="menu">'
+                '          <button type="button" class="menu-item" data-command="open" data-option="analysis">Task</button>'
+                '          <button type="button" class="menu-item" data-command="open" data-option="trim">Trim</button>'
+                '          <button type="button" class="menu-item" data-command="open" data-option="model">Linear Model</button>'
+                '          <button type="button" class="menu-item" data-command="open" data-option="requirement">Requirement</button>'
+                '          <button type="button" class="menu-item" data-command="open" data-option="simulation">Simulation Requirement</button>'
+                '        </div>'
+                '      </div>'
+                '      <div class="split vertical">'
+                '        <button type="button" class="button-base button-vertical split-main" data-role="primary" data-command="load" data-option="project" title="Load project or task">'
+                '          <span class="icon-box"><img id="icon-load" alt="Load" /></span>'
+                '          <span class="label">Load</span>'
+                '        </button>'
+                '        <button type="button" class="split-trigger" data-menu="menu-load" aria-haspopup="menu" aria-expanded="false" title="Load options">'
+                '          <span class="caret"></span>'
+                '        </button>'
+                '        <div class="menu" id="menu-load" role="menu">'
+                '          <button type="button" class="menu-item" data-command="load" data-option="project">Project</button>'
+                '          <button type="button" class="menu-item" data-command="load" data-option="task">Task</button>'
+                '        </div>'
+                '      </div>'
+                '      <div class="split vertical">'
+                '        <button type="button" class="button-base button-vertical split-main" data-role="primary" data-command="save" data-option="project" title="Save project or operating conditions">'
+                '          <span class="icon-box"><img id="icon-save" alt="Save" /></span>'
+                '          <span class="label">Save</span>'
+                '        </button>'
+                '        <button type="button" class="split-trigger" data-menu="menu-save" aria-haspopup="menu" aria-expanded="false" title="Save options">'
+                '          <span class="caret"></span>'
+                '        </button>'
+                '        <div class="menu" id="menu-save" role="menu">'
+                '          <button type="button" class="menu-item" data-command="save" data-option="project">Save Project</button>'
+                '          <div class="menu-separator"></div>'
+                '          <div class="menu-label">Save Operating Conditions</div>'
+                '          <button type="button" class="menu-item" data-command="save" data-option="opercond-all">All</button>'
+                '          <button type="button" class="menu-item" data-command="save" data-option="opercond-valid">Valid Only</button>'
+                '        </div>'
+                '      </div>'
+                '    </div>'
+                '    <div class="group-label">File</div>'
+                '  </div>'
+                '  <div class="group" data-group="run">'
+                '    <div class="group-body">'
+                '      <div class="split vertical">'
+                '        <button type="button" class="button-base button-vertical split-main" data-role="primary" data-command="run" data-option="save" title="Run and save operating conditions">'
+                '          <span class="icon-box"><img id="icon-run" alt="Run" /></span>'
+                '          <span class="label">Run</span>'
+                '        </button>'
+                '        <button type="button" class="split-trigger" data-menu="menu-run" aria-haspopup="menu" aria-expanded="false" title="Run options">'
+                '          <span class="caret"></span>'
+                '        </button>'
+                '        <div class="menu" id="menu-run" role="menu">'
+                '          <button type="button" class="menu-item" data-command="run" data-option="run">Run</button>'
+                '          <button type="button" class="menu-item" data-command="run" data-option="save">Run and Save</button>'
+                '        </div>'
+                '      </div>'
+                '    </div>'
+                '    <div class="group-label">Run</div>'
+                '  </div>'
+                '  <div class="group" data-group="actions">'
+                '    <div class="group-body column">'
+                '      <button type="button" class="button-base button-horizontal" data-role="primary" data-command="batch" data-option="add" title="Add new run cases">'
+                '        <span class="icon-box small"><img id="icon-add" alt="Add" /></span>'
+                '        <span class="label small">Add New Run Cases</span>'
+                '      </button>'
+                '      <div class="split horizontal">'
+                '        <button type="button" class="button-base button-horizontal split-main" data-role="primary" data-command="table" data-option="clear" title="Table options">'
+                '          <span class="icon-box small"><img id="icon-table" alt="Table" /></span>'
+                '          <span class="label small">Table Options</span>'
+                '        </button>'
+                '        <button type="button" class="split-trigger" data-menu="menu-table" aria-haspopup="menu" aria-expanded="false" title="Table menu">'
+                '          <span class="caret"></span>'
+                '        </button>'
+                '        <div class="menu" id="menu-table" role="menu">'
+                '          <button type="button" class="menu-item" data-command="table" data-option="clear">Clear Table</button>'
+                '          <div class="menu-separator"></div>'
+                '          <button type="button" class="menu-item" data-command="table" data-option="export-mat">Export to MAT</button>'
+                '          <button type="button" class="menu-item" data-command="table" data-option="export-csv">Export to CSV</button>'
+                '          <button type="button" class="menu-item" data-command="table" data-option="export-m">Export to M Script</button>'
+                '        </div>'
+                '      </div>'
+                '      <div class="split horizontal">'
+                '        <button type="button" class="button-base button-horizontal split-main" data-role="primary" data-command="report" data-option="pdf" title="Generate analysis report">'
+                '          <span class="icon-box small"><img id="icon-report" alt="Report" /></span>'
+                '          <span class="label small">Generate Report</span>'
+                '        </button>'
+                '        <button type="button" class="split-trigger" data-menu="menu-report" aria-haspopup="menu" aria-expanded="false" title="Report format">'
+                '          <span class="caret"></span>'
+                '        </button>'
+                '        <div class="menu" id="menu-report" role="menu">'
+                '          <button type="button" class="menu-item" data-command="report" data-option="pdf">PDF</button>'
+                '          <button type="button" class="menu-item" data-command="report" data-option="word">MS Word</button>'
+                '        </div>'
+                '      </div>'
+                '    </div>'
+                '    <div class="group-label">Actions</div>'
+                '  </div>'
+                '  <div class="group" data-group="editor">'
+                '    <div class="group-body">'
+                '      <button type="button" class="button-base button-vertical" data-role="primary" data-command="editor" data-option="analysis" title="Open analysis task editor">'
+                '        <span class="icon-box"><img id="icon-analysis" alt="Task" /></span>'
+                '        <span class="label">Task</span>'
+                '      </button>'
+                '      <button type="button" class="button-base button-vertical" data-role="primary" data-command="editor" data-option="trim" title="Open trim definition editor">'
+                '        <span class="icon-box"><img id="icon-trim" alt="Trim" /></span>'
+                '        <span class="label">Trim</span>'
+                '      </button>'
+                '      <button type="button" class="button-base button-vertical" data-role="primary" data-command="editor" data-option="model" title="Open linear model editor">'
+                '        <span class="icon-box"><img id="icon-model" alt="Model" /></span>'
+                '        <span class="label">Model</span>'
+                '      </button>'
+                '      <button type="button" class="button-base button-vertical" data-role="primary" data-command="editor" data-option="requirement" title="Open requirement editor">'
+                '        <span class="icon-box"><img id="icon-requirement" alt="Requirement" /></span>'
+                '        <span class="label">Req</span>'
+                '      </button>'
+                '      <button type="button" class="button-base button-vertical" data-role="primary" data-command="editor" data-option="simulation" title="Open simulation requirement editor">'
+                '        <span class="icon-box"><img id="icon-simulation" alt="Simulation" /></span>'
+                '        <span class="label">Sim</span>'
+                '      </button>'
+                '    </div>'
+                '    <div class="group-label">Editor</div>'
+                '  </div>'
+                '  <div class="group" data-group="options">'
+                '    <div class="group-body column">'
+                '      <label class="field">'
+                '        <span class="field-label">Trim Visibility</span>'
+                '        <select id="sel-trim">'
+                '          <option>Show All Trims</option>'
+                '          <option>Show Valid Trims</option>'
+                '          <option>Show Invalid Trims</option>'
+                '        </select>'
+                '      </label>'
+                '      <label class="checkbox">'
+                '        <input type="checkbox" id="chk-log">'
+                '        <span>Display Log Signals</span>'
+                '      </label>'
+                '      <label class="checkbox">'
+                '        <input type="checkbox" id="chk-combo">'
+                '        <span>Use All Combinations</span>'
+                '      </label>'
+                '    </div>'
+                '    <div class="group-label">Options</div>'
+                '  </div>'
+                '  <div class="group" data-group="settings">'
+                '    <div class="group-body column">'
+                '      <label class="field inline">'
+                '        <span class="field-label">Units</span>'
+                '        <select id="sel-units">'
+                '          <option>English - US</option>'
+                '          <option>SI</option>'
+                '        </select>'
+                '      </label>'
+                '      <div class="split horizontal">'
+                '        <button type="button" class="button-base button-horizontal split-main" data-role="primary" data-command="settings" data-option="trim-settings" title="Open trim settings">'
+                '          <span class="icon-box small"><img id="icon-settings" alt="Settings" /></span>'
+                '          <span class="label small">Settings</span>'
+                '        </button>'
+                '        <button type="button" class="split-trigger" data-menu="menu-settings" aria-haspopup="menu" aria-expanded="false" title="Settings menu">'
+                '          <span class="caret"></span>'
+                '        </button>'
+                '        <div class="menu" id="menu-settings" role="menu">'
+                '          <button type="button" class="menu-item" data-command="settings" data-option="trim-settings">Trim Settings...</button>'
+                '          <div class="menu-separator"></div>'
+                '          <div class="menu-label">Plots Per Page (All)</div>'
+                '          <button type="button" class="menu-item" data-command="settings" data-option="plots-all" data-value="1" data-scope="plots-all">1</button>'
+                '          <button type="button" class="menu-item" data-command="settings" data-option="plots-all" data-value="2" data-scope="plots-all">2</button>'
+                '          <button type="button" class="menu-item" data-command="settings" data-option="plots-all" data-value="4" data-scope="plots-all">4</button>'
+                '          <div class="menu-label">Requirements</div>'
+                '          <button type="button" class="menu-item" data-command="settings" data-option="plots-req" data-value="1" data-scope="plots-req">1</button>'
+                '          <button type="button" class="menu-item" data-command="settings" data-option="plots-req" data-value="2" data-scope="plots-req">2</button>'
+                '          <button type="button" class="menu-item" data-command="settings" data-option="plots-req" data-value="4" data-scope="plots-req">4</button>'
+                '          <div class="menu-label">Post Simulation</div>'
+                '          <button type="button" class="menu-item" data-command="settings" data-option="plots-post" data-value="1" data-scope="plots-post">1</button>'
+                '          <button type="button" class="menu-item" data-command="settings" data-option="plots-post" data-value="2" data-scope="plots-post">2</button>'
+                '          <button type="button" class="menu-item" data-command="settings" data-option="plots-post" data-value="4" data-scope="plots-post">4</button>'
+                '        </div>'
+                '      </div>'
+                '    </div>'
+                '    <div class="group-label">Settings</div>'
+                '  </div>'
+                '</div>'
+                '<script>'
+                '(function(){'
+                '  const matlab = window.parent;'
+                '  function send(msg){'
+                '    if(matlab && typeof matlab.postMessage === "function"){'
+                '      matlab.postMessage(msg,"*");'
+                '    }'
+                '  }'
+                '  function setIcon(id, src){'
+                '    const img = document.getElementById(id);'
+                '    if(!img){return;}'
+                '    if(src){'
+                '      img.src = src;'
+                '      img.style.visibility = "visible";'
+                '    }else{'
+                '      img.removeAttribute("src");'
+                '      img.style.visibility = "hidden";'
+                '    }'
+                '  }'
+                '  function closeMenus(exceptId){'
+                '    document.querySelectorAll(".menu.open").forEach(menu => {'
+                '      if(!exceptId || menu.id !== exceptId){'
+                '        menu.classList.remove("open");'
+                '        const selector = ''[data-menu="'' + menu.id + ''"]'';'
+                '        const trigger = document.querySelector(selector);'
+                '        if(trigger){'
+                '          trigger.setAttribute("aria-expanded","false");'
+                '        }'
+                '      }'
+                '    });'
+                '  }'
+                '  document.addEventListener("click", evt => {'
+                '    if(!evt.target.closest(".split")){
+                '      closeMenus();'
+                '    }'
+                '  });'
+                '  document.querySelectorAll(".split-trigger[data-menu]").forEach(trigger => {'
+                '    const menuId = trigger.dataset.menu;'
+                '    const menu = document.getElementById(menuId);'
+                '    if(!menu){return;}'
+                '    trigger.addEventListener("click", evt => {'
+                '      evt.stopPropagation();'
+                '      const willOpen = !menu.classList.contains("open");'
+                '      closeMenus(willOpen ? menuId : "");'
+                '      if(willOpen){'
+                '        menu.classList.add("open");'
+                '        trigger.setAttribute("aria-expanded","true");'
+                '      }else{'
+                '        trigger.setAttribute("aria-expanded","false");'
+                '      }'
+                '    });'
+                '    menu.addEventListener("click", evt => {'
+                '      const item = evt.target.closest(".menu-item[data-command]");'
+                '      if(!item){return;}'
+                '      const payload = {type:"command", command:item.dataset.command};'
+                '      if(item.dataset.option){payload.option = item.dataset.option;}'
+                '      if(item.dataset.value){'
+                '        const raw = item.dataset.value;'
+                '        const num = Number(raw);'
+                '        payload.value = isNaN(num) ? raw : num;'
+                '      }'
+                '      send(payload);'
+                '      menu.classList.remove("open");'
+                '      trigger.setAttribute("aria-expanded","false");'
+                '    });'
+                '  });'
+                '  document.querySelectorAll("[data-role=''primary''][data-command]").forEach(btn => {'
+                '    btn.addEventListener("click", () => {'
+                '      const payload = {type:"command", command:btn.dataset.command};'
+                '      if(btn.dataset.option){payload.option = btn.dataset.option;}'
+                '      if(btn.dataset.value){'
+                '        const raw = btn.dataset.value;'
+                '        const num = Number(raw);'
+                '        payload.value = isNaN(num) ? raw : num;'
+                '      }'
+                '      send(payload);'
+                '    });'
+                '  });'
+                '  const selTrim = document.getElementById("sel-trim");'
+                '  if(selTrim){'
+                '    selTrim.addEventListener("change", () => {'
+                '      send({type:"select", target:"showInvalid", value:selTrim.value});'
+                '    });'
+                '  }'
+                '  const selUnits = document.getElementById("sel-units");'
+                '  if(selUnits){'
+                '    selUnits.addEventListener("change", () => {'
+                '      send({type:"select", target:"units", value:selUnits.value});'
+                '    });'
+                '  }'
+                '  const chkLog = document.getElementById("chk-log");'
+                '  if(chkLog){'
+                '    chkLog.addEventListener("change", () => {'
+                '      send({type:"toggle", target:"showLog", value:chkLog.checked});'
+                '    });'
+                '  }'
+                '  const chkCombo = document.getElementById("chk-combo");'
+                '  if(chkCombo){'
+                '    chkCombo.addEventListener("change", () => {'
+                '      send({type:"toggle", target:"useAll", value:chkCombo.checked});'
+                '    });'
+                '  }'
+                '  function setMenuSelection(scope, value){'
+                '    const selector = ''.menu-item[data-scope="'' + scope + ''"]'';'
+                '    document.querySelectorAll(selector).forEach(item => {'
+                '      if(value !== null && value !== undefined && String(value) === item.dataset.value){'
+                '        item.classList.add("selected");'
+                '      }else{'
+                '        item.classList.remove("selected");'
+                '      }'
+                '    });'
+                '  }'
+                '  window.addEventListener("message", event => {'
+                '    const data = event.data || {};'
+                '    if(data.type === "config"){'
+                '      const icons = data.icons || {};'
+                '      setIcon("icon-new", icons.new);'
+                '      setIcon("icon-open", icons.open);'
+                '      setIcon("icon-load", icons.load);'
+                '      setIcon("icon-save", icons.save);'
+                '      setIcon("icon-run", icons.run);'
+                '      setIcon("icon-add", icons.add);'
+                '      setIcon("icon-table", icons.table);'
+                '      setIcon("icon-report", icons.report);'
+                '      setIcon("icon-analysis", icons.analysis);'
+                '      setIcon("icon-trim", icons.trim);'
+                '      setIcon("icon-model", icons.model);'
+                '      setIcon("icon-requirement", icons.requirement);'
+                '      setIcon("icon-simulation", icons.simulation);'
+                '      setIcon("icon-settings", icons.settings);'
+                '    }else if(data.type === "state"){'
+                '      const state = data.state || {};'
+                '      if(chkLog){chkLog.checked = !!state.showLogSignals;}'
+                '      if(chkCombo){chkCombo.checked = !!state.useAllCombinations;}'
+                '      if(selTrim && state.showInvalidTrim){selTrim.value = state.showInvalidTrim;}'
+                '      if(selUnits && state.units){selUnits.value = state.units;}'
+                '      if(Object.prototype.hasOwnProperty.call(state,"numPlotsReq")){' 
+                '        setMenuSelection("plots-req", state.numPlotsReq);'
+                '      }'
+                '      if(Object.prototype.hasOwnProperty.call(state,"numPlotsPost")){' 
+                '        setMenuSelection("plots-post", state.numPlotsPost);'
+                '      }'
+                '      if(Object.prototype.hasOwnProperty.call(state,"numPlotsAll")){' 
+                '        if(state.numPlotsAll){'
+                '          setMenuSelection("plots-all", state.numPlotsAll);'
+                '        }else{'
+                '          setMenuSelection("plots-all", null);'
+                '        }'
+                '      }'
+                '    }'
+                '  });'
+                '  window.addEventListener("DOMContentLoaded", () => {'
+                '    send({type:"ready"});'
+                '  });'
+                '})();'
+                '</script>'
+                '</body>'
+                '</html>'
+            };
+
+            html = strjoin(lines, newline);
+        end % buildRibbonHtml
+
+        function assets = buildRibbonAssets(obj)
+            thisDir = fileparts(mfilename('fullpath'));
+            iconDir = fullfile(thisDir,'..','..','Resources');
+
+            assets = struct();
+            assets.new = obj.encodeIcon(fullfile(iconDir,'New_24.png'));
+            assets.open = obj.encodeIcon(fullfile(iconDir,'Open_24.png'));
+            assets.load = obj.encodeIcon(fullfile(iconDir,'LoadArrow_24.png'));
+            assets.save = obj.encodeIcon(fullfile(iconDir,'Save_Dirty_24.png'));
+            assets.run = obj.encodeIcon(fullfile(iconDir,'RunSave_24.png'));
+            assets.add = obj.encodeIcon(fullfile(iconDir,'New_16.png'));
+            assets.table = obj.encodeIcon(fullfile(iconDir,'Clean_16.png'));
+            assets.report = obj.encodeIcon(fullfile(iconDir,'report_app_24.png'));
+            assets.analysis = obj.encodeIcon(fullfile(iconDir,'analysis_24.png'));
+            assets.trim = obj.encodeIcon(fullfile(iconDir,'airplaneTrim_24.png'));
+            assets.model = obj.encodeIcon(fullfile(iconDir,'linmdl_24.png'));
+            assets.requirement = obj.encodeIcon(fullfile(iconDir,'InOut_24.png'));
+            assets.simulation = obj.encodeIcon(fullfile(iconDir,'Simulink_24.png'));
+            assets.settings = obj.encodeIcon(fullfile(iconDir,'Settings_16.png'));
+        end % buildRibbonAssets
+
+        function uri = encodeIcon(~, filename)
+            if exist(filename,'file') ~= 2
+                uri = '';
+                return;
+            end
+
+            fid = fopen(filename,'rb');
+            if fid < 0
+                uri = '';
+                return;
+            end
+
+            cleaner = onCleanup(@()fclose(fid)); %#ok<NASGU>
+            data = fread(fid,'*uint8');
+            if isempty(data)
+                uri = '';
+                return;
+            end
+
+            uri = ['data:image/png;base64,' matlab.net.base64encode(uint8(data(:)))];
+        end % encodeIcon
+
+        function label = resolveTrimState(~, state)
+            if isstring(state) || ischar(state)
+                label = char(state);
+                if isempty(label)
+                    label = 'Show All Trims';
+                end
+            elseif isnumeric(state) && isscalar(state)
+                switch round(state)
+                    case 0
+                        label = 'Show All Trims';
+                    case 1
+                        label = 'Show Valid Trims';
+                    case 2
+                        label = 'Show Invalid Trims';
+                    otherwise
+                        label = 'Show All Trims';
+                end
+            else
+                label = 'Show All Trims';
+            end
+        end % resolveTrimState
+
+        function value = extractNumericArg(~, args)
+            value = [];
+            for idx = numel(args):-1:1
+                candidate = args{idx};
+                if isa(candidate,'UserInterface.UserInterfaceEventData')
+                    candidate = candidate.Object;
+                elseif isa(candidate,'GeneralEventData')
+                    candidate = candidate.Value;
+                end
+                if isnumeric(candidate) && isscalar(candidate)
+                    value = double(candidate);
+                    return;
+                end
+            end
+        end % extractNumericArg
+    end
+
     %% Method - Delete
     methods
         function delete(obj)
-
-            % Java Components 
-            obj.JRibbonPanel = [];   
-            obj.JRPHComp = [];
-            obj.NewJButton = [];
-            obj.OpenJButton = [];
-            obj.LoadJButton = [];
-            obj.SaveJButton = [];
-            obj.RunJButton = [];
-            obj.RunSelJButton = [];
-            obj.ClrTblSelJButton = [];
-            obj.MainJButton = [];
-            obj.TrimEditJButton = [];
-            obj.ModelEditJButton = [];
-            obj.ReqEditJButton = [];
-            obj.ShowInvalidTrimJCheckbox = [];
-            obj.ShowLogSignalsJCheckbox = [];
-            obj.UseAllCombinationsJCheckbox = [];
-            obj.UnitsSelComboBox = [];
-            obj.SimReqEditJButton = [];
-            
-            % Javawrappers
-            % Check if container is already being deleted
-            if ~isempty(obj.JRPHCont) && ishandle(obj.JRPHCont) && strcmp(get(obj.JRPHCont, 'BeingDeleted'), 'off')
-                delete(obj.JRPHCont)
+            if ~isempty(obj.ParentSizeListener) && isvalid(obj.ParentSizeListener)
+                delete(obj.ParentSizeListener);
             end
-
+            if ~isempty(obj.RibbonHtml) && isvalid(obj.RibbonHtml)
+                delete(obj.RibbonHtml);
+            end
         end % delete
-    end 
-    
+    end
+
 end
