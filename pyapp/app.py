@@ -6,12 +6,23 @@ import argparse
 import logging
 import os
 import sys
+import os
+from pathlib import Path # Add pathlib for cleaner path manipulation
 from typing import Sequence
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from .mainwindow import MainWindow
-from .util.settings import apply_high_dpi_settings
+# Add the parent directory of pyapp to sys.path
+# This allows running app.py directly while treating pyapp as a package
+# and allows for absolute imports like `from pyapp.module import ...`
+script_dir = Path(__file__).parent
+package_root_dir = script_dir.parent
+if str(package_root_dir) not in sys.path:
+    sys.path.insert(0, str(package_root_dir))
+
+# Now, absolute imports from 'pyapp' should work
+from pyapp.mainwindow import MainWindow
+from pyapp.util.settings import apply_high_dpi_settings
 
 
 LOG = logging.getLogger(__name__)
