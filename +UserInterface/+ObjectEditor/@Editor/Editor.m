@@ -1,20 +1,9 @@
 classdef Editor < UserInterface.Collection
     %% Public properties - Graphics Handles
     properties (Transient = true)
-        NewJButton
-        LoadJButton
-        OpenJButton
-        JRibbonPanel
-        JRPHComp
-        JRPHCont
-        
         RibbonPanel
         MainPanel
-        
-        SaveSelJButton
-        ExportJButton
-        
-        
+        RibbonHtml
     end % Public properties
   
     %% Public properties - Data Storage
@@ -36,6 +25,11 @@ classdef Editor < UserInterface.Collection
         StartDirectory
 %         SaveCancelled = false
     end % Hidden properties
+
+    properties (Access = private, Transient = true)
+        RibbonAssets = struct()
+        RibbonReady (1,1) logical = false
+    end % Private transient properties
 
     %% Dependant properties
     properties (Dependent = true, SetAccess = private)
@@ -163,7 +157,9 @@ classdef Editor < UserInterface.Collection
             obj.RibbonPanel = uipanel('Parent',obj.Container,...
                 'Units','Pixels',...
                 'BorderType','none',...
+                'BackgroundColor',[242 242 242]/255,...
                 'Position',[ 1 , position(4)-93 , position(3), 93 ]);
+            obj.RibbonPanel.SizeChangedFcn = @(~,~)obj.updateRibbonHtmlGeometry();
          
             % Create Main Container
             obj.MainPanel = uicontainer('Parent',obj.Container,...
@@ -180,162 +176,31 @@ classdef Editor < UserInterface.Collection
                 setFileTitle( obj );
             end
             
-            % Set visability to on
-            obj.JRibbonPanel.setVisible(true);
-            
         end % createView
         
         function createToolRibbion(obj)
-            
-            obj.JRibbonPanel = javaObjectEDT('javax.swing.JPanel');
-            obj.JRibbonPanel.setLayout([]);
-            
-            this_dir = fileparts( mfilename( 'fullpath' ) );
-            icon_dir = fullfile( this_dir,'..','..','Resources' );
-            
-            % File Section
-            labelStr = '<html><font color="gray" face="Courier New">FILE</html>';
-            jLabel = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabel.setOpaque(true);
-            jLabel.setBackground(java.awt.Color.lightGray);
-            jLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-            obj.JRibbonPanel.add(jLabel);
-            jLabel.setBounds(0,76,163,16);%(0,66,123,14);
 
-            
-            
-                % New Button             
-                newJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-                newJButton.setText('New');        
-                newJButtonH = handle(newJButton,'CallbackProperties');
-                set(newJButtonH, 'ActionPerformedCallback',@obj.newButton_CB)
-                myIcon = fullfile(icon_dir,'New_24.png');
-                newJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                newJButton.setToolTipText('Add New Item');
-                newJButton.setBorder([]);
-                newJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                obj.JRibbonPanel.add(newJButton);
-                newJButton.setBounds(5,3,35,71);
-                obj.NewJButton = newJButton;
-                
-                % Open Button             
-                openJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-                openJButton.setText('Open');        
-                openJButtonH = handle(openJButton,'CallbackProperties');
-                set(openJButtonH, 'ActionPerformedCallback',@obj.openButton_CB)
-                myIcon = fullfile(icon_dir,'Open_24.png');
-                openJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                openJButton.setToolTipText('Open existing workspace');
-                openJButton.setFlyOverAppearance(true);
-                openJButton.setBorder([]);
-                openJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                openJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                obj.JRibbonPanel.add(openJButton);
-                openJButton.setBounds(45,3 ,35, 71);   
-                obj.OpenJButton = openJButton;
-                  
-                if obj.ShowLoadButton
-                            % Load Button             
-                            loadJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-                            loadJButtonH = handle(loadJButton,'CallbackProperties');
-                            loadJButton.setText('Load');        
-                            set(loadJButtonH, 'ActionPerformedCallback',@obj.load_CB)
-                            myIcon = fullfile(icon_dir,'LoadedArrow_24.png');
-                            loadJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                            loadJButton.setToolTipText('Load');
-                            loadJButton.setFlyOverAppearance(true);
-                            loadJButton.setBorder([]);
-                            loadJButton.setIconTextGap(2);
-                            loadJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                            loadJButton.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-                            loadJButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-                            loadJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                            obj.JRibbonPanel.add(loadJButton);
-                            loadJButton.setBounds(85,3,35,71);
-                            obj.LoadJButton = loadJButton;      
+            if ~isempty(obj.RibbonHtml) && isvalid(obj.RibbonHtml)
+                delete(obj.RibbonHtml);
+            end
 
-                            % Export Button             
-                            exportJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-                            exportJButtonH = handle(exportJButton,'CallbackProperties');
-                            exportJButton.setText('Export');        
-                            set(exportJButtonH, 'ActionPerformedCallback',@obj.export_CB)
-                            myIcon = fullfile(icon_dir,'Export_24.png');
-                            exportJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                            exportJButton.setToolTipText('Save and Load');
-                            exportJButton.setFlyOverAppearance(true);
-                            exportJButton.setBorder([]);
-                            exportJButton.setIconTextGap(2);
-                            exportJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                            exportJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                            obj.JRibbonPanel.add(exportJButton);
-                            exportJButton.setBounds(125,3,35,71);
-                            obj.ExportJButton = exportJButton;
+            panelPos = getpixelposition(obj.RibbonPanel);
+            if isempty(panelPos)
+                panelPos = [0 0 300 93];
+            end
+            panelPos(3) = max(panelPos(3),1);
+            panelPos(4) = max(panelPos(4),1);
 
+            obj.RibbonAssets = obj.buildRibbonAssets();
+            obj.RibbonReady = false;
 
-                        % Break    
-                        labelStr = '<html><i><font color="gray"></html>';
-                        jLabelbk1 = javaObjectEDT('javax.swing.JLabel',labelStr);
-                        jLabelbk1.setOpaque(true);
-                        jLabelbk1.setBackground(java.awt.Color.lightGray);
-                        jLabelbk1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-                        obj.JRibbonPanel.add(jLabelbk1);
-                        jLabelbk1.setBounds(165,3,2,90);%(125,3,2,77);
+            obj.RibbonHtml = uihtml(obj.RibbonPanel,...
+                'HTMLSource',obj.buildRibbonHtml(),...
+                'Position',[0 0 panelPos(3) panelPos(4)]);
+            obj.RibbonHtml.DataChangedFcn = @(~,evt)obj.handleRibbonEvent(evt.Data);
 
-                        panelPos = getpixelposition(obj.RibbonPanel);
-                        % File Section
-                        labelStr = '<html><i><font color="gray"></html>';
-                        jLabel = javaObjectEDT('javax.swing.JLabel',labelStr);
-                        jLabel.setOpaque(true);
-                        jLabel.setBackground(java.awt.Color.lightGray);
-                        jLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-                        obj.JRibbonPanel.add(jLabel);
-                        jLabel.setBounds(169,76,panelPos(3)-129,16);%(129,66,panelPos(3)-129,14);   
-            
-                else     
+            obj.updateRibbonHtmlGeometry();
 
-                            % Export Button             
-                            exportJButton = javaObjectEDT('com.mathworks.toolstrip.components.TSButton');
-                            exportJButtonH = handle(exportJButton,'CallbackProperties');
-                            exportJButton.setText('Export');        
-                            set(exportJButtonH, 'ActionPerformedCallback',@obj.export_CB)
-                            myIcon = fullfile(icon_dir,'Export_24.png');
-                            exportJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                            exportJButton.setToolTipText('Save and Load');
-                            exportJButton.setFlyOverAppearance(true);
-                            exportJButton.setBorder([]);
-                            exportJButton.setIconTextGap(2);
-                            exportJButton.setOrientation(com.mathworks.toolstrip.components.ButtonOrientation.VERTICAL);
-                            exportJButton.setMargin(java.awt.Insets(0, 0, 0, 0));
-                            obj.JRibbonPanel.add(exportJButton);
-                            exportJButton.setBounds(85,3,35,71);
-                            obj.ExportJButton = exportJButton;
-
-
-                        % Break    
-                        labelStr = '<html><i><font color="gray"></html>';
-                        jLabelbk1 = javaObjectEDT('javax.swing.JLabel',labelStr);
-                        jLabelbk1.setOpaque(true);
-                        jLabelbk1.setBackground(java.awt.Color.lightGray);
-                        jLabelbk1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-                        obj.JRibbonPanel.add(jLabelbk1);
-                        jLabelbk1.setBounds(125,3,2,90);%(125,3,2,77);
-
-                        panelPos = getpixelposition(obj.RibbonPanel);
-                        % File Section
-                        labelStr = '<html><i><font color="gray"></html>';
-                        jLabel = javaObjectEDT('javax.swing.JLabel',labelStr);
-                        jLabel.setOpaque(true);
-                        jLabel.setBackground(java.awt.Color.lightGray);
-                        jLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-                        obj.JRibbonPanel.add(jLabel);
-                        jLabel.setBounds(129,76,panelPos(3)-129,16);%(129,66,panelPos(3)-129,14);   
-                end
-            obj.JRibbonPanel.setVisible(false);
-            positionRibbon = getpixelposition(obj.RibbonPanel);
-            [obj.JRPHComp,obj.JRPHCont] = javacomponent(obj.JRibbonPanel,[ 0 , 0 , positionRibbon(3) , positionRibbon(4) ], obj.RibbonPanel );
-            %[obj.JRPHComp,obj.JRPHCont] = javacomponent(obj.JRibbonPanel,[0,0,600,90], obj.RibbonPanel );
-            backgroundColor = java.awt.Color(210/255,210/255,210/255); % java.awt.Color.lightGray
-            obj.JRibbonPanel.setBackground(backgroundColor);
         end % createToolRibbion
         
     end
@@ -446,10 +311,9 @@ classdef Editor < UserInterface.Collection
             save(fullfile(pathname,filename),'Requirement');
         end % export_CB
                 
-        function popUpMenuCancelled( obj , ~ , ~ )
-
-            obj.SaveSelJButton.setFlyOverAppearance(true);
-
+        function popUpMenuCancelled( obj , ~ , ~ ) %#ok<INUSD>
+            % Legacy callback retained for compatibility with existing listeners.
+            % The HTML-based ribbon manages hover state visually, so no action is required.
         end % popUpMenuCancelled
         
 
@@ -458,20 +322,8 @@ classdef Editor < UserInterface.Collection
     %% Methods - Protected
     methods (Access = protected) 
         
-        function update( obj, ~ , ~ ) 
-            if obj.ShowLoadButton
-                this_dir = fileparts( mfilename( 'fullpath' ) );
-                icon_dir = fullfile( this_dir,'..','..','Resources' );
-
-                if obj.Saved
-                    myIcon = fullfile(icon_dir,'LoadedArrow_24.png');
-
-                else
-                    myIcon = fullfile(icon_dir,'LoadArrow_24.png');
-                end
-                obj.LoadJButton.setIcon(javax.swing.ImageIcon(myIcon));
-                obj.LoadJButton.setText('Load');  
-            end
+        function update( obj, ~ , ~ )
+            obj.sendRibbonState();
             setFileTitle( obj );
         end % update
          
@@ -482,10 +334,12 @@ classdef Editor < UserInterface.Collection
        
             set(obj.RibbonPanel,'Units','Pixels',...
                 'Position',[ 1 , position(4)-93 , position(3), 93 ]);
-            
+
             set(obj.MainPanel,'Units','Pixels',...
                 'Position',[1 , 1 , position(3) , position(4)-93 ]);
-                                
+
+            obj.updateRibbonHtmlGeometry();
+
         end % reSize
         
         function setFileTitle( obj , ~ , ~ )
@@ -513,8 +367,264 @@ classdef Editor < UserInterface.Collection
     end
     
     %% Methods - Private
-    methods (Access = private) 
-        
+    methods (Access = private)
+
+        function handleRibbonEvent(obj, payload)
+            if ~isstruct(payload) || ~isfield(payload,'type')
+                return;
+            end
+
+            msgType = lower(char(payload.type));
+
+            switch msgType
+                case 'ready'
+                    obj.RibbonReady = true;
+                    obj.sendRibbonConfig();
+                    obj.sendRibbonState();
+                case 'click'
+                    if ~isfield(payload,'action')
+                        return;
+                    end
+                    action = lower(char(payload.action));
+                    switch action
+                        case 'new'
+                            obj.newButton_CB([],[]);
+                        case 'open'
+                            obj.openButton_CB([],[]);
+                        case 'load'
+                            if obj.ShowLoadButton
+                                obj.load_CB([],[]);
+                            end
+                        case 'export'
+                            obj.export_CB([],[]);
+                    end
+            end
+        end % handleRibbonEvent
+
+        function sendRibbonConfig(obj)
+            if isempty(obj.RibbonHtml) || ~isvalid(obj.RibbonHtml)
+                return;
+            end
+
+            icons = obj.RibbonAssets;
+            buttons = struct( ...
+                'new',struct('label','New','tooltip','Add New Item','icon',icons.new),...
+                'open',struct('label','Open','tooltip','Open existing workspace','icon',icons.open),...
+                'export',struct('label','Export','tooltip','Save and Load','icon',icons.export));
+
+            if obj.ShowLoadButton
+                buttons.load = struct('label','Load','tooltip','Load','icon',icons.loadSaved);
+            end
+
+            payload = struct( ...
+                'type','init', ...
+                'groupLabel','FILE', ...
+                'buttons',buttons, ...
+                'showLoad',obj.ShowLoadButton, ...
+                'saved',logical(obj.Saved), ...
+                'loadIcons',struct('saved',icons.loadSaved,'unsaved',icons.loadUnsaved));
+
+            obj.RibbonHtml.Data = payload;
+        end % sendRibbonConfig
+
+        function sendRibbonState(obj)
+            if isempty(obj.RibbonHtml) || ~isvalid(obj.RibbonHtml) || ~obj.RibbonReady
+                return;
+            end
+
+            obj.RibbonHtml.Data = struct('type','state','saved',logical(obj.Saved));
+        end % sendRibbonState
+
+        function updateRibbonHtmlGeometry(obj)
+            if isempty(obj.RibbonPanel) || ~isvalid(obj.RibbonPanel) || isempty(obj.RibbonHtml) || ~isvalid(obj.RibbonHtml)
+                return;
+            end
+
+            panelPos = getpixelposition(obj.RibbonPanel);
+            if isempty(panelPos)
+                panelPos = [0 0 1 1];
+            end
+            width = max(panelPos(3),1);
+            height = max(panelPos(4),1);
+            obj.RibbonHtml.Position = [0 0 width height];
+        end % updateRibbonHtmlGeometry
+
+        function html = buildRibbonHtml(~)
+            lines = {
+                '<!doctype html>'
+                '<html lang="en">'
+                '<head>'
+                '<meta charset="utf-8">'
+                '<meta name="viewport" content="width=device-width, initial-scale=1">'
+                '<style>'
+                'html,body{margin:0;padding:0;height:100%;background:transparent;font-family:"Segoe UI",Tahoma,Arial,sans-serif;font-size:12px;color:#1f1f1f;}'
+                '.ribbon-bg{position:absolute;inset:0;display:flex;align-items:flex-start;gap:12px;padding:6px 10px;background:linear-gradient(180deg,#f8f8f8 0%,#e4e4e4 100%);border-bottom:1px solid #bcbcbc;box-sizing:border-box;}'
+                '.group{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;min-width:200px;height:100%;padding:4px 10px 6px;background:rgba(255,255,255,0.88);border:1px solid #c8c8c8;border-radius:4px;box-shadow:0 1px 0 rgba(255,255,255,0.9) inset;}'
+                '.button-strip{display:flex;gap:10px;flex-wrap:nowrap;}'
+                '.ribbon-button{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:68px;height:72px;padding:6px 8px;border:1px solid transparent;border-radius:4px;background:linear-gradient(180deg,#ffffff 0%,#e9e9e9 100%);box-shadow:0 1px 0 rgba(255,255,255,0.7) inset;cursor:pointer;transition:border-color .12s ease,box-shadow .12s ease,background .12s ease;}'
+                '.ribbon-button:hover{border-color:#8fb7df;box-shadow:0 0 0 1px rgba(151,189,232,0.45) inset,0 1px 2px rgba(0,0,0,0.15);background:linear-gradient(180deg,#fdfdfd 0%,#e7f1fb 100%);}'
+                '.ribbon-button:active{border-color:#6f9bd3;background:linear-gradient(180deg,#dbeaff 0%,#c4dcf7 100%);box-shadow:0 0 0 1px rgba(111,155,211,0.6) inset;}'
+                '.ribbon-button:focus-visible{outline:2px solid #0e67d2;outline-offset:1px;}'
+                '.ribbon-button.hidden{display:none !important;}'
+                '.icon-wrap{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:linear-gradient(180deg,#fdfdfd 0%,#ececec 100%);box-shadow:0 1px 0 rgba(255,255,255,0.7);}'
+                '.ribbon-button img{width:24px;height:24px;image-rendering:-webkit-optimize-contrast;}'
+                '.ribbon-button .label{text-transform:uppercase;font-size:10px;font-weight:600;letter-spacing:.6px;color:#303030;}'
+                '.ribbon-button.unsaved{background:linear-gradient(180deg,#fff6e6 0%,#fbdcae 100%);border-color:#f0a23a;box-shadow:0 0 0 1px rgba(240,162,58,0.35) inset;}'
+                '.group-label{margin-top:4px;text-align:center;font-size:10px;font-weight:600;letter-spacing:1.2px;color:#6b6b6b;text-transform:uppercase;}'
+                '</style>'
+                '</head>'
+                '<body>'
+                '<div class="ribbon-bg" id="ribbonRoot">'
+                '  <div class="group" role="group" aria-labelledby="group-file-label">'
+                '    <div class="button-strip">'
+                '      <button type="button" class="ribbon-button" id="btn-new" data-action="new" title="New">'
+                '        <span class="icon-wrap"><img id="icon-new" alt="New icon" /></span>'
+                '        <span class="label">New</span>'
+                '      </button>'
+                '      <button type="button" class="ribbon-button" id="btn-open" data-action="open" title="Open">'
+                '        <span class="icon-wrap"><img id="icon-open" alt="Open icon" /></span>'
+                '        <span class="label">Open</span>'
+                '      </button>'
+                '      <button type="button" class="ribbon-button hidden" id="btn-load" data-action="load" title="Load" aria-hidden="true">'
+                '        <span class="icon-wrap"><img id="icon-load" alt="Load icon" /></span>'
+                '        <span class="label">Load</span>'
+                '      </button>'
+                '      <button type="button" class="ribbon-button" id="btn-export" data-action="export" title="Export">'
+                '        <span class="icon-wrap"><img id="icon-export" alt="Export icon" /></span>'
+                '        <span class="label">Export</span>'
+                '      </button>'
+                '    </div>'
+                '    <div class="group-label" id="group-file-label">FILE</div>'
+                '  </div>'
+                '</div>'
+                '<script>'
+                '(function(){'
+                '  const matlab = window.parent;'
+                '  const buttons = {'
+                '    new: document.getElementById("btn-new"),'
+                '    open: document.getElementById("btn-open"),'
+                '    load: document.getElementById("btn-load"),'
+                '    export: document.getElementById("btn-export")'
+                '  };'
+                '  const labelEl = document.getElementById("group-file-label");'
+                '  let loadIcons = {saved:"",unsaved:""};'
+                '  function send(msg){'
+                '    if(matlab && typeof matlab.postMessage === "function"){'
+                '      matlab.postMessage(msg,"*");'
+                '    }'
+                '  }'
+                '  function updateButton(id,cfg){'
+                '    const btn = buttons[id];'
+                '    if(!btn || !cfg){return;}'
+                '    const label = btn.querySelector(".label");'
+                '    if(label && cfg.label){label.textContent = cfg.label;}'
+                '    if(cfg.tooltip){'
+                '      btn.title = cfg.tooltip;'
+                '      btn.setAttribute("aria-label",cfg.tooltip);'
+                '    }'
+                '    const img = btn.querySelector("img");'
+                '    if(img && cfg.icon){img.src = cfg.icon;}'
+                '  }'
+                '  function toggleLoad(show){'
+                '    const btn = buttons.load;'
+                '    if(!btn){return;}'
+                '    if(show){'
+                '      btn.classList.remove("hidden");'
+                '      btn.setAttribute("aria-hidden","false");'
+                '    }else{'
+                '      btn.classList.add("hidden");'
+                '      btn.setAttribute("aria-hidden","true");'
+                '    }'
+                '  }'
+                '  function updateLoadState(saved){'
+                '    const btn = buttons.load;'
+                '    if(!btn){return;}'
+                '    btn.classList.toggle("unsaved", !saved);'
+                '    const img = btn.querySelector("img");'
+                '    if(img){'
+                '      const src = saved ? loadIcons.saved : (loadIcons.unsaved || loadIcons.saved);'
+                '      if(src){img.src = src;}'
+                '    }'
+                '  }'
+                '  Object.keys(buttons).forEach(key=>{' 
+                '    const btn = buttons[key];'
+                '    if(!btn){return;}'
+                '    btn.addEventListener("click",()=>{'
+                '      const action = btn.dataset.action;'
+                '      if(action){send({type:"click",action:action});}'
+                '    });'
+                '  });'
+                '  window.addEventListener("message",(event)=>{'
+                '    const data = event.data || {};'
+                '    if(data.type === "init"){'
+                '      if(data.groupLabel){labelEl.textContent = data.groupLabel;}'
+                '      const btnCfg = data.buttons || {};'
+                '      updateButton("new", btnCfg.new);'
+                '      updateButton("open", btnCfg.open);'
+                '      updateButton("export", btnCfg.export);'
+                '      if(btnCfg.load){updateButton("load", btnCfg.load);}'
+                '      loadIcons = Object.assign({saved:"",unsaved:""}, data.loadIcons || {});'
+                '      const showLoad = (data.showLoad !== false) && !!btnCfg.load;'
+                '      toggleLoad(showLoad);'
+                '      if(typeof data.saved === "boolean"){'
+                '        updateLoadState(data.saved);'
+                '      }else{'
+                '        updateLoadState(true);'
+                '      }'
+                '    }else if(data.type === "state"){'
+                '      if(typeof data.saved === "boolean"){updateLoadState(data.saved);}'
+                '    }'
+                '  });'
+                '  window.addEventListener("DOMContentLoaded",()=>{'
+                '    setTimeout(()=>send({type:"ready"}),0);'
+                '  });'
+                '})();'
+                '</script>'
+                '</body>'
+                '</html>'
+            };
+
+            html = strjoin(lines, newline);
+        end % buildRibbonHtml
+
+        function assets = buildRibbonAssets(obj)
+            thisDir = fileparts(mfilename('fullpath'));
+            iconDir = fullfile(thisDir,'..','..','Resources');
+
+            assets = struct();
+            assets.new = obj.encodeIcon(fullfile(iconDir,'New_24.png'));
+            assets.open = obj.encodeIcon(fullfile(iconDir,'Open_24.png'));
+            assets.loadSaved = obj.encodeIcon(fullfile(iconDir,'LoadedArrow_24.png'));
+            assets.loadUnsaved = obj.encodeIcon(fullfile(iconDir,'LoadArrow_24.png'));
+            assets.export = obj.encodeIcon(fullfile(iconDir,'Export_24.png'));
+
+            if isempty(assets.loadUnsaved)
+                assets.loadUnsaved = assets.loadSaved;
+            end
+        end % buildRibbonAssets
+
+        function uri = encodeIcon(~, filename)
+            if exist(filename,'file') ~= 2
+                uri = '';
+                return;
+            end
+
+            fid = fopen(filename,'rb');
+            if fid < 0
+                uri = '';
+                return;
+            end
+
+            cleaner = onCleanup(@()fclose(fid)); %#ok<NASGU>
+            data = fread(fid,'*uint8');
+            if isempty(data)
+                uri = '';
+                return;
+            end
+
+            uri = ['data:image/png;base64,' matlab.net.base64encode(uint8(data(:)))];
+        end % encodeIcon
+
     end
         
     %% Method - Static
