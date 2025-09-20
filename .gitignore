@@ -3,3 +3,4 @@
 *.slxc
 **/slprj/
 .venv/
+__pycache__/
