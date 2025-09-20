@@ -6,8 +6,8 @@ classdef AxisPanel < matlab.mixin.Copyable & hgsetget
         Panel
         Axis
         Title
-        LabelComp
-        LabelCont
+        LabelComp matlab.ui.control.Label = matlab.ui.control.Label.empty
+        LabelCont matlab.ui.control.Label = matlab.ui.control.Label.empty
     end % Public properties
   
     %% Private properties
@@ -106,7 +106,11 @@ classdef AxisPanel < matlab.mixin.Copyable & hgsetget
         end % Units -Get
         
         function y = get.HTMLTitle(obj)
-            y = ['<html><font color="black" face="Courier New" size = 10 >&nbsp;',obj.Title,'</html>'];
+            if isempty(obj.Title)
+                y = '';
+            else
+                y = [' ', obj.Title];
+            end
         end % HTMLTitle
         
     end % Property access methods
@@ -114,9 +118,11 @@ classdef AxisPanel < matlab.mixin.Copyable & hgsetget
     %% Methods - Ordinary
     methods    
       
-        function setTitle( obj , title ) 
+        function setTitle( obj , title )
             obj.Title = title;
-            obj.LabelComp.setText(obj.HTMLTitle)
+            if ~isempty(obj.LabelComp) && isvalid(obj.LabelComp)
+                obj.LabelComp.Text = obj.HTMLTitle;
+            end
         end % setTitle
         
         function reSize( obj , ~ , ~ )
@@ -191,14 +197,31 @@ classdef AxisPanel < matlab.mixin.Copyable & hgsetget
                     obj.Panel.ButtonDownFcn = @obj.buttonClickInPanel;
                     if isempty(obj.Title)
                         offset = 0;
+                        if ~isempty(obj.LabelComp) && isvalid(obj.LabelComp)
+                            delete(obj.LabelComp);
+                        end
+                        obj.LabelComp = matlab.ui.control.Label.empty;
+                        obj.LabelCont = matlab.ui.control.Label.empty;
                     else
                         offset = 0.05;
-                        jLabelview = javaObjectEDT('javax.swing.JLabel',obj.HTMLTitle);
-                        jLabelview.setUI(VerticalLabelUI());
-                        jLabelview.setOpaque(true);
-                        jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-                        [obj.LabelComp,obj.LabelCont] = javacomponent(jLabelview,[], obj.Panel );
-                        set(obj.LabelCont,'Units','Normal','Position',[ 0 , 0 , offset , 1 ]);
+                        labelPosition = [ 0 , 0 , offset , 1 ];
+                        if isempty(obj.LabelComp) || ~isvalid(obj.LabelComp)
+                            obj.LabelComp = uilabel(obj.Panel, ...
+                                'Text',obj.HTMLTitle, ...
+                                'FontName','Courier New', ...
+                                'FontSize',10, ...
+                                'FontColor',[0 0 0], ...
+                                'BackgroundColor',obj.Panel.BackgroundColor, ...
+                                'HorizontalAlignment','center', ...
+                                'VerticalAlignment','center', ...
+                                'WordWrap','on', ...
+                                'Units','normalized', ...
+                                'Position',labelPosition);
+                            obj.LabelCont = obj.LabelComp;
+                        else
+                            obj.LabelComp.Text = obj.HTMLTitle;
+                            obj.LabelComp.Position = labelPosition;
+                        end
                     end
 
                     currNumAx =  length(obj.Axis); % number of current axes in panel
@@ -246,14 +269,31 @@ classdef AxisPanel < matlab.mixin.Copyable & hgsetget
             % Get offset - May need to remove this
             if isempty(obj.Title)
                 offset = 0;
+                if ~isempty(obj.LabelComp) && isvalid(obj.LabelComp)
+                    delete(obj.LabelComp);
+                end
+                obj.LabelComp = matlab.ui.control.Label.empty;
+                obj.LabelCont = matlab.ui.control.Label.empty;
             else
                 offset = 0.05;
-                jLabelview = javaObjectEDT('javax.swing.JLabel',obj.HTMLTitle);
-                jLabelview.setUI(VerticalLabelUI());
-                jLabelview.setOpaque(true);
-                jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-                [obj.LabelComp,obj.LabelCont] = javacomponent(jLabelview,[], obj.Panel );
-                set(obj.LabelCont,'Units','Normal','Position',[ 0 , 0 , offset , 1 ]);
+                labelPosition = [ 0 , 0 , offset , 1 ];
+                if isempty(obj.LabelComp) || ~isvalid(obj.LabelComp)
+                    obj.LabelComp = uilabel(obj.Panel, ...
+                        'Text',obj.HTMLTitle, ...
+                        'FontName','Courier New', ...
+                        'FontSize',10, ...
+                        'FontColor',[0 0 0], ...
+                        'BackgroundColor',obj.Panel.BackgroundColor, ...
+                        'HorizontalAlignment','center', ...
+                        'VerticalAlignment','center', ...
+                        'WordWrap','on', ...
+                        'Units','normalized', ...
+                        'Position',labelPosition);
+                    obj.LabelCont = obj.LabelComp;
+                else
+                    obj.LabelComp.Text = obj.HTMLTitle;
+                    obj.LabelComp.Position = labelPosition;
+                end
             end
             
             % find the axis to remove
@@ -291,10 +331,14 @@ classdef AxisPanel < matlab.mixin.Copyable & hgsetget
             end
             obj.Axis = [];
             obj.Title = [];
-            obj.LabelComp = [];        
-            if ~isempty(obj.LabelCont) && ishandle(obj.LabelCont) && strcmp(get(obj.LabelCont, 'BeingDeleted'), 'off')
+            if ~isempty(obj.LabelComp) && isvalid(obj.LabelComp)
+                delete(obj.LabelComp);
+            end
+            obj.LabelComp = matlab.ui.control.Label.empty;
+            if ~isempty(obj.LabelCont) && all(isvalid(obj.LabelCont))
                 delete(obj.LabelCont)
             end
+            obj.LabelCont = matlab.ui.control.Label.empty;
         end % clearPanel
         
         function delete(obj)
@@ -306,12 +350,16 @@ classdef AxisPanel < matlab.mixin.Copyable & hgsetget
             delete(obj.Panel);
             obj.Axis = [];
             obj.Title = [];
-            obj.LabelComp = []; 
-            try       
-                if ~isempty(obj.LabelCont) && ishandle(obj.LabelCont) && strcmp(get(obj.LabelCont, 'BeingDeleted'), 'off')
+            if ~isempty(obj.LabelComp) && isvalid(obj.LabelComp)
+                delete(obj.LabelComp);
+            end
+            obj.LabelComp = matlab.ui.control.Label.empty;
+            try
+                if ~isempty(obj.LabelCont) && all(isvalid(obj.LabelCont))
                     delete(obj.LabelCont)
                 end
             end
+            obj.LabelCont = matlab.ui.control.Label.empty;
         end % delete
         
     end
@@ -652,18 +700,32 @@ classdef AxisPanel < matlab.mixin.Copyable & hgsetget
         function axisVertical( obj , numOfAxis )
             if isempty(obj.Title)
                 offset = 0;
+                if ~isempty(obj.LabelComp) && isvalid(obj.LabelComp)
+                    delete(obj.LabelComp);
+                end
+                obj.LabelComp = matlab.ui.control.Label.empty;
+                obj.LabelCont = matlab.ui.control.Label.empty;
             else
                 offset = 0.05;
 %               labelStr = '<html><font color="black" face="Courier New" size = 10 >&nbsp;Status Window</html>';
-                jLabelview = javaObjectEDT('javax.swing.JLabel',obj.HTMLTitle);
-%               JLabel label = new JLabel("Label");
-                jLabelview.setUI(VerticalLabelUI());
-                jLabelview.setOpaque(true);
-%               jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-                jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-%               jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-                [obj.LabelComp,obj.LabelCont] = javacomponent(jLabelview,[], obj.Panel );
-                set(obj.LabelCont,'Units','Normal','Position',[ 0 , 0 , offset , 1 ]);
+                labelPosition = [ 0 , 0 , offset , 1 ];
+                if isempty(obj.LabelComp) || ~isvalid(obj.LabelComp)
+                    obj.LabelComp = uilabel(obj.Panel, ...
+                        'Text',obj.HTMLTitle, ...
+                        'FontName','Courier New', ...
+                        'FontSize',10, ...
+                        'FontColor',[0 0 0], ...
+                        'BackgroundColor',obj.Panel.BackgroundColor, ...
+                        'HorizontalAlignment','center', ...
+                        'VerticalAlignment','center', ...
+                        'WordWrap','on', ...
+                        'Units','normalized', ...
+                        'Position',labelPosition);
+                    obj.LabelCont = obj.LabelComp;
+                else
+                    obj.LabelComp.Text = obj.HTMLTitle;
+                    obj.LabelComp.Position = labelPosition;
+                end
             end
             
             if numOfAxis == 6

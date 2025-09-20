@@ -34,10 +34,10 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
         TabPanel
         TabManual  
         TabConstants 
-        ProjectLabelComp
-        ProjectLabelCont 
-        SettingsLabelComp = javahandle_withcallbacks.javax.swing.JLabel
-        SettingsLabelCont 
+        ProjectLabelComp matlab.ui.control.Label = matlab.ui.control.Label.empty
+        ProjectLabelCont matlab.ui.control.Label = matlab.ui.control.Label.empty
+        SettingsLabelComp matlab.ui.control.Label = matlab.ui.control.Label.empty
+        SettingsLabelCont matlab.ui.control.Label = matlab.ui.control.Label.empty
         ConstantTable  
         AnalysisTabGroub  
         AnalysisTabArray
@@ -198,13 +198,16 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
             mpPos = UserInterface.Utilities.getPosInPixels(obj.MainPanel);
             
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;Project</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.ProjectLabelComp,obj.ProjectLabelCont] = javacomponent(jLabelview,[ 1 , mpPos(4) - 16 , 200 , 16 ], obj.MainPanel );
+            obj.ProjectLabelComp = uilabel(obj.MainPanel, ...
+                'Text',' Project', ...
+                'FontName','Courier New', ...
+                'FontColor',[1 1 1], ...
+                'BackgroundColor',[55 96 146]/255, ...
+                'HorizontalAlignment','left', ...
+                'VerticalAlignment','bottom', ...
+                'Units','pixels', ...
+                'Position',[ 1 , mpPos(4) - 16 , 200 , 16 ]);
+            obj.ProjectLabelCont = obj.ProjectLabelComp;
             
 
             obj.BrowserPanel = uipanel('Parent',obj.MainPanel,...
@@ -316,13 +319,16 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             set(obj.TaskObjContainer(ind),'ResizeFcn',@obj.smallPanelResize);
             parentPos = UserInterface.Utilities.getPosInPixels(obj.TaskObjContainer(ind));
             
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;Trim Settings</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.SettingsLabelComp(ind),obj.SettingsLabelCont(ind)] = javacomponent(jLabelview,[ 1 , parentPos(4) - 16 , parentPos(3) , 16 ], handle(obj.TaskObjContainer(ind)) );
+            obj.SettingsLabelComp(ind) = uilabel(obj.TaskObjContainer(ind), ...
+                'Text',' Trim Settings', ...
+                'FontName','Courier New', ...
+                'FontColor',[1 1 1], ...
+                'BackgroundColor',[55 96 146]/255, ...
+                'HorizontalAlignment','left', ...
+                'VerticalAlignment','bottom', ...
+                'Units','pixels', ...
+                'Position',[ 1 , parentPos(4) - 16 , parentPos(3) , 16 ]);
+            obj.SettingsLabelCont(ind) = obj.SettingsLabelComp(ind);
             
             obj.TaskPanel(ind) = uicontainer('Parent',obj.TaskObjContainer(ind),'Units','pixels','Position',[ 1 , 1 , parentPos(3) , parentPos(4)-16 ]); %[ 1 , 50 , parentPos(3) , parentPos(4) - 50 ]); 
             % Create Main Tab Group
@@ -436,13 +442,16 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 set(obj.TaskObjContainer(ind),'ResizeFcn',@obj.smallPanelResize);
                 parentPos = UserInterface.Utilities.getPosInPixels(obj.TaskObjContainer(ind));
 
-                labelStr = '<html><font color="white" face="Courier New">&nbsp;Trim Settings</html>';
-                jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-                jLabelview.setOpaque(true);
-                jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-                jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-                jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-                [obj.SettingsLabelComp(ind),obj.SettingsLabelCont(ind)] = javacomponent(jLabelview,[ 1 , parentPos(4) - 16 , parentPos(3) , 16 ], handle(obj.TaskObjContainer(ind)) );
+                obj.SettingsLabelComp(ind) = uilabel(obj.TaskObjContainer(ind), ...
+                    'Text',' Trim Settings', ...
+                    'FontName','Courier New', ...
+                    'FontColor',[1 1 1], ...
+                    'BackgroundColor',[55 96 146]/255, ...
+                    'HorizontalAlignment','left', ...
+                    'VerticalAlignment','bottom', ...
+                    'Units','pixels', ...
+                    'Position',[ 1 , parentPos(4) - 16 , parentPos(3) , 16 ]);
+                obj.SettingsLabelCont(ind) = obj.SettingsLabelComp(ind);
 
                 obj.TaskPanel(ind) = uicontainer('Parent',obj.TaskObjContainer(ind),'Units','pixels','Position',[ 1 , 1 , parentPos(3) , parentPos(4)-16 ]); %[ 1 , 50 , parentPos(3) , parentPos(4) - 50 ]); 
                 % Create Main Tab Group
@@ -538,8 +547,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 obj.AxisColl = UserInterface.AxisPanelCollection.empty;
                 obj.SimAxisColl = SimViewer.Main.empty;
                 obj.PostSimAxisColl = UserInterface.AxisPanelCollection.empty;
-                obj.SettingsLabelComp = javahandle_withcallbacks.javax.swing.JLabel;
-                obj.SettingsLabelCont = [];
+                obj.SettingsLabelComp = matlab.ui.control.Label.empty;
+                obj.SettingsLabelCont = matlab.ui.control.Label.empty;
                 obj.AnalysisObjects = lacm.AnalysisTask.empty;  
                 obj.TaskObjContainer= [];
                 obj.TaskCollectionObjBatch = lacm.TrimTaskCollectionBatch.empty;
@@ -3155,8 +3164,10 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             %get figure position   
             
             mpPos = getpixelposition(obj.MainPanel);
-            obj.ProjectLabelCont.Units = 'Pixels';
-            obj.ProjectLabelCont.Position = [ 2 , mpPos(4) - 16 , 198 , 16 ];  
+            if ~isempty(obj.ProjectLabelCont) && all(isvalid(obj.ProjectLabelCont))
+                obj.ProjectLabelCont.Units = 'Pixels';
+                obj.ProjectLabelCont.Position = [ 2 , mpPos(4) - 16 , 198 , 16 ];
+            end
             
             set(obj.BrowserPanel,'Units','Pixels',...
                 'Position',[ 1 , 1 , 200 , mpPos(4) - 16 ]);%[ 1 , 490 , 352 , mpPos(4) - 490 ]);
@@ -3178,7 +3189,12 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             parentPos = getpixelposition(obj.TaskObjContainer(1));
 
             
-            set(obj.SettingsLabelCont,'Units','Pixels','Position',[ 1 , parentPos(4) - 16 , parentPos(3) , 16 ]); 
+            if ~isempty(obj.SettingsLabelCont)
+                validLabels = obj.SettingsLabelCont(isvalid(obj.SettingsLabelCont));
+                if ~isempty(validLabels)
+                    set(validLabels,'Units','Pixels','Position',[ 1 , parentPos(4) - 16 , parentPos(3) , 16 ]);
+                end
+            end
             set(obj.TaskPanel,'Units','Pixels','Position',[ 1 , 1 , parentPos(3) , parentPos(4)-16]);%[ 1 , 50 , parentPos(3) , parentPos(4)-50 ]);      
             
         end % smallPanelResize 
@@ -3490,22 +3506,24 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
         function delete(obj)
 
             % Java Components 
-            obj.ProjectLabelComp = [];   
-            obj.SettingsLabelComp = [];
+            obj.ProjectLabelComp = matlab.ui.control.Label.empty;
+            obj.SettingsLabelComp = matlab.ui.control.Label.empty;
 
 
 
 
             % Javawrappers
             % Check if container is already being deleted
-            if ~isempty(obj.ProjectLabelCont) && ishandle(obj.ProjectLabelCont) && strcmp(get(obj.ProjectLabelCont, 'BeingDeleted'), 'off')
+            if ~isempty(obj.ProjectLabelCont) && all(isvalid(obj.ProjectLabelCont))
                 delete(obj.ProjectLabelCont)
             end
+            obj.ProjectLabelCont = matlab.ui.control.Label.empty;
             for i = 1:length(obj.SettingsLabelCont)
-                if ~isempty(obj.SettingsLabelCont(i)) && ishandle(obj.SettingsLabelCont(i)) && strcmp(get(obj.SettingsLabelCont(i), 'BeingDeleted'), 'off')
-                    delete(handle(obj.SettingsLabelCont(i)));
+                if ~isempty(obj.SettingsLabelCont(i)) && isvalid(obj.SettingsLabelCont(i))
+                    delete(obj.SettingsLabelCont(i));
                 end
             end
+            obj.SettingsLabelCont = matlab.ui.control.Label.empty;
 
 
 

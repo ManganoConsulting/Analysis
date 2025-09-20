@@ -48,8 +48,8 @@ classdef OCCStabControl < lacm.OperatingConditionCollection
         SimAxisColl
         PostSimAxisColl
         FilterContainer
-        FiltertLabelComp
-        FilterLabelCont
+        FiltertLabelComp matlab.ui.control.Label = matlab.ui.control.Label.empty
+        FilterLabelCont matlab.ui.control.Label = matlab.ui.control.Label.empty
        
         RibbonCardPanel
     end % Public properties
@@ -358,13 +358,16 @@ classdef OCCStabControl < lacm.OperatingConditionCollection
             createTable( obj );
 
             %Filter Label
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;Variable Selection</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.FiltertLabelComp,obj.FilterLabelCont] = javacomponent(jLabelview,[  ], obj.FilterContainer );
+            obj.FiltertLabelComp = uilabel(obj.FilterContainer, ...
+                'Text',' Variable Selection', ...
+                'FontName','Courier New', ...
+                'FontColor',[1 1 1], ...
+                'BackgroundColor',[55 96 146]/255, ...
+                'HorizontalAlignment','left', ...
+                'VerticalAlignment','bottom', ...
+                'Units','pixels', ...
+                'Position',[1 1 100 16]);
+            obj.FilterLabelCont = obj.FiltertLabelComp;
             
             % Create Row Selection Object
             obj.VarSelectPanel = uicontainer('Parent',obj.FilterContainer);
@@ -736,8 +739,10 @@ classdef OCCStabControl < lacm.OperatingConditionCollection
         function filterPanelResize( obj , ~ , ~ ) 
             
             filterParentPos = getpixelposition(obj.FilterContainer);
-            obj.FilterLabelCont.Units = 'Pixels';
-            obj.FilterLabelCont.Position = [ 1 , filterParentPos(4) - 16 , filterParentPos(3) , 16 ];  
+            if ~isempty(obj.FilterLabelCont) && all(isvalid(obj.FilterLabelCont))
+                obj.FilterLabelCont.Units = 'Pixels';
+                obj.FilterLabelCont.Position = [ 1 , filterParentPos(4) - 16 , filterParentPos(3) , 16 ];
+            end
             set(obj.VarSelectPanel,'Units','pixels','Position',[ 1 , 316 , filterParentPos(3) - 1 , filterParentPos(4) - 333 ]);
                 
             set(obj.VarFilterPanel,'Units','pixels','Position',[ 1 , 1 , filterParentPos(3) - 1 , 315 ]);   

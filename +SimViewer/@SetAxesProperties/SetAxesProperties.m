@@ -5,8 +5,8 @@ classdef SetAxesProperties < matlab.mixin.Copyable & hgsetget
         Parent
         Container
         
-        LabelComp
-        LabelCont
+        LabelComp matlab.ui.control.Label = matlab.ui.control.Label.empty
+        LabelCont matlab.ui.control.Label = matlab.ui.control.Label.empty
         
         TabPanel
         LimitsTab
@@ -208,13 +208,16 @@ classdef SetAxesProperties < matlab.mixin.Copyable & hgsetget
             set(obj.Container,'ResizeFcn',@obj.reSize);
             
             % Previous Applications
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;Axis Properties</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.LabelComp,obj.LabelCont] = javacomponent(jLabelview,[ ], obj.Container );
+            obj.LabelComp = uilabel(obj.Container, ...
+                'Text',' Axis Properties', ...
+                'FontName','Courier New', ...
+                'FontColor',[1 1 1], ...
+                'BackgroundColor',[55 96 146]/255, ...
+                'HorizontalAlignment','left', ...
+                'VerticalAlignment','bottom', ...
+                'Units','pixels', ...
+                'Position',[1 1 100 16]);
+            obj.LabelCont = obj.LabelComp;
             
             
                 obj.TabPanel = uitabgroup('Parent',obj.Container); 
@@ -420,7 +423,12 @@ classdef SetAxesProperties < matlab.mixin.Copyable & hgsetget
         function reSize( obj , ~ , ~ ) 
             panelPos = getpixelposition(obj.Container); 
             
-            set(obj.LabelCont,'Units','Pixels','Position',[ 1 , panelPos(4) - 25 , panelPos(3) , 25 ] );  
+            if ~isempty(obj.LabelCont)
+                validLabels = obj.LabelCont(isvalid(obj.LabelCont));
+                if ~isempty(validLabels)
+                    set(validLabels,'Units','Pixels','Position',[ 1 , panelPos(4) - 25 , panelPos(3) , 25 ] );
+                end
+            end
             set(obj.TabPanel,'Units','Pixels','Position',[ 1 , 25 , panelPos(3) , panelPos(4) - 50 ] );  
             set(obj.OKButton,'Units','Pixels','Position',[ 10 , 5 , 40 , 20 ] ); 
             set(obj.Apply2AllCont,'Units','Pixels','Position',[ 110 , 5 , 80 , 20 ] ); 
