@@ -206,7 +206,6 @@ classdef SetAxesProperties < matlab.mixin.Copyable & hgsetget
                 'BackgroundColor',[55 96 146]/255, ...
                 'HorizontalAlignment','left', ...
                 'VerticalAlignment','bottom', ...
-                'Units','pixels', ...
                 'Position',[1 1 100 16]);
             obj.LabelCont = obj.LabelComp;
             
@@ -383,7 +382,7 @@ classdef SetAxesProperties < matlab.mixin.Copyable & hgsetget
             if ~isempty(obj.LabelCont)
                 validLabels = obj.LabelCont(isvalid(obj.LabelCont));
                 if ~isempty(validLabels)
-                    set(validLabels,'Units','Pixels','Position',[ 1 , panelPos(4) - 25 , panelPos(3) , 25 ] );
+                    set(validLabels,'Position',[ 1 , panelPos(4) - 25 , panelPos(3) , 25 ] );
                 end
             end
             set(obj.TabPanel,'Units','Pixels','Position',[ 1 , 25 , panelPos(3) , panelPos(4) - 50 ] );  

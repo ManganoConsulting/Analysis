@@ -221,7 +221,6 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
                 'BackgroundColor',[55 96 146]/255, ...
                 'HorizontalAlignment','left', ...
                 'VerticalAlignment','bottom', ...
-                'Units','pixels', ...
                 'Position',[1 1 150 17]);
             obj.PreviousLabelCont = obj.PreviousLabelComp;
             
@@ -312,7 +311,6 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
                 'BackgroundColor',[55 96 146]/255, ...
                 'HorizontalAlignment','left', ...
                 'VerticalAlignment','bottom', ...
-                'Units','pixels', ...
                 'Position',[1 1 150 17]);
             obj.PreviousLabelCont = obj.PreviousLabelComp;
             
@@ -387,7 +385,6 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
                 'BackgroundColor',[55 96 146]/255, ...
                 'HorizontalAlignment','left', ...
                 'VerticalAlignment','bottom', ...
-                'Units','pixels', ...
                 'Position',[1 1 350 25]);
             obj.PropLabelCont = obj.PropLabelComp;
             
@@ -420,7 +417,6 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
                 'BackgroundColor',[55 96 146]/255, ...
                 'HorizontalAlignment','left', ...
                 'VerticalAlignment','bottom', ...
-                'Units','pixels', ...
                 'Position',[1 1 300 25]);
             obj.PrefLabelCont = obj.PrefLabelComp;
 
@@ -719,7 +715,7 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
             if ~isempty(obj.PreviousLabelCont)
                 validPrevLabel = obj.PreviousLabelCont(isvalid(obj.PreviousLabelCont));
                 if ~isempty(validPrevLabel)
-                    set(validPrevLabel,'Units','Pixels','Position',[ 10 , panelPos(4)-50 , 150 , 17 ] );
+                    set(validPrevLabel,'Position',[ 10 , panelPos(4)-50 , 150 , 17 ] );
                 end
             end
             set(obj.PreviousListScrollCont,'Units','Pixels','Position',[ 10 , panelPos(4)-175 , 425 , 125 ] );  
@@ -746,7 +742,7 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
             if ~isempty(obj.PreviousLabelCont)
                 validPrevLabel = obj.PreviousLabelCont(isvalid(obj.PreviousLabelCont));
                 if ~isempty(validPrevLabel)
-                    set(validPrevLabel,'Units','Pixels','Position',[ 25 , panelPos(4) - 100 , 350 , 25 ] );
+                    set(validPrevLabel,'Position',[ 25 , panelPos(4) - 100 , 350 , 25 ] );
                 end
             end
             set(obj.PreviousListScrollCont,'Units','Pixels','Position',[ 25 , panelPos(4) - 325 , 350 , 225 ] );  
@@ -754,7 +750,7 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
             if ~isempty(obj.PropLabelCont)
                 validPropLabel = obj.PropLabelCont(isvalid(obj.PropLabelCont));
                 if ~isempty(validPropLabel)
-                    set(validPropLabel,'Units','Pixels','Position',[ 25 , panelPos(4) - 400 , 350 , 25 ] );
+                    set(validPropLabel,'Position',[ 25 , panelPos(4) - 400 , 350 , 25 ] );
                 end
             end
             set(obj.PropTableCont,'Units','Pixels','Position',[ 25 , panelPos(4) - 625 , 350 , 225 ] ); 
@@ -762,7 +758,7 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
             if ~isempty(obj.PrefLabelCont)
                 validPrefLabel = obj.PrefLabelCont(isvalid(obj.PrefLabelCont));
                 if ~isempty(validPrefLabel)
-                    set(validPrefLabel,'Units','Pixels','Position',[ 400 , panelPos(4) - 100 , 650 , 25 ] );
+                    set(validPrefLabel,'Position',[ 400 , panelPos(4) - 100 , 650 , 25 ] );
                 end
             end
             set(obj.PTHCont,'Units','Pixels','Position',[ 400 , panelPos(4) - 625 , 650 , 525 ] ); 
