@@ -29,6 +29,11 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
     properties (Access = private)
         RibbonAssets struct = struct()
         RibbonReady logical = false
+
+        % Native popup menu overlay anchored to ribbon buttons
+        PopupPanel matlab.ui.container.Panel = matlab.ui.container.Panel.empty
+        PopupPrevWBDFcn = []
+        PopupPrevWKPFcn = []
     end % Private properties
 
     %% Events
@@ -335,6 +340,25 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
                     obj.sendRibbonConfig();
                     obj.sendRibbonState();
 
+                case 'menuopen'
+                    if isfield(payload,'menu')
+                        menuId = char(string(payload.menu));
+                        x = 0; y = 0;
+                        if isfield(payload,'x'), x = double(payload.x); end
+                        if isfield(payload,'y'), y = double(payload.y); end
+                        scale = 1;
+                        if isfield(payload,'dpr')
+                            try, scale = max(0.5, double(payload.dpr)); catch, scale = 1; end
+                        end
+                        if ~isempty(obj.RibbonHtml) && isvalid(obj.RibbonHtml)
+                            htmlAbs = getpixelposition(obj.RibbonHtml, true); % absolute to figure [l b w h]
+                            px = x; py = y; %#ok<NASGU> % CSS px; assume 1:1 with UIFigure pixel units
+                            anchorX = htmlAbs(1) + px;
+                            anchorY = htmlAbs(2) + (htmlAbs(4) - y); % convert from top-origin to bottom-origin
+                            obj.showPopupMenu(menuId, [anchorX, anchorY]);
+                        end
+                    end
+
                 case 'command'
                     if ~isfield(payload,'command')
                         return;
@@ -552,6 +576,8 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
             width = max(parentPos(3),1);
             height = max(parentPos(4),1);
             obj.RibbonHtml.Position = [0 0 width height];
+            % Close any open floating popup to avoid stale positioning
+            obj.closePopupMenu();
         end % updateRibbonGeometry
 
         function html = buildRibbonHtml(~)
@@ -840,32 +866,11 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
                 '  });'
                 '  document.querySelectorAll(".split-trigger[data-menu]").forEach(trigger => {'
                 '    const menuId = trigger.dataset.menu;'
-                '    const menu = document.getElementById(menuId);'
-                '    if(!menu){return;}'
                 '    trigger.addEventListener("click", evt => {'
                 '      evt.stopPropagation();'
-                '      const willOpen = !menu.classList.contains("open");'
-                '      closeMenus(willOpen ? menuId : "");'
-                '      if(willOpen){'
-                '        menu.classList.add("open");'
-                '        trigger.setAttribute("aria-expanded","true");'
-                '      }else{'
-                '        trigger.setAttribute("aria-expanded","false");'
-                '      }'
-                '    });'
-                '    menu.addEventListener("click", evt => {'
-                '      const item = evt.target.closest(".menu-item[data-command]");'
-                '      if(!item){return;}'
-                '      const payload = {type:"command", command:item.dataset.command};'
-                '      if(item.dataset.option){payload.option = item.dataset.option;}'
-                '      if(item.dataset.value){'
-                '        const raw = item.dataset.value;'
-                '        const num = Number(raw);'
-                '        payload.value = Number.isNaN(num) ? raw : num;'
-                '      }'
-                '      send(payload);'
-                '      menu.classList.remove("open");'
-                '      trigger.setAttribute("aria-expanded","false");'
+                '      const rect = trigger.getBoundingClientRect();'
+                '      const dpr = window.devicePixelRatio || 1;'
+                '      send({type:"menuopen", menu:menuId, x:Math.round(rect.left), y:Math.round(rect.bottom), dpr:dpr});'
                 '    });'
                 '  });'
                 '  document.querySelectorAll(''[data-role="primary"][data-command]'').forEach(btn => {'
@@ -1030,6 +1035,201 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
             end
         end % resolveTrimState
 
+        function showPopupMenu(obj, menuId, anchor)
+            % SHOWPOPUPMENU Create a native MATLAB overlay menu anchored to ribbon button
+            % menuId: id string like 'menu-new'
+            % anchor: [x y] in figure pixel coordinates (bottom-left origin)
+            fig = ancestor(obj.Parent,'figure');
+            if isempty(fig) || ~isgraphics(fig)
+                return;
+            end
+
+            items = obj.buildMenuModel(menuId);
+            if isempty(items)
+                return;
+            end
+
+            % Ensure only one popup at a time
+            obj.closePopupMenu();
+
+            % Layout constants
+            pad = 6; itemH = 24; labelH = 16; sepH = 8; width = 220; margin = 4;
+
+            totalH = pad;
+            for k = 1:numel(items)
+                switch items(k).type
+                    case 'item', totalH = totalH + itemH;
+                    case 'label', totalH = totalH + labelH;
+                    case 'sep', totalH = totalH + sepH;
+                end
+            end
+            totalH = totalH + pad;
+
+            % Position within figure bounds
+            figPos = getpixelposition(fig);
+            x = anchor(1);
+            y = anchor(2) - totalH; % drop below the trigger
+            if x + width + margin > figPos(3)
+                x = max(margin, figPos(3) - width - margin);
+            end
+            if y < margin
+                y = margin;
+            end
+
+            p = uipanel(fig, 'Units','pixels', 'Position',[x y width totalH], ...
+                'BackgroundColor',[1 1 1], 'BorderType','line', 'BorderWidth',1, 'Tag','RibbonPopup');
+            uistack(p,'top');
+
+            curY = totalH - pad;
+            for k = 1:numel(items)
+                it = items(k);
+                switch it.type
+                    case 'item'
+                        curY = curY - itemH;
+                        btn = uibutton(p, 'Text', it.label, 'Position',[1 curY width-2 itemH], ...
+                            'ButtonPushedFcn', @(~,~)obj.onMenuAction(it.command, it.option, it.value));
+                        btn.FontSize = 10;
+                        btn.WordWrap = 'off';
+                    case 'label'
+                        curY = curY - labelH;
+                        uilabel(p, 'Text', it.label, 'Position',[8 curY width-16 labelH], ...
+                            'FontSize',9, 'FontWeight','bold');
+                    case 'sep'
+                        curY = curY - sepH;
+                        uipanel(p, 'Units','pixels', 'Position',[8 curY+round(sepH/2) width-16 1], ...
+                            'BackgroundColor',[0.83 0.83 0.83], 'BorderType','none');
+                end
+            end
+
+            % Install global handlers to close on click elsewhere or ESC
+            obj.PopupPanel = p;
+            fig = ancestor(obj.Parent,'figure');
+            if ~isempty(fig) && isgraphics(fig)
+                obj.PopupPrevWBDFcn = fig.WindowButtonDownFcn;
+                obj.PopupPrevWKPFcn = fig.WindowKeyPressFcn;
+                fig.WindowButtonDownFcn = @(src,evt)obj.onFigureButtonDown(src, evt);
+                fig.WindowKeyPressFcn = @(src,evt)obj.onFigureKeyPress(src, evt);
+            end
+        end % showPopupMenu
+
+        function items = buildMenuModel(~, menuId)
+            % BUILDMENUMODEL Return struct array describing menu entries
+            % Each item: struct('type','item|label|sep','label',txt,'command',cmd,'option',opt,'value',val)
+            items = struct('type',{},'label',{},'command',{},'option',{},'value',{});
+            switch lower(char(menuId))
+                case 'menu-new'
+                    items(end+1) = struct('type','item','label','Task','command','new','option','analysis','value',[]);
+                    items(end+1) = struct('type','item','label','Trim','command','new','option','trim','value',[]);
+                    items(end+1) = struct('type','item','label','Linear Model','command','new','option','model','value',[]);
+                    items(end+1) = struct('type','item','label','Requirement','command','new','option','requirement','value',[]);
+                    items(end+1) = struct('type','item','label','Simulation Requirement','command','new','option','simulation','value',[]);
+                case 'menu-open'
+                    items(end+1) = struct('type','item','label','Task','command','open','option','analysis','value',[]);
+                    items(end+1) = struct('type','item','label','Trim','command','open','option','trim','value',[]);
+                    items(end+1) = struct('type','item','label','Linear Model','command','open','option','model','value',[]);
+                    items(end+1) = struct('type','item','label','Requirement','command','open','option','requirement','value',[]);
+                    items(end+1) = struct('type','item','label','Simulation Requirement','command','open','option','simulation','value',[]);
+                case 'menu-load'
+                    items(end+1) = struct('type','item','label','Project','command','load','option','project','value',[]);
+                    items(end+1) = struct('type','item','label','Task','command','load','option','task','value',[]);
+                case 'menu-save'
+                    items(end+1) = struct('type','item','label','Save Project','command','save','option','project','value',[]);
+                    items(end+1) = struct('type','sep','label','','command','','option','', 'value',[]);
+                    items(end+1) = struct('type','label','label','Save Operating Conditions','command','','option','', 'value',[]);
+                    items(end+1) = struct('type','item','label','All','command','save','option','opercond-all','value',[]);
+                    items(end+1) = struct('type','item','label','Valid Only','command','save','option','opercond-valid','value',[]);
+                case 'menu-run'
+                    items(end+1) = struct('type','item','label','Run','command','run','option','run','value',[]);
+                    items(end+1) = struct('type','item','label','Run and Save','command','run','option','save','value',[]);
+                case 'menu-table'
+                    items(end+1) = struct('type','item','label','Clear Table','command','table','option','clear','value',[]);
+                    items(end+1) = struct('type','sep','label','','command','','option','', 'value',[]);
+                    items(end+1) = struct('type','item','label','Export to MAT','command','table','option','export-mat','value',[]);
+                    items(end+1) = struct('type','item','label','Export to CSV','command','table','option','export-csv','value',[]);
+                    items(end+1) = struct('type','item','label','Export to M Script','command','table','option','export-m','value',[]);
+                case 'menu-report'
+                    items(end+1) = struct('type','item','label','PDF','command','report','option','pdf','value',[]);
+                    items(end+1) = struct('type','item','label','MS Word','command','report','option','word','value',[]);
+                case 'menu-settings'
+                    items(end+1) = struct('type','item','label','Trim Settings...','command','settings','option','trim-settings','value',[]);
+                    items(end+1) = struct('type','sep','label','','command','','option','', 'value',[]);
+                    items(end+1) = struct('type','label','label','Plots Per Page (All)','command','','option','', 'value',[]);
+                    items(end+1) = struct('type','item','label','1','command','settings','option','plots-all','value',1);
+                    items(end+1) = struct('type','item','label','2','command','settings','option','plots-all','value',2);
+                    items(end+1) = struct('type','item','label','4','command','settings','option','plots-all','value',4);
+                    items(end+1) = struct('type','label','label','Requirements','command','','option','', 'value',[]);
+                    items(end+1) = struct('type','item','label','1','command','settings','option','plots-req','value',1);
+                    items(end+1) = struct('type','item','label','2','command','settings','option','plots-req','value',2);
+                    items(end+1) = struct('type','item','label','4','command','settings','option','plots-req','value',4);
+                    items(end+1) = struct('type','label','label','Post Simulation','command','','option','', 'value',[]);
+                    items(end+1) = struct('type','item','label','1','command','settings','option','plots-post','value',1);
+                    items(end+1) = struct('type','item','label','2','command','settings','option','plots-post','value',2);
+                    items(end+1) = struct('type','item','label','4','command','settings','option','plots-post','value',4);
+                otherwise
+                    items = struct('type',{},'label',{},'command',{},'option',{},'value',{});
+            end
+        end % buildMenuModel
+
+        function onMenuAction(obj, cmd, option, value)
+            obj.executeCommand(cmd, option, value);
+            obj.closePopupMenu();
+        end % onMenuAction
+
+        function closePopupMenu(obj)
+            if ~isempty(obj.PopupPanel) && isvalid(obj.PopupPanel)
+                delete(obj.PopupPanel);
+            end
+            obj.PopupPanel = matlab.ui.container.Panel.empty;
+            fig = ancestor(obj.Parent,'figure');
+            if ~isempty(fig) && isgraphics(fig)
+                try, fig.WindowButtonDownFcn = obj.PopupPrevWBDFcn; catch, end
+                try, fig.WindowKeyPressFcn = obj.PopupPrevWKPFcn; catch, end
+            end
+            obj.PopupPrevWBDFcn = [];
+            obj.PopupPrevWKPFcn = [];
+        end % closePopupMenu
+
+        function onFigureButtonDown(obj, src, ~)
+            if isempty(obj.PopupPanel) || ~isvalid(obj.PopupPanel)
+                return;
+            end
+            h = src.CurrentObject;
+            if isempty(h) || ~obj.isHandleDescendant(h, obj.PopupPanel)
+                obj.closePopupMenu();
+            end
+        end % onFigureButtonDown
+
+        function onFigureKeyPress(obj, ~, evt)
+            try
+                key = evt.Key;
+            catch
+                key = '';
+            end
+            if ischar(key)
+                if strcmpi(key,'escape')
+                    obj.closePopupMenu();
+                end
+            elseif isstring(key)
+                if strcmpi(char(key),'escape')
+                    obj.closePopupMenu();
+                end
+            end
+        end % onFigureKeyPress
+
+        function tf = isHandleDescendant(~, h, parent)
+            tf = false;
+            while ~isempty(h) && isgraphics(h)
+                if isequal(h, parent)
+                    tf = true; return;
+                end
+                try
+                    h = h.Parent;
+                catch
+                    break
+                end
+            end
+        end % isHandleDescendant
+
         function value = extractNumericArg(~, args)
             value = [];
             for idx = numel(args):-1:1
@@ -1050,6 +1250,7 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
     %% Method - Delete
     methods
         function delete(obj)
+            obj.closePopupMenu();
             if ~isempty(obj.ParentSizeListener) && isvalid(obj.ParentSizeListener)
                 delete(obj.ParentSizeListener);
             end
