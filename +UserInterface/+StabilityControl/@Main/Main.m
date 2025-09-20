@@ -221,7 +221,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 'Position',[ 201 , 1 , mpPos(3) - 201 , mpPos(4) ]);
 %             test=SimViewer.Main('Parent',obj.LargePanel); 
             if isempty(obj.Tree)
-                obj.Tree = UserInterface.StabilityControl.StabTree(obj.BrowserPanel);
+                obj.Tree = UserInterface.StabilityControl.StabTree2(obj.BrowserPanel);
                 %addTreeListners( obj );
             else
                 obj.Tree.restoreTree(obj.BrowserPanel);
