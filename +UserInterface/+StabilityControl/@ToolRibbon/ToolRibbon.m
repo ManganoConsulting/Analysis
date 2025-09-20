@@ -30,10 +30,10 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
         RibbonAssets struct = struct()
         RibbonReady logical = false
 
-        % Native popup menu overlay anchored to ribbon buttons
-        PopupPanel matlab.ui.container.Panel = matlab.ui.container.Panel.empty
-        PopupPrevWBDFcn = []
-        PopupPrevWKPFcn = []
+        % HTML dropdown overlay (Visual parity with ControlDesign)
+        RibbonDropdowns struct = struct()
+        ActiveRibbonDropdown char = ''
+        RibbonDropdownOriginalFigureFcn struct = struct('Stored',false,'Value',[])
     end % Private properties
 
     %% Events
@@ -343,19 +343,30 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
                 case 'menuopen'
                     if isfield(payload,'menu')
                         menuId = char(string(payload.menu));
-                        x = 0; y = 0;
-                        if isfield(payload,'x'), x = double(payload.x); end
-                        if isfield(payload,'y'), y = double(payload.y); end
-                        scale = 1;
-                        if isfield(payload,'dpr')
-                            try, scale = max(0.5, double(payload.dpr)); catch, scale = 1; end
-                        end
-                        if ~isempty(obj.RibbonHtml) && isvalid(obj.RibbonHtml)
-                            htmlAbs = getpixelposition(obj.RibbonHtml, true); % absolute to figure [l b w h]
-                            px = x; py = y; %#ok<NASGU> % CSS px; assume 1:1 with UIFigure pixel units
-                            anchorX = htmlAbs(1) + px;
-                            anchorY = htmlAbs(2) + (htmlAbs(4) - y); % convert from top-origin to bottom-origin
-                            obj.showPopupMenu(menuId, [anchorX, anchorY]);
+                        % Prefer rect from HTML for robust anchoring
+                        if isfield(payload,'rect') && isstruct(payload.rect)
+                            r = payload.rect;
+                            x = 0; y = 0; h = 0;
+                            if isfield(r,'x'), x = double(r.x); end
+                            if isfield(r,'y'), y = double(r.y); end
+                            if isfield(r,'height'), h = double(r.height); end
+                            if ~isempty(obj.RibbonHtml) && isvalid(obj.RibbonHtml)
+                                htmlAbs = getpixelposition(obj.RibbonHtml, true); % [l b w h]
+                                anchorX = htmlAbs(1) + x;
+                                anchorY = htmlAbs(2) + htmlAbs(4) - y - h; % bottom of trigger
+                                obj.openRibbonDropdown(menuId, [anchorX, anchorY, r.width, h]);
+                            end
+                        else
+                            % Fallback to x/y if provided
+                            x = 0; y = 0;
+                            if isfield(payload,'x'), x = double(payload.x); end
+                            if isfield(payload,'y'), y = double(payload.y); end
+                            if ~isempty(obj.RibbonHtml) && isvalid(obj.RibbonHtml)
+                                htmlAbs = getpixelposition(obj.RibbonHtml, true);
+                                anchorX = htmlAbs(1) + x;
+                                anchorY = htmlAbs(2) + htmlAbs(4) - y;
+                                obj.openRibbonDropdown(menuId, [anchorX, anchorY, 16, 16]);
+                            end
                         end
                     end
 
@@ -577,7 +588,7 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
             height = max(parentPos(4),1);
             obj.RibbonHtml.Position = [0 0 width height];
             % Close any open floating popup to avoid stale positioning
-            obj.closePopupMenu();
+            obj.closeAllRibbonDropdowns();
         end % updateRibbonGeometry
 
         function html = buildRibbonHtml(~)
@@ -831,12 +842,10 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
                 '</div>'
                 '<script>'
                 '(function(){'
-                '  const matlab = window.parent;'
-                '  function send(msg){'
-                '    if(matlab && typeof matlab.postMessage === "function"){'
-                '      matlab.postMessage(msg,"*");'
-                '    }'
-                '  }'
+                '  let matlabComponent = null;'
+                '  const pending = [];'
+                '  function setup(htmlComponent){ matlabComponent = htmlComponent; while(pending.length){ const m = pending.shift(); try{ matlabComponent.Data = m; }catch(e){} } }'
+                '  function send(msg){ if(matlabComponent){ try{ matlabComponent.Data = msg; }catch(e){} } else { pending.push(msg); } }'
                 '  function setIcon(id, src){'
                 '    const img = document.getElementById(id);'
                 '    if(!img){return;}'
@@ -864,13 +873,15 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
                 '      closeMenus();'
                 '    }'
                 '  });'
+                '  const root = document.getElementById("ribbonSurface");'
                 '  document.querySelectorAll(".split-trigger[data-menu]").forEach(trigger => {'
                 '    const menuId = trigger.dataset.menu;'
                 '    trigger.addEventListener("click", evt => {'
                 '      evt.stopPropagation();'
                 '      const rect = trigger.getBoundingClientRect();'
-                '      const dpr = window.devicePixelRatio || 1;'
-                '      send({type:"menuopen", menu:menuId, x:Math.round(rect.left), y:Math.round(rect.bottom), dpr:dpr});'
+                '      const rootRect = root.getBoundingClientRect();'
+                '      const rel = {x: Math.round(rect.left - rootRect.left), y: Math.round(rect.bottom - rootRect.top), width: Math.round(rect.width), height: Math.round(rect.height)};'
+                '      send({type:"menuopen", menu:menuId, rect:rel});'
                 '    });'
                 '  });'
                 '  document.querySelectorAll(''[data-role="primary"][data-command]'').forEach(btn => {'
@@ -958,9 +969,7 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
                 '      }'
                 '    }'
                 '  });'
-                '  window.addEventListener("DOMContentLoaded", () => {'
-                '    send({type:"ready"});'
-                '  });'
+                '  window.addEventListener("DOMContentLoaded", () => { send({type:"ready"}); });'
                 '})();'
                 '</script>'
                 '</body>'
@@ -1035,200 +1044,377 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
             end
         end % resolveTrimState
 
-        function showPopupMenu(obj, menuId, anchor)
-            % SHOWPOPUPMENU Create a native MATLAB overlay menu anchored to ribbon button
-            % menuId: id string like 'menu-new'
-            % anchor: [x y] in figure pixel coordinates (bottom-left origin)
+
+
+        % ControlDesign-style HTML dropdown overlay
+        function openRibbonDropdown(obj, menuId, anchorRect)
+            % anchorRect = [x y w h] in figure pixel coords (bottom-left)
+            items = obj.buildDropdownItems(menuId);
+            if isempty(items)
+                return;
+            end
             fig = ancestor(obj.Parent,'figure');
             if isempty(fig) || ~isgraphics(fig)
                 return;
             end
-
-            items = obj.buildMenuModel(menuId);
-            if isempty(items)
-                return;
-            end
-
-            % Ensure only one popup at a time
-            obj.closePopupMenu();
-
-            % Layout constants
-            pad = 6; itemH = 24; labelH = 16; sepH = 8; width = 220; margin = 4;
-
-            totalH = pad;
-            for k = 1:numel(items)
-                switch items(k).type
-                    case 'item', totalH = totalH + itemH;
-                    case 'label', totalH = totalH + labelH;
-                    case 'sep', totalH = totalH + sepH;
-                end
-            end
-            totalH = totalH + pad;
-
-            % Position within figure bounds
             figPos = getpixelposition(fig);
-            x = anchor(1);
-            y = anchor(2) - totalH; % drop below the trigger
-            if x + width + margin > figPos(3)
-                x = max(margin, figPos(3) - width - margin);
-            end
-            if y < margin
-                y = margin;
-            end
+            figWidth = figPos(3); figHeight = figPos(4);
 
-            p = uipanel(fig, 'Units','pixels', 'Position',[x y width totalH], ...
-                'BackgroundColor',[1 1 1], 'BorderType','line', 'BorderWidth',1, 'Tag','RibbonPopup');
-            uistack(p,'top');
+            % Estimate width from labels/shortcuts (like ControlDesign)
+            labelLengths = 0; shortcutLengths = 0;
+            if ~isempty(items)
+                labelLengths = cellfun(@(c)numel(char(c)), {items.Label});
+                if isfield(items,'Shortcut')
+                    shortcutLengths = cellfun(@(c)numel(char(c)), {items.Shortcut});
+                end
+            end
+            approxWidth = 140 + 7*max([labelLengths 0]) + 4*max([shortcutLengths 0]);
+            menuWidth = max([approxWidth, anchorRect(3)+24, 200]);
+            itemHeight = 32;
+            menuHeight = numel(items)*itemHeight + 16;
 
-            curY = totalH - pad;
-            for k = 1:numel(items)
-                it = items(k);
-                switch it.type
-                    case 'item'
-                        curY = curY - itemH;
-                        btn = uibutton(p, 'Text', it.label, 'Position',[1 curY width-2 itemH], ...
-                            'ButtonPushedFcn', @(~,~)obj.onMenuAction(it.command, it.option, it.value));
-                        btn.FontSize = 10;
-                        btn.WordWrap = 'off';
-                    case 'label'
-                        curY = curY - labelH;
-                        uilabel(p, 'Text', it.label, 'Position',[8 curY width-16 labelH], ...
-                            'FontSize',9, 'FontWeight','bold');
-                    case 'sep'
-                        curY = curY - sepH;
-                        uipanel(p, 'Units','pixels', 'Position',[8 curY+round(sepH/2) width-16 1], ...
-                            'BackgroundColor',[0.83 0.83 0.83], 'BorderType','none');
+            dropX = max(0, min(anchorRect(1), figWidth - menuWidth));
+            dropY = anchorRect(2) - menuHeight;
+            dropY = max(0, min(dropY, figHeight - menuHeight));
+
+            htmlItems = items;
+            for k = 1:numel(htmlItems)
+                if ~isfield(htmlItems(k),'Shortcut') || isempty(htmlItems(k).Shortcut)
+                    htmlItems(k).Shortcut = '';
+                else
+                    htmlItems(k).Shortcut = char(htmlItems(k).Shortcut);
+                end
+                htmlItems(k).Icon = obj.encodeRibbonIcon(htmlItems(k).Icon);
+                if ~isfield(htmlItems(k),'Id') || isempty(htmlItems(k).Id)
+                    htmlItems(k).Id = sprintf('item-%d', k);
                 end
             end
 
-            % Install global handlers to close on click elsewhere or ESC
-            obj.PopupPanel = p;
-            fig = ancestor(obj.Parent,'figure');
-            if ~isempty(fig) && isgraphics(fig)
-                obj.PopupPrevWBDFcn = fig.WindowButtonDownFcn;
-                obj.PopupPrevWKPFcn = fig.WindowKeyPressFcn;
-                fig.WindowButtonDownFcn = @(src,evt)obj.onFigureButtonDown(src, evt);
-                fig.WindowKeyPressFcn = @(src,evt)obj.onFigureKeyPress(src, evt);
-            end
-        end % showPopupMenu
+            html = obj.buildRibbonDropdownHtml(htmlItems);
 
-        function items = buildMenuModel(~, menuId)
-            % BUILDMENUMODEL Return struct array describing menu entries
-            % Each item: struct('type','item|label|sep','label',txt,'command',cmd,'option',opt,'value',val)
-            items = struct('type',{},'label',{},'command',{},'option',{},'value',{});
+            obj.closeAllRibbonDropdowns();
+            dropdown = uihtml(fig, 'HTMLSource', html, 'Position', [dropX dropY menuWidth menuHeight]);
+            dropdown.DataChangedFcn = @(src,evt)obj.dropdownDataHandler(char(menuId), evt.Data);
+            dropdown.Tag = sprintf('RibbonDropdown_%s', char(menuId));
+            try, uistack(dropdown,'top'); end %#ok<TRYNC>
+
+            obj.RibbonDropdowns.(char(menuId)) = struct('Component', dropdown, 'Callbacks', {items});
+            obj.ActiveRibbonDropdown = char(menuId);
+            obj.setRibbonFigureCallback();
+        end % openRibbonDropdown
+
+        function items = buildDropdownItems(obj, menuId)
+            items = struct('Id',{},'Label',{},'Icon',{},'Shortcut',{},'Callback',{});
             switch lower(char(menuId))
                 case 'menu-new'
-                    items(end+1) = struct('type','item','label','Task','command','new','option','analysis','value',[]);
-                    items(end+1) = struct('type','item','label','Trim','command','new','option','trim','value',[]);
-                    items(end+1) = struct('type','item','label','Linear Model','command','new','option','model','value',[]);
-                    items(end+1) = struct('type','item','label','Requirement','command','new','option','requirement','value',[]);
-                    items(end+1) = struct('type','item','label','Simulation Requirement','command','new','option','simulation','value',[]);
+                    items(end+1) = struct('Id','new-analysis','Label','Task','Icon','analysis_24.png','Shortcut','', 'Callback',@()obj.executeCommand('new','analysis',[]));
+                    items(end+1) = struct('Id','new-trim','Label','Trim','Icon','airplaneTrim_24.png','Shortcut','', 'Callback',@()obj.executeCommand('new','trim',[]));
+                    items(end+1) = struct('Id','new-model','Label','Linear Model','Icon','linmdl_24.png','Shortcut','', 'Callback',@()obj.executeCommand('new','model',[]));
+                    items(end+1) = struct('Id','new-req','Label','Requirement','Icon','InOut_24.png','Shortcut','', 'Callback',@()obj.executeCommand('new','requirement',[]));
+                    items(end+1) = struct('Id','new-sim','Label','Simulation Requirement','Icon','Simulink_24.png','Shortcut','', 'Callback',@()obj.executeCommand('new','simulation',[]));
                 case 'menu-open'
-                    items(end+1) = struct('type','item','label','Task','command','open','option','analysis','value',[]);
-                    items(end+1) = struct('type','item','label','Trim','command','open','option','trim','value',[]);
-                    items(end+1) = struct('type','item','label','Linear Model','command','open','option','model','value',[]);
-                    items(end+1) = struct('type','item','label','Requirement','command','open','option','requirement','value',[]);
-                    items(end+1) = struct('type','item','label','Simulation Requirement','command','open','option','simulation','value',[]);
+                    items(end+1) = struct('Id','open-analysis','Label','Task','Icon','analysis_24.png','Shortcut','', 'Callback',@()obj.executeCommand('open','analysis',[]));
+                    items(end+1) = struct('Id','open-trim','Label','Trim','Icon','airplaneTrim_24.png','Shortcut','', 'Callback',@()obj.executeCommand('open','trim',[]));
+                    items(end+1) = struct('Id','open-model','Label','Linear Model','Icon','linmdl_24.png','Shortcut','', 'Callback',@()obj.executeCommand('open','model',[]));
+                    items(end+1) = struct('Id','open-req','Label','Requirement','Icon','InOut_24.png','Shortcut','', 'Callback',@()obj.executeCommand('open','requirement',[]));
+                    items(end+1) = struct('Id','open-sim','Label','Simulation Requirement','Icon','Simulink_24.png','Shortcut','', 'Callback',@()obj.executeCommand('open','simulation',[]));
                 case 'menu-load'
-                    items(end+1) = struct('type','item','label','Project','command','load','option','project','value',[]);
-                    items(end+1) = struct('type','item','label','Task','command','load','option','task','value',[]);
+                    items(end+1) = struct('Id','load-project','Label','Project','Icon','LoadProject_24.png','Shortcut','', 'Callback',@()obj.executeCommand('load','project',[]));
+                    items(end+1) = struct('Id','load-task','Label','Task','Icon','LoadArrow_24.png','Shortcut','', 'Callback',@()obj.executeCommand('load','task',[]));
                 case 'menu-save'
-                    items(end+1) = struct('type','item','label','Save Project','command','save','option','project','value',[]);
-                    items(end+1) = struct('type','sep','label','','command','','option','', 'value',[]);
-                    items(end+1) = struct('type','label','label','Save Operating Conditions','command','','option','', 'value',[]);
-                    items(end+1) = struct('type','item','label','All','command','save','option','opercond-all','value',[]);
-                    items(end+1) = struct('type','item','label','Valid Only','command','save','option','opercond-valid','value',[]);
+                    items(end+1) = struct('Id','save-project','Label','Save Project','Icon','Save_Dirty_24.png','Shortcut','', 'Callback',@()obj.executeCommand('save','project',[]));
+                    items(end+1) = struct('Id','save-oper-all','Label','Save Operating Conditions - All','Icon','Save_Dirty_24.png','Shortcut','', 'Callback',@()obj.executeCommand('save','opercond-all',[]));
+                    items(end+1) = struct('Id','save-oper-valid','Label','Save Operating Conditions - Valid Only','Icon','Save_Dirty_24.png','Shortcut','', 'Callback',@()obj.executeCommand('save','opercond-valid',[]));
                 case 'menu-run'
-                    items(end+1) = struct('type','item','label','Run','command','run','option','run','value',[]);
-                    items(end+1) = struct('type','item','label','Run and Save','command','run','option','save','value',[]);
+                    items(end+1) = struct('Id','run-only','Label','Run','Icon','Run_24.png','Shortcut','', 'Callback',@()obj.executeCommand('run','run',[]));
+                    items(end+1) = struct('Id','run-save','Label','Run and Save','Icon','RunSave_24.png','Shortcut','', 'Callback',@()obj.executeCommand('run','save',[]));
                 case 'menu-table'
-                    items(end+1) = struct('type','item','label','Clear Table','command','table','option','clear','value',[]);
-                    items(end+1) = struct('type','sep','label','','command','','option','', 'value',[]);
-                    items(end+1) = struct('type','item','label','Export to MAT','command','table','option','export-mat','value',[]);
-                    items(end+1) = struct('type','item','label','Export to CSV','command','table','option','export-csv','value',[]);
-                    items(end+1) = struct('type','item','label','Export to M Script','command','table','option','export-m','value',[]);
+                    items(end+1) = struct('Id','table-clear','Label','Clear Table','Icon','Clean_16.png','Shortcut','', 'Callback',@()obj.executeCommand('table','clear',[]));
+                    items(end+1) = struct('Id','table-export-mat','Label','Export to MAT','Icon','Export_24.png','Shortcut','', 'Callback',@()obj.executeCommand('table','export-mat',[]));
+                    items(end+1) = struct('Id','table-export-csv','Label','Export to CSV','Icon','Export_24.png','Shortcut','', 'Callback',@()obj.executeCommand('table','export-csv',[]));
+                    items(end+1) = struct('Id','table-export-m','Label','Export to M Script','Icon','Export_24.png','Shortcut','', 'Callback',@()obj.executeCommand('table','export-m',[]));
                 case 'menu-report'
-                    items(end+1) = struct('type','item','label','PDF','command','report','option','pdf','value',[]);
-                    items(end+1) = struct('type','item','label','MS Word','command','report','option','word','value',[]);
+                    items(end+1) = struct('Id','report-pdf','Label','PDF','Icon','report_app_24.png','Shortcut','', 'Callback',@()obj.executeCommand('report','pdf',[]));
+                    items(end+1) = struct('Id','report-word','Label','MS Word','Icon','report_app_24.png','Shortcut','', 'Callback',@()obj.executeCommand('report','word',[]));
                 case 'menu-settings'
-                    items(end+1) = struct('type','item','label','Trim Settings...','command','settings','option','trim-settings','value',[]);
-                    items(end+1) = struct('type','sep','label','','command','','option','', 'value',[]);
-                    items(end+1) = struct('type','label','label','Plots Per Page (All)','command','','option','', 'value',[]);
-                    items(end+1) = struct('type','item','label','1','command','settings','option','plots-all','value',1);
-                    items(end+1) = struct('type','item','label','2','command','settings','option','plots-all','value',2);
-                    items(end+1) = struct('type','item','label','4','command','settings','option','plots-all','value',4);
-                    items(end+1) = struct('type','label','label','Requirements','command','','option','', 'value',[]);
-                    items(end+1) = struct('type','item','label','1','command','settings','option','plots-req','value',1);
-                    items(end+1) = struct('type','item','label','2','command','settings','option','plots-req','value',2);
-                    items(end+1) = struct('type','item','label','4','command','settings','option','plots-req','value',4);
-                    items(end+1) = struct('type','label','label','Post Simulation','command','','option','', 'value',[]);
-                    items(end+1) = struct('type','item','label','1','command','settings','option','plots-post','value',1);
-                    items(end+1) = struct('type','item','label','2','command','settings','option','plots-post','value',2);
-                    items(end+1) = struct('type','item','label','4','command','settings','option','plots-post','value',4);
+                    items(end+1) = struct('Id','settings-trim','Label','Trim Settings...','Icon','Settings_16.png','Shortcut','', 'Callback',@()obj.executeCommand('settings','trim-settings',[]));
+                    items(end+1) = struct('Id','settings-all-1','Label','Plots Per Page - All (1)','Icon','Figure_16.png','Shortcut','', 'Callback',@()obj.executeCommand('settings','plots-all',1));
+                    items(end+1) = struct('Id','settings-all-2','Label','Plots Per Page - All (2)','Icon','Figure_16.png','Shortcut','', 'Callback',@()obj.executeCommand('settings','plots-all',2));
+                    items(end+1) = struct('Id','settings-all-4','Label','Plots Per Page - All (4)','Icon','Figure_16.png','Shortcut','', 'Callback',@()obj.executeCommand('settings','plots-all',4));
+                    items(end+1) = struct('Id','settings-req-1','Label','Requirements Plots Per Page - 1','Icon','Figure_16.png','Shortcut','', 'Callback',@()obj.executeCommand('settings','plots-req',1));
+                    items(end+1) = struct('Id','settings-req-2','Label','Requirements Plots Per Page - 2','Icon','Figure_16.png','Shortcut','', 'Callback',@()obj.executeCommand('settings','plots-req',2));
+                    items(end+1) = struct('Id','settings-req-4','Label','Requirements Plots Per Page - 4','Icon','Figure_16.png','Shortcut','', 'Callback',@()obj.executeCommand('settings','plots-req',4));
+                    items(end+1) = struct('Id','settings-post-1','Label','Post Simulation Plots Per Page - 1','Icon','Figure_16.png','Shortcut','', 'Callback',@()obj.executeCommand('settings','plots-post',1));
+                    items(end+1) = struct('Id','settings-post-2','Label','Post Simulation Plots Per Page - 2','Icon','Figure_16.png','Shortcut','', 'Callback',@()obj.executeCommand('settings','plots-post',2));
+                    items(end+1) = struct('Id','settings-post-4','Label','Post Simulation Plots Per Page - 4','Icon','Figure_16.png','Shortcut','', 'Callback',@()obj.executeCommand('settings','plots-post',4));
                 otherwise
-                    items = struct('type',{},'label',{},'command',{},'option',{},'value',{});
+                    items = struct('Id',{},'Label',{},'Icon',{},'Shortcut',{},'Callback',{});
             end
-        end % buildMenuModel
+        end % buildDropdownItems
 
-        function onMenuAction(obj, cmd, option, value)
-            obj.executeCommand(cmd, option, value);
-            obj.closePopupMenu();
-        end % onMenuAction
 
-        function closePopupMenu(obj)
-            if ~isempty(obj.PopupPanel) && isvalid(obj.PopupPanel)
-                delete(obj.PopupPanel);
-            end
-            obj.PopupPanel = matlab.ui.container.Panel.empty;
-            fig = ancestor(obj.Parent,'figure');
-            if ~isempty(fig) && isgraphics(fig)
-                try, fig.WindowButtonDownFcn = obj.PopupPrevWBDFcn; catch, end
-                try, fig.WindowKeyPressFcn = obj.PopupPrevWKPFcn; catch, end
-            end
-            obj.PopupPrevWBDFcn = [];
-            obj.PopupPrevWKPFcn = [];
-        end % closePopupMenu
-
-        function onFigureButtonDown(obj, src, ~)
-            if isempty(obj.PopupPanel) || ~isvalid(obj.PopupPanel)
+        function dropdownDataHandler(obj, menuKey, data)
+            if nargin < 3 || isempty(data) || ~isstruct(data) || ~isfield(data,'type')
                 return;
             end
-            h = src.CurrentObject;
-            if isempty(h) || ~obj.isHandleDescendant(h, obj.PopupPanel)
-                obj.closePopupMenu();
+            switch string(data.type)
+                case "select"
+                    if isfield(data,'id')
+                        obj.invokeRibbonDropdownCallback(menuKey, char(data.id));
+                    end
+                case "close"
+                    obj.hideRibbonDropdown(menuKey);
             end
-        end % onFigureButtonDown
+        end % dropdownDataHandler
 
-        function onFigureKeyPress(obj, ~, evt)
+        function invokeRibbonDropdownCallback(obj, menuKey, itemId)
+            if nargin < 3 || isempty(itemId)
+                obj.hideRibbonDropdown(menuKey);
+                return;
+            end
+            if ~isstruct(obj.RibbonDropdowns) || ~isfield(obj.RibbonDropdowns, menuKey)
+                return;
+            end
+            entry = obj.RibbonDropdowns.(menuKey);
+            callbacks = entry.Callbacks;
+            if iscell(callbacks), callbacks = callbacks{1}; end
+            for idx = 1:numel(callbacks)
+                cbDef = callbacks(idx);
+                if isfield(cbDef,'Id') && strcmp(char(cbDef.Id), itemId)
+                    if isfield(cbDef,'Callback') && ~isempty(cbDef.Callback)
+                        try, cbDef.Callback(); catch err, warning('ToolRibbon:DropdownCallback','Error executing callback for %s: %s',itemId,err.message); end
+                    end
+                    break;
+                end
+            end
+            obj.hideRibbonDropdown(menuKey);
+        end % invokeRibbonDropdownCallback
+
+        function hideRibbonDropdown(obj, menuId)
+            if nargin < 2, return; end
+            menuKey = char(menuId);
+            if ~isstruct(obj.RibbonDropdowns)
+                obj.RibbonDropdowns = struct();
+            end
+            if isfield(obj.RibbonDropdowns, menuKey)
+                entry = obj.RibbonDropdowns.(menuKey);
+                if isstruct(entry) && isfield(entry,'Component')
+                    comp = entry.Component;
+                    if ~isempty(comp) && isvalid(comp)
+                        delete(comp);
+                    end
+                end
+                obj.RibbonDropdowns = rmfield(obj.RibbonDropdowns, menuKey);
+            end
+            if strcmp(obj.ActiveRibbonDropdown, menuKey)
+                obj.ActiveRibbonDropdown = '';
+            end
+            if isempty(fieldnames(obj.RibbonDropdowns))
+                obj.RibbonDropdowns = struct();
+                obj.restoreRibbonFigureCallback();
+            end
+        end % hideRibbonDropdown
+
+        function closeAllRibbonDropdowns(obj)
+            if ~isstruct(obj.RibbonDropdowns)
+                obj.RibbonDropdowns = struct();
+            else
+                keys = fieldnames(obj.RibbonDropdowns);
+                for idx = 1:numel(keys)
+                    entry = obj.RibbonDropdowns.(keys{idx});
+                    if isstruct(entry) && isfield(entry,'Component')
+                        comp = entry.Component; if ~isempty(comp) && isvalid(comp), delete(comp); end
+                    end
+                end
+                obj.RibbonDropdowns = struct();
+            end
+            obj.ActiveRibbonDropdown = '';
+            obj.restoreRibbonFigureCallback();
+        end % closeAllRibbonDropdowns
+
+        function setRibbonFigureCallback(obj)
+            fig = ancestor(obj.Parent,'figure');
+            if isempty(fig) || ~isgraphics(fig), return; end
+            if ~obj.RibbonDropdownOriginalFigureFcn.Stored
+                obj.RibbonDropdownOriginalFigureFcn = struct('Stored',true,'Value',fig.WindowButtonDownFcn);
+            end
+            fig.WindowButtonDownFcn = @(src,evt)obj.handleRibbonFigureClick(src,evt);
+        end % setRibbonFigureCallback
+
+        function restoreRibbonFigureCallback(obj)
+            fig = ancestor(obj.Parent,'figure');
+            if isempty(fig) || ~isgraphics(fig)
+                obj.RibbonDropdownOriginalFigureFcn = struct('Stored',false,'Value',[]);
+                return;
+            end
+            if obj.RibbonDropdownOriginalFigureFcn.Stored
+                fig.WindowButtonDownFcn = obj.RibbonDropdownOriginalFigureFcn.Value;
+            else
+                fig.WindowButtonDownFcn = [];
+            end
+            obj.RibbonDropdownOriginalFigureFcn = struct('Stored',false,'Value',[]);
+        end % restoreRibbonFigureCallback
+
+        function handleRibbonFigureClick(obj, src, evt)
+            if nargin < 2 || isempty(src)
+                src = ancestor(obj.Parent,'figure');
+            end
+            originalFcn = obj.RibbonDropdownOriginalFigureFcn;
+            clickPoint = [nan nan];
+            if ~isempty(src) && isgraphics(src) && isprop(src,'CurrentPoint')
+                clickPoint = src.CurrentPoint;
+            end
+            if all(isfinite(clickPoint)) && obj.isPointInsideDropdown(clickPoint)
+                obj.executeFigureCallback(originalFcn.Value, src, evt);
+                return;
+            end
+            obj.closeAllRibbonDropdowns();
+            obj.executeFigureCallback(originalFcn.Value, src, evt);
+        end % handleRibbonFigureClick
+
+        function inside = isPointInsideDropdown(obj, point)
+            inside = false;
+            if ~isstruct(obj.RibbonDropdowns), return; end
+            keys = fieldnames(obj.RibbonDropdowns);
+            for idx = 1:numel(keys)
+                entry = obj.RibbonDropdowns.(keys{idx});
+                if ~isstruct(entry) || ~isfield(entry,'Component'), continue; end
+                comp = entry.Component;
+                if isempty(comp) || ~isvalid(comp), continue; end
+                pos = comp.Position;
+                if point(1) >= pos(1) && point(1) <= pos(1)+pos(3) && point(2) >= pos(2) && point(2) <= pos(2)+pos(4)
+                    inside = true; return;
+                end
+            end
+        end % isPointInsideDropdown
+
+        function executeFigureCallback(~, callbackFcn, src, evt)
+            if isempty(callbackFcn), return; end
             try
-                key = evt.Key;
-            catch
-                key = '';
-            end
-            if ischar(key)
-                if strcmpi(key,'escape')
-                    obj.closePopupMenu();
+                if isa(callbackFcn,'function_handle')
+                    if nargin(callbackFcn) == 0, callbackFcn(); else, callbackFcn(src,evt); end
+                elseif iscell(callbackFcn) && ~isempty(callbackFcn)
+                    feval(callbackFcn{:}, src, evt);
+                elseif ischar(callbackFcn) || (isstring(callbackFcn) && isscalar(callbackFcn))
+                    feval(callbackFcn, src, evt);
                 end
-            elseif isstring(key)
-                if strcmpi(char(key),'escape')
-                    obj.closePopupMenu();
-                end
+            catch err
+                warning('ToolRibbon:FigureCallback','Error executing figure WindowButtonDownFcn: %s', err.message);
             end
-        end % onFigureKeyPress
+        end % executeFigureCallback
 
-        function tf = isHandleDescendant(~, h, parent)
-            tf = false;
-            while ~isempty(h) && isgraphics(h)
-                if isequal(h, parent)
-                    tf = true; return;
+
+
+
+
+        function html = buildRibbonDropdownHtml(~, items)
+            itemMarkup = cell(1,numel(items));
+            for idx = 1:numel(items)
+                labelText = escapeHtml(items(idx).Label);
+                shortcutText = '';
+                if isfield(items(idx),'Shortcut') && ~isempty(items(idx).Shortcut)
+                    shortcutText = escapeHtml(items(idx).Shortcut);
                 end
-                try
-                    h = h.Parent;
-                catch
-                    break
+                if isempty(shortcutText)
+                    shortcutText = '&nbsp;';
                 end
+                itemMarkup{idx} = sprintf(['<button class="menu-item" type="button" data-id="%s" title="%s">' ...
+                    '<span class="item-icon"><img src="%s" alt="" /></span>' ...
+                    '<span class="item-label">%s</span>' ...
+                    '<span class="item-shortcut">%s</span>' ...
+                    '</button>'], ...
+                    escapeHtml(items(idx).Id), labelText, items(idx).Icon, labelText, shortcutText);
             end
-        end % isHandleDescendant
+
+            styleBlock = strjoin({ ...
+                '<style>', ...
+                'html,body{margin:0;padding:0;background:transparent;font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;color:#1f1f1f;}', ...
+                '#dropdownRoot{position:absolute;inset:0;padding:6px 0;background:linear-gradient(180deg,#fbfbfc 0%,#d9dde3 100%);', ...
+                'border:1px solid #9ba1ac;border-radius:6px;box-shadow:0 8px 18px rgba(0,0,0,0.25);display:flex;flex-direction:column;gap:2px;}', ...
+                '.menu-item{display:flex;align-items:center;gap:10px;padding:6px 16px;border:0;background:transparent;font-size:12px;line-height:18px;color:#202126;cursor:pointer;text-align:left;}', ...
+                '.menu-item:hover{background:rgba(56,120,196,0.18);}', ...
+                '.menu-item:focus{outline:none;background:rgba(56,120,196,0.24);}', ...
+                '.item-icon{width:24px;display:flex;align-items:center;justify-content:center;}', ...
+                '.item-icon img{width:20px;height:20px;}', ...
+                '.item-label{flex:1;font-weight:500;}', ...
+                '.item-shortcut{display:flex;justify-content:flex-end;min-width:64px;color:#4d525a;font-size:11px;white-space:nowrap;}', ...
+                '</style>'},'');
+
+            scriptBlock = strjoin({ ...
+                '<script>', ...
+                'function setup(htmlComponent){', ...
+                'const root = document.getElementById("dropdownRoot");', ...
+                'if(!root){return;}', ...
+                'root.querySelectorAll(".menu-item").forEach(btn=>{', ...
+                'btn.addEventListener("click",()=>{', ...
+                'const id = btn.dataset.id;', ...
+                'htmlComponent.Data = {type:"select",id:id};', ...
+                '});', ...
+                '});', ...
+                'root.addEventListener("keydown",evt=>{', ...
+                'if(evt.key==="Escape"){htmlComponent.Data = {type:"close"};}});', ...
+                'root.focus();', ...
+                'document.addEventListener("wheel",evt=>evt.preventDefault(),{passive:false});', ...
+                '}', ...
+                '</script>'},'');
+
+            html = strjoin({ ...
+                '<!doctype html>', ...
+                '<html lang="en">', ...
+                '<head>', ...
+                '<meta charset="utf-8" />', ...
+                styleBlock, ...
+                '</head>', ...
+                '<body>', ...
+                '<div id="dropdownRoot" tabindex="0">', ...
+                strjoin(itemMarkup,''), ...
+                '</div>', ...
+                scriptBlock, ...
+                '</body>', ...
+                '</html>'},'');
+
+            function str = escapeHtml(text)
+                if nargin == 0 || isempty(text)
+                    str = '';
+                    return;
+                end
+                text = char(text);
+                str = strrep(text,'&','&amp;');
+                str = strrep(str,'<','&lt;');
+                str = strrep(str,'>','&gt;');
+                str = strrep(str,'"','&quot;');
+                str = strrep(str,char(39),'&#39;');
+            end
+        end % buildRibbonDropdownHtml
+
+        function dataUri = encodeRibbonIcon(~, iconName)
+            persistent iconCache iconBaseDir
+            if isempty(iconBaseDir)
+                thisDir = fileparts(mfilename('fullpath'));
+                iconBaseDir = fullfile(thisDir,'..','..','Resources');
+            end
+            if isempty(iconName)
+                dataUri = '';
+                return;
+            end
+            key = char(iconName);
+            if isempty(iconCache)
+                iconCache = containers.Map('KeyType','char','ValueType','char');
+            elseif isKey(iconCache,key)
+                dataUri = iconCache(key);
+                return;
+            end
+            fullPath = fullfile(iconBaseDir,key);
+            fid = fopen(fullPath,'rb');
+            if fid < 0
+                dataUri = '';
+                return;
+            end
+            cleaner = onCleanup(@()fclose(fid)); %#ok<NASGU>
+            raw = fread(fid,Inf,'*uint8');
+            dataUri = ['data:image/png;base64,' matlab.net.base64encode(raw')];
+            iconCache(key) = dataUri;
+        end % encodeRibbonIcon
 
         function value = extractNumericArg(~, args)
             value = [];
@@ -1250,7 +1436,7 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
     %% Method - Delete
     methods
         function delete(obj)
-            obj.closePopupMenu();
+            obj.closeAllRibbonDropdowns();
             if ~isempty(obj.ParentSizeListener) && isvalid(obj.ParentSizeListener)
                 delete(obj.ParentSizeListener);
             end
