@@ -268,9 +268,9 @@ classdef DYNMain < handle
             
             % Update Units
             if strcmp(obj.ToolObj.Units,'English - US')
-                obj.ToolObj.RibbonObj.UnitsSelComboBox.setSelectedIndex(0);
+                obj.ToolObj.RibbonObj.setUnitsSelectionIndex(0);
             else
-                obj.ToolObj.RibbonObj.UnitsSelComboBox.setSelectedIndex(1);
+                obj.ToolObj.RibbonObj.setUnitsSelectionIndex(1);
             end
 
             % Add correct parents to each object
