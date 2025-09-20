@@ -8,7 +8,7 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
 
     %% Public properties - Object Handles
     properties (Transient = true)
-        RibbonHtml matlab.ui.container.Html
+        RibbonHtml 
         ParentSizeListener event.listener
     end
 
@@ -848,7 +848,7 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
                 '    });'
                 '  }'
                 '  document.addEventListener("click", evt => {'
-                '    if(!evt.target.closest(".split")){
+                '    if(!evt.target.closest(".split")){'
                 '      closeMenus();'
                 '    }'
                 '  });'
