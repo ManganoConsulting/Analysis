@@ -267,11 +267,7 @@ classdef DYNMain < handle
             createView(obj.ToolObj,obj.Figure);
             
             % Update Units
-            if strcmp(obj.ToolObj.Units,'English - US')
-                obj.ToolObj.RibbonObj.UnitsSelComboBox.setSelectedIndex(0);
-            else
-                obj.ToolObj.RibbonObj.UnitsSelComboBox.setSelectedIndex(1);
-            end
+            setUnits(obj.ToolObj.RibbonObj, obj.ToolObj.Units);
 
             % Add correct parents to each object
             % Tree
