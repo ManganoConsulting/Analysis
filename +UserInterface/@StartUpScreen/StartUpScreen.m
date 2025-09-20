@@ -11,8 +11,8 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
         Parent
         Container
         
-        PreviousLabelComp
-        PreviousLabelCont
+        PreviousLabelComp matlab.ui.control.Label = matlab.ui.control.Label.empty
+        PreviousLabelCont matlab.ui.control.Label = matlab.ui.control.Label.empty
         
         PreviousListComp
         PreviousListScrollComp
@@ -29,8 +29,8 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
         %LoadLabelComp
         %LoadLabelCont
         
-        PropLabelComp
-        PropLabelCont
+        PropLabelComp matlab.ui.control.Label = matlab.ui.control.Label.empty
+        PropLabelCont matlab.ui.control.Label = matlab.ui.control.Label.empty
         JPropTableModel
         JPropTable
         JPropTableH
@@ -38,8 +38,8 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
         PropTableComp
         PropTableCont
       
-        PrefLabelComp
-        PrefLabelCont
+        PrefLabelComp matlab.ui.control.Label = matlab.ui.control.Label.empty
+        PrefLabelCont matlab.ui.control.Label = matlab.ui.control.Label.empty
         JPrefTableModel
         JPrefTable
         JPrefTableH
@@ -214,13 +214,15 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
             set(obj.Container,'ResizeFcn',@obj.reSize);
             
             % Previous Applications
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;Previous Projects</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.PreviousLabelComp,obj.PreviousLabelCont] = javacomponent(jLabelview,[ ], obj.Container );
+            obj.PreviousLabelComp = uilabel(obj.Container, ...
+                'Text',' Previous Projects', ...
+                'FontName','Courier New', ...
+                'FontColor',[1 1 1], ...
+                'BackgroundColor',[55 96 146]/255, ...
+                'HorizontalAlignment','left', ...
+                'VerticalAlignment','bottom', ...
+                'Position',[1 1 150 17]);
+            obj.PreviousLabelCont = obj.PreviousLabelComp;
             
             obj.PreviousListComp = javaObjectEDT('javax.swing.JEditorPane');
             obj.PreviousListComp.setEditable(false);
@@ -302,13 +304,15 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
             set(obj.Container,'ResizeFcn',@obj.reSizeEmbeddedView);
             
             % Previous Applications
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;Previous Projects</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.PreviousLabelComp,obj.PreviousLabelCont] = javacomponent(jLabelview,[ ], obj.Container );
+            obj.PreviousLabelComp = uilabel(obj.Container, ...
+                'Text',' Previous Projects', ...
+                'FontName','Courier New', ...
+                'FontColor',[1 1 1], ...
+                'BackgroundColor',[55 96 146]/255, ...
+                'HorizontalAlignment','left', ...
+                'VerticalAlignment','bottom', ...
+                'Position',[1 1 150 17]);
+            obj.PreviousLabelCont = obj.PreviousLabelComp;
             
             obj.PreviousListComp = javaObjectEDT('javax.swing.JEditorPane');
             obj.PreviousListComp.setEditable(false);
@@ -374,13 +378,15 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
 %             obj.LoadLabelComp.setVisible(false);
             
             % Prop Table Label
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;CURRENT PROJECT STATUS:</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.PropLabelComp,obj.PropLabelCont] = javacomponent(jLabelview,[ ], obj.Container );
+            obj.PropLabelComp = uilabel(obj.Container, ...
+                'Text',' CURRENT PROJECT STATUS:', ...
+                'FontName','Courier New', ...
+                'FontColor',[1 1 1], ...
+                'BackgroundColor',[55 96 146]/255, ...
+                'HorizontalAlignment','left', ...
+                'VerticalAlignment','bottom', ...
+                'Position',[1 1 350 25]);
+            obj.PropLabelCont = obj.PropLabelComp;
             
             % Current Project Properties Table
 %             tabledata = {'Name:','Project';...
@@ -404,13 +410,15 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
             [obj.PropTableComp,obj.PropTableCont] = javacomponent(obj.JPropScroll,[], obj.Container );
 
             % Prefrences Table Label
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;USER PREFERENCES</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.PrefLabelComp,obj.PrefLabelCont] = javacomponent(jLabelview,[ ], obj.Container );
+            obj.PrefLabelComp = uilabel(obj.Container, ...
+                'Text',' USER PREFERENCES', ...
+                'FontName','Courier New', ...
+                'FontColor',[1 1 1], ...
+                'BackgroundColor',[55 96 146]/255, ...
+                'HorizontalAlignment','left', ...
+                'VerticalAlignment','bottom', ...
+                'Position',[1 1 300 25]);
+            obj.PrefLabelCont = obj.PrefLabelComp;
 
 
             % Create the Tab
@@ -703,8 +711,13 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
         end % setRecentProjects
         
         function reSize( obj , ~ , ~ ) 
-            panelPos = getpixelposition(obj.Container); 
-            set(obj.PreviousLabelCont,'Units','Pixels','Position',[ 10 , panelPos(4)-50 , 150 , 17 ] );  
+            panelPos = getpixelposition(obj.Container);
+            if ~isempty(obj.PreviousLabelCont)
+                validPrevLabel = obj.PreviousLabelCont(isvalid(obj.PreviousLabelCont));
+                if ~isempty(validPrevLabel)
+                    set(validPrevLabel,'Position',[ 10 , panelPos(4)-50 , 150 , 17 ] );
+                end
+            end
             set(obj.PreviousListScrollCont,'Units','Pixels','Position',[ 10 , panelPos(4)-175 , 425 , 125 ] );  
             
 %             set(obj.NewButtonCont,'Units','Pixels','Position',[ 270 , panelPos(4)-100 , 150 , 25 ] ); 
@@ -726,13 +739,28 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
             set(obj.BrowseButtonCont,'Units','Pixels','Position',[ 175 , panelPos(4) - 50 , 150 , 25 ] ); 
             set(obj.ClearButtonCont,'Units','Pixels','Position',[ 325 , panelPos(4) - 50 , 150 , 25 ] ); 
             
-            set(obj.PreviousLabelCont,'Units','Pixels','Position',[ 25 , panelPos(4) - 100 , 350 , 25 ] );  
+            if ~isempty(obj.PreviousLabelCont)
+                validPrevLabel = obj.PreviousLabelCont(isvalid(obj.PreviousLabelCont));
+                if ~isempty(validPrevLabel)
+                    set(validPrevLabel,'Position',[ 25 , panelPos(4) - 100 , 350 , 25 ] );
+                end
+            end
             set(obj.PreviousListScrollCont,'Units','Pixels','Position',[ 25 , panelPos(4) - 325 , 350 , 225 ] );  
             
-            set(obj.PropLabelCont,'Units','Pixels','Position',[ 25 , panelPos(4) - 400 , 350 , 25 ] );
+            if ~isempty(obj.PropLabelCont)
+                validPropLabel = obj.PropLabelCont(isvalid(obj.PropLabelCont));
+                if ~isempty(validPropLabel)
+                    set(validPropLabel,'Position',[ 25 , panelPos(4) - 400 , 350 , 25 ] );
+                end
+            end
             set(obj.PropTableCont,'Units','Pixels','Position',[ 25 , panelPos(4) - 625 , 350 , 225 ] ); 
 
-            set(obj.PrefLabelCont,'Units','Pixels','Position',[ 400 , panelPos(4) - 100 , 650 , 25 ] );
+            if ~isempty(obj.PrefLabelCont)
+                validPrefLabel = obj.PrefLabelCont(isvalid(obj.PrefLabelCont));
+                if ~isempty(validPrefLabel)
+                    set(validPrefLabel,'Position',[ 400 , panelPos(4) - 100 , 650 , 25 ] );
+                end
+            end
             set(obj.PTHCont,'Units','Pixels','Position',[ 400 , panelPos(4) - 625 , 650 , 525 ] ); 
             
             
@@ -785,7 +813,7 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
 %             obj.Container
             
             % Java Properties
-            obj.PreviousLabelComp = [];
+            obj.PreviousLabelComp = matlab.ui.control.Label.empty;
             obj.PreviousListComp = [];
             obj.PreviousListScrollComp = [];
             obj.NewJButton = [];
@@ -793,13 +821,13 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
             obj.BrowseJButton = [];
             obj.BrowseButtonComp = [];
             %obj.LoadLabelComp = [];
-            obj.PropLabelComp = [];
+            obj.PropLabelComp = matlab.ui.control.Label.empty;
             obj.JPropTableModel = [];
             obj.JPropTable = [];
             obj.JPropTableH = [];
             obj.JPropScroll = [];
             obj.PropTableComp = [];
-            obj.PrefLabelComp = [];
+            obj.PrefLabelComp = matlab.ui.control.Label.empty;
             obj.JPrefTableModel = [];
             obj.JPrefTable = [];
             obj.JPrefTableH = [];
@@ -814,9 +842,10 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
             obj.ClearButtonComp = [];
             
             % Java wrappers
-            if ~isempty(obj.PreviousLabelCont) && ishandle(obj.PreviousLabelCont) && strcmp(get(obj.PreviousLabelCont, 'BeingDeleted'), 'off')
+            if ~isempty(obj.PreviousLabelCont) && all(isvalid(obj.PreviousLabelCont))
                 delete(obj.PreviousLabelCont)
             end
+            obj.PreviousLabelCont = matlab.ui.control.Label.empty;
             if ~isempty(obj.PreviousListScrollCont) && ishandle(obj.PreviousListScrollCont) && strcmp(get(obj.PreviousListScrollCont, 'BeingDeleted'), 'off')
                 delete(obj.PreviousListScrollCont)
             end
@@ -829,15 +858,17 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
 %             if ~isempty(obj.LoadLabelCont) && ishandle(obj.LoadLabelCont) && strcmp(get(obj.LoadLabelCont, 'BeingDeleted'), 'off')
 %                 delete(obj.LoadLabelCont)
 %             end
-            if ~isempty(obj.PropLabelCont) && ishandle(obj.PropLabelCont) && strcmp(get(obj.PropLabelCont, 'BeingDeleted'), 'off')
+            if ~isempty(obj.PropLabelCont) && all(isvalid(obj.PropLabelCont))
                 delete(obj.PropLabelCont)
             end
+            obj.PropLabelCont = matlab.ui.control.Label.empty;
             if ~isempty(obj.PropTableCont) && ishandle(obj.PropTableCont) && strcmp(get(obj.PropTableCont, 'BeingDeleted'), 'off')
                 delete(obj.PropTableCont)
             end
-            if ~isempty(obj.PrefLabelCont) && ishandle(obj.PrefLabelCont) && strcmp(get(obj.PrefLabelCont, 'BeingDeleted'), 'off')
+            if ~isempty(obj.PrefLabelCont) && all(isvalid(obj.PrefLabelCont))
                 delete(obj.PrefLabelCont)
             end
+            obj.PrefLabelCont = matlab.ui.control.Label.empty;
             if ~isempty(obj.PTHCont) && ishandle(obj.PTHCont) && strcmp(get(obj.PTHCont, 'BeingDeleted'), 'off')
                 delete(obj.PTHCont)
             end

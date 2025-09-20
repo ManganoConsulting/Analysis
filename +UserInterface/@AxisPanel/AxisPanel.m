@@ -6,8 +6,8 @@ classdef AxisPanel < matlab.mixin.Copyable & hgsetget
         Panel
         Axis
         Title
-        LabelComp
-        LabelCont
+        LabelComp matlab.ui.control.Label = matlab.ui.control.Label.empty
+        LabelCont matlab.ui.control.Label = matlab.ui.control.Label.empty
     end % Public properties
   
     %% Private properties
@@ -113,7 +113,11 @@ classdef AxisPanel < matlab.mixin.Copyable & hgsetget
         end % Units -Get
         
         function y = get.HTMLTitle(obj)
-            y = ['<html><font color="black" face="Courier New" size = 10 >&nbsp;',obj.Title,'</html>'];
+            if isempty(obj.Title)
+                y = '';
+            else
+                y = [' ', obj.Title];
+            end
         end % HTMLTitle
         
     end % Property access methods
@@ -121,9 +125,11 @@ classdef AxisPanel < matlab.mixin.Copyable & hgsetget
     %% Methods - Ordinary
     methods 
       
-        function setTitle( obj , title ) 
+        function setTitle( obj , title )
             obj.Title = title;
-            obj.LabelComp.setText(obj.HTMLTitle)
+            if ~isempty(obj.LabelComp) && isvalid(obj.LabelComp)
+                obj.LabelComp.Text = obj.HTMLTitle;
+            end
         end % setTitle
         
         function reSize( obj , ~ , ~ )
@@ -343,16 +349,17 @@ classdef AxisPanel < matlab.mixin.Copyable & hgsetget
                 
                 
 %             labelStr = '<html><font color="black" face="Courier New" size = 10 >&nbsp;Status Window</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',obj.HTMLTitle);
-%             JLabel label = new JLabel("Label");
-            jLabelview.setUI(VerticalLabelUI());
-            
-            jLabelview.setOpaque(true);
-%             jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-%             jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.LabelComp,obj.LabelCont] = javacomponent(jLabelview,[], obj.Panel );
-            set(obj.LabelCont,'Units','Normal','Position',[ 0 , 0 , offset , 1 ]);
+            obj.LabelComp = uilabel(obj.Panel, ...
+                'Text',obj.HTMLTitle, ...
+                'FontName','Courier New', ...
+                'FontSize',10, ...
+                'FontColor',[0 0 0], ...
+                'BackgroundColor',obj.Panel.BackgroundColor, ...
+                'HorizontalAlignment','center', ...
+                'VerticalAlignment','center', ...
+                'WordWrap','on', ...
+                'Position',[ 0 , 0 , offset , 1 ]);
+            obj.LabelCont = obj.LabelComp;
                
          
 %             end

@@ -24,14 +24,14 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
         Filter3Label_tb
         Filter4Label_tb
         
-        ColFilt1LabelComp
-        ColFilt1LabelCont
-        ColFilt2LabelComp
-        ColFilt2LabelCont
-        ColFilt3LabelComp
-        ColFilt3LabelCont
-        ColFilt4LabelComp
-        ColFilt4LabelCont
+        ColFilt1LabelComp matlab.ui.control.Label = matlab.ui.control.Label.empty
+        ColFilt1LabelCont matlab.ui.control.Label = matlab.ui.control.Label.empty
+        ColFilt2LabelComp matlab.ui.control.Label = matlab.ui.control.Label.empty
+        ColFilt2LabelCont matlab.ui.control.Label = matlab.ui.control.Label.empty
+        ColFilt3LabelComp matlab.ui.control.Label = matlab.ui.control.Label.empty
+        ColFilt3LabelCont matlab.ui.control.Label = matlab.ui.control.Label.empty
+        ColFilt4LabelComp matlab.ui.control.Label = matlab.ui.control.Label.empty
+        ColFilt4LabelCont matlab.ui.control.Label = matlab.ui.control.Label.empty
     end
     
     %% Public properties - Observable Data Storage
@@ -138,13 +138,15 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
             %sepPixels = (parentPos(4)-(27))/5;
 
             % Row 1
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;Column Filter 1</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.ColFilt1LabelComp,obj.ColFilt1LabelCont] = javacomponent(jLabelview,[], parent );
+            obj.ColFilt1LabelComp = uilabel(parent, ...
+                'Text',' Column Filter 1', ...
+                'FontName','Courier New', ...
+                'FontColor',[1 1 1], ...
+                'BackgroundColor',[55 96 146]/255, ...
+                'HorizontalAlignment','left', ...
+                'VerticalAlignment','bottom', ...
+                'Position',[1 1 189 15]);
+            obj.ColFilt1LabelCont = obj.ColFilt1LabelComp;
 %             obj.Filter1Label_tb = uicontrol(...
 %                 'Parent',parent,...
 %                 'Style','text',...
@@ -178,13 +180,15 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
                 'Callback',@obj.filterRange1_CB);
             
             % Row 2
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;Column Filter 2</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.ColFilt2LabelComp,obj.ColFilt2LabelCont] = javacomponent(jLabelview,[], parent );
+            obj.ColFilt2LabelComp = uilabel(parent, ...
+                'Text',' Column Filter 2', ...
+                'FontName','Courier New', ...
+                'FontColor',[1 1 1], ...
+                'BackgroundColor',[55 96 146]/255, ...
+                'HorizontalAlignment','left', ...
+                'VerticalAlignment','bottom', ...
+                'Position',[1 1 189 15]);
+            obj.ColFilt2LabelCont = obj.ColFilt2LabelComp;
 %             obj.Filter2Label_tb = uicontrol(...
 %                 'Parent',parent,...
 %                 'Style','text',...
@@ -219,13 +223,15 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
                 'Callback',@obj.filterRange2_CB);
             
             % Row 3
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;Column Filter 3</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.ColFilt3LabelComp,obj.ColFilt3LabelCont] = javacomponent(jLabelview,[], parent );
+            obj.ColFilt3LabelComp = uilabel(parent, ...
+                'Text',' Column Filter 3', ...
+                'FontName','Courier New', ...
+                'FontColor',[1 1 1], ...
+                'BackgroundColor',[55 96 146]/255, ...
+                'HorizontalAlignment','left', ...
+                'VerticalAlignment','bottom', ...
+                'Position',[1 1 189 15]);
+            obj.ColFilt3LabelCont = obj.ColFilt3LabelComp;
 %             obj.Filter3Label_tb = uicontrol(...
 %                 'Parent',parent,...
 %                 'Style','text',...
@@ -260,13 +266,15 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
                 'Callback',@obj.filterRange3_CB);
             
             % Row 4
-            labelStr = '<html><font color="white" face="Courier New">&nbsp;Column Filter 4</html>';
-            jLabelview = javaObjectEDT('javax.swing.JLabel',labelStr);
-            jLabelview.setOpaque(true);
-            jLabelview.setBackground(java.awt.Color(int32(55),int32(96),int32(146)));
-            jLabelview.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-            jLabelview.setVerticalAlignment(javax.swing.SwingConstants.BOTTOM);
-            [obj.ColFilt4LabelComp,obj.ColFilt4LabelCont] = javacomponent(jLabelview,[], parent );
+            obj.ColFilt4LabelComp = uilabel(parent, ...
+                'Text',' Column Filter 4', ...
+                'FontName','Courier New', ...
+                'FontColor',[1 1 1], ...
+                'BackgroundColor',[55 96 146]/255, ...
+                'HorizontalAlignment','left', ...
+                'VerticalAlignment','bottom', ...
+                'Position',[1 1 189 15]);
+            obj.ColFilt4LabelCont = obj.ColFilt4LabelComp;
 %             obj.Filter4Label_tb = uicontrol(...
 %                 'Parent',parent,...
 %                 'Style','text',...
@@ -1041,8 +1049,7 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
         function initSize( obj )
 
             % Row 1
-            set(obj.ColFilt1LabelCont,'Units','Pixels',...
-                'Position',[5   299   189    15]);
+            set(obj.ColFilt1LabelCont,'Position',[5   299   189    15]);
 %             set(obj.Filter1Label_tb,'Units','Pixels',...
 %                 'Position',[5   299   189    15]);
             
@@ -1058,8 +1065,7 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
             
             
             % Row 2
-            set(obj.ColFilt2LabelCont,'Units','Pixels',...
-                'Position',[5   219   189    15]);     
+            set(obj.ColFilt2LabelCont,'Position',[5   219   189    15]);
 %             set(obj.Filter2Label_tb,'Units','Pixels',...
 %                 'Position',[ 5   219   189    15]);
             
@@ -1073,8 +1079,7 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
                 'Position',[ 104.5000  169.0000   89.5000   22.0000 ]);
             
             % Row 3
-            set(obj.ColFilt3LabelCont,'Units','Pixels',...
-                'Position',[5   139   189    15]);
+            set(obj.ColFilt3LabelCont,'Position',[5   139   189    15]);
 %             set(obj.Filter3Label_tb,'Units','Pixels',...
 %                 'Position',[  5   139   189    15 ]);
           
@@ -1088,8 +1093,7 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
                 'Position',[ 104.5000   89.0000   89.5000   22.0000 ]);
             
             % Row 4
-            set(obj.ColFilt4LabelCont,'Units','Pixels',...
-                'Position',[5   59   189    15]);
+            set(obj.ColFilt4LabelCont,'Position',[5   59   189    15]);
 %             set(obj.Filter4Label_tb,'Units','Pixels',...
 %                 'Position',[  5    59   189    15 ]);
           
@@ -1143,8 +1147,7 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
             sepDist = 15;
 
             % Row 1
-            set(obj.ColFilt1LabelCont,'Units','Pixels',...
-                'Position',[ 5 , parentPos(4) - 15 , parentPos(3) - 10 , 15 ]);
+            set(obj.ColFilt1LabelCont,'Position',[ 5 , parentPos(4) - 15 , parentPos(3) - 10 , 15 ]);
             
             set(obj.FilterVar1_pm,'Units','Pixels',...
                 'Position',[ 5 , parentPos(4) - 40 , parentPos(3) - 10 , 22 ]);
@@ -1158,8 +1161,7 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
             
             
             % Row 2
-            set(obj.ColFilt2LabelCont,'Units','Pixels',...
-                'Position',[ 5 , parentPos(4) - groupDist - sepDist - 15 , parentPos(3) - 10 , 15 ]);
+            set(obj.ColFilt2LabelCont,'Position',[ 5 , parentPos(4) - groupDist - sepDist - 15 , parentPos(3) - 10 , 15 ]);
             
             set(obj.FilterVar2_pm,'Units','Pixels',...
                 'Position',[ 5 , (parentPos(4) - groupDist - sepDist - 40), parentPos(3) - 10 , 22 ]);
@@ -1171,8 +1173,7 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
                 'Position',[ ((parentPos(3)/2) + 5) , (parentPos(4) - groupDist - sepDist - 65) , ((parentPos(3)/2) - 10) , 22 ]);
             
             % Row 3
-            set(obj.ColFilt3LabelCont,'Units','Pixels',...
-                'Position',[ 5 , (parentPos(4) - groupDist*2 - sepDist*2 - 15) , parentPos(3) - 10 , 15 ]);
+            set(obj.ColFilt3LabelCont,'Position',[ 5 , (parentPos(4) - groupDist*2 - sepDist*2 - 15) , parentPos(3) - 10 , 15 ]);
           
             set(obj.FilterVar3_pm,'Units','Pixels',...
                 'Position',[ 5 , (parentPos(4) - groupDist*2 - sepDist*2 - 40) , parentPos(3) - 10 , 22 ]);
@@ -1184,8 +1185,7 @@ classdef ColumnFilter < matlab.mixin.Copyable & UserInterface.GraphicsObject
                 'Position',[ ((parentPos(3)/2) + 5) , (parentPos(4) - groupDist*2 - sepDist*2 - 65) , ((parentPos(3)/2) - 10) , 22 ]);
             
             % Row 4
-            set(obj.ColFilt4LabelCont,'Units','Pixels',...
-                'Position',[ 5 , (parentPos(4) - groupDist*3 - sepDist*3 - 15) , parentPos(3) - 10 , 15 ]);
+            set(obj.ColFilt4LabelCont,'Position',[ 5 , (parentPos(4) - groupDist*3 - sepDist*3 - 15) , parentPos(3) - 10 , 15 ]);
           
             set(obj.FilterVar4_pm,'Units','Pixels',...
                 'Position',[ 5 , (parentPos(4) - groupDist*3 - sepDist*3 - 40) , parentPos(3) - 10 , 22 ]);
