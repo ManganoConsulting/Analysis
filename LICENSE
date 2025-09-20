@@ -1,0 +1,5 @@
+This repository retains the licensing terms that govern the original MATLAB
+application. The original project ships with "License Instructions.docx" in the
+repository root; those terms continue to apply to the new Python sources added
+as part of the PySide6 migration. Consult that document (or contact the project
+maintainers) for full licensing details.
