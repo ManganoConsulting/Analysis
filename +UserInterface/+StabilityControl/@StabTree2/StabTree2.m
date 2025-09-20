@@ -8,9 +8,9 @@ classdef StabTree2 < handle
 
     %% Public properties - Object Handles
     properties (Transient = true)
-        TreeObj matlab.ui.container.Tree
-        AnalysisNode matlab.ui.container.TreeNode
-        TreeContextMenu matlab.ui.container.ContextMenu
+        TreeObj 
+        AnalysisNode 
+        TreeContextMenu 
         LastContextNode
     end
 

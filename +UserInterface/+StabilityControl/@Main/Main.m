@@ -3162,7 +3162,6 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             
             mpPos = getpixelposition(obj.MainPanel);
             if ~isempty(obj.ProjectLabelCont) && all(isvalid(obj.ProjectLabelCont))
-                obj.ProjectLabelCont.Units = 'Pixels';
                 obj.ProjectLabelCont.Position = [ 2 , mpPos(4) - 16 , 198 , 16 ];
             end
             
