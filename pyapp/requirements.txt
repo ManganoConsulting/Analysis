@@ -1,0 +1,9 @@
+# External dependencies inferred from imports in pyapp
+matplotlib
+numpy
+pandas
+PySide6
+
+# Optional (not on PyPI): MATLAB Engine for Python
+# Install via MATLAB: https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html
+# Provides the `matlab` and `matlab.engine` modules
