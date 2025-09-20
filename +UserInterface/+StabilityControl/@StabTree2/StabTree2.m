@@ -202,8 +202,24 @@ classdef StabTree2 < handle
             end
         end
 
-        function [selObjs, selLA] = getSelectedMassPropObjs(~)
+        function [selObjs, selLA] = getSelectedMassPropObjs(obj)
             selObjs = lacm.MassProperties.empty; selLA = [];
+            aNode = obj.SelectedAnalysisNode;
+            if isempty(aNode) || ~isvalid(aNode)
+                return;
+            end
+            massNode = obj.findChildByText(aNode,'Mass Properties');
+            if isempty(massNode) || isempty(massNode.Children)
+                return;
+            end
+            kids = massNode.Children;
+            mask = obj.areNodesChecked(kids);
+            objs = [kids.UserData];
+            % Preserve order
+            selObjs = objs(mask);
+            if nargout > 1
+                selLA = mask;
+            end
         end
 
         function selObjs = getConstantsFile(~)
@@ -225,7 +241,15 @@ classdef StabTree2 < handle
                 aNode = uitreenode(parentNode,'Text',an.Title,'NodeData',2001,'UserData',an);
                 obj.setNodeChecked(aNode,true);
                 obj.buildAnalysisChildren(aNode, an);
+                % Notify added and mass properties available
                 notify(obj,'AnalysisObjectAdded',UserInterface.UserInterfaceEventData(an));
+                try
+                    aIdx = find(obj.AnalysisNode.Children == aNode,1);
+                    if ~isempty(aIdx) && isprop(an,'MassProperties')
+                        notify(obj,'MassPropertyAdded',UserInterface.UserInterfaceEventData(struct('Index',aIdx,'MassProperty',an.MassProperties)));
+                    end
+                catch
+                end
             end
             notify(obj,'SaveProjectEvent');
         end
@@ -317,6 +341,47 @@ classdef StabTree2 < handle
             notify(obj,'BatchNodesRemoved',UserInterface.UserInterfaceEventData(-1));
         end
 
+        function launchMPGUI(obj, ~, ~)
+            aNode = obj.SelectedAnalysisNode;
+            if isempty(aNode) || ~isvalid(aNode)
+                return;
+            end
+            massNode = obj.findChildByText(aNode,'Mass Properties');
+            if isempty(massNode) || isempty(massNode.Children)
+                return;
+            end
+            kids = massNode.Children;
+            massProps = [kids.UserData];
+            selLA = obj.areNodesChecked(kids);
+            mpg = UserInterface.StabilityControl.MassPropGUI(massProps, selLA);
+            addlistener(mpg,'MassPropertyGUIChanged',@(~,e) obj.massPropChangedByGUI(massNode,e));
+            addlistener(mpg,'FigureClosed',@(varargin) 0);
+        end
+
+        function massPropChangedByGUI(obj, massNode, eventdata)
+            if isempty(massNode) || isempty(massNode.Children)
+                return;
+            end
+            kids = massNode.Children;
+            sel = eventdata.Object;
+            sel = logical(sel(:)');
+            for i = 1:min(numel(kids), numel(sel))
+                obj.setNodeChecked(kids(i), sel(i));
+            end
+            % Update parent state
+            obj.updateAllParentStates();
+            % Notify for downstream updates
+            try
+                aNode = massNode.Parent;
+                idx = find(obj.AnalysisNode.Children == aNode,1);
+                if ~isempty(idx)
+                    notify(obj,'SelectedPropChanged',UserInterface.UserInterfaceEventData(obj.getSelectedMassPropObjs()));
+                    notify(obj,'MassPropertyAdded',UserInterface.UserInterfaceEventData(struct('Index',idx,'MassProperty',[kids.UserData])));
+                end
+            catch
+            end
+        end
+
         function removeBatchNodes_CB(obj, ~, ~, treeNode)
             if isempty(treeNode) || ~isvalid(treeNode)
                 return;
@@ -353,8 +418,74 @@ classdef StabTree2 < handle
             end
         end
 
+        function onTreeContextMenuOpening(obj, menu, ~)
+            if isempty(menu) || ~isvalid(menu)
+                return;
+            end
+            delete(menu.Children);
+            node = obj.LastContextNode;
+            if isempty(node) || ~isvalid(node)
+                if ~isempty(obj.TreeObj.SelectedNodes)
+                    node = obj.TreeObj.SelectedNodes(1);
+                else
+                    return;
+                end
+            end
+            % Attach for subsequent actions
+            obj.LastContextNode = node;
+
+            % Root-level: Analysis Task
+            if node == obj.AnalysisNode
+                uimenu(menu,'Text','Insert Analysis Task from file...','MenuSelectedFcn',@(~,~) obj.ctxInsertAnalysisFromFile());
+                uimenu(menu,'Text','Create New Analysis','MenuSelectedFcn',@(~,~) notify(obj,'NewAnalysis'));
+                uimenu(menu,'Separator','on','Text','Remove all','MenuSelectedFcn',@(~,~) obj.ctxRemoveAllAnalyses());
+                return;
+            end
+
+            % Analysis node
+            if ~isempty(node.Parent) && node.Parent == obj.AnalysisNode
+                uimenu(menu,'Text','Edit...','MenuSelectedFcn',@(~,~) obj.ctxOpenAnalysis(node));
+                uimenu(menu,'Text','Save as...','MenuSelectedFcn',@(~,~) obj.ctxSaveAnalysis(node));
+                uimenu(menu,'Text','Remove','Separator','on','MenuSelectedFcn',@(~,~) obj.ctxRemoveAnalysis(node));
+                return;
+            end
+
+            % Group nodes
+            switch node.Text
+                case 'Batch runs'
+                    uimenu(menu,'Text','Remove all','MenuSelectedFcn',@(~,~) obj.removeAllBatchNodes_CB([],[],node));
+                case 'Mass Properties'
+                    uimenu(menu,'Text','Open Mass Properties...','MenuSelectedFcn',@(~,~) obj.launchMPGUI());
+                    uimenu(menu,'Text','Select All','Separator','on','MenuSelectedFcn',@(~,~) obj.setNodesChecked(node.Children,true));
+                    uimenu(menu,'Text','Unselect All','MenuSelectedFcn',@(~,~) obj.setNodesChecked(node.Children,false));
+                case 'Trim Definition'
+                    % no-op
+                case 'Requirement'
+                    % no-op
+                case 'Simulation'
+                    % no-op
+            end
+
+            % Leaf actions by NodeData
+            if isprop(node,'NodeData') && ~isempty(node.NodeData)
+                switch node.NodeData
+                    case 3002 % model under Trim Definition
+                        uimenu(menu,'Text','Open Model','MenuSelectedFcn',@(~,~) obj.ctxOpenModel(node));
+                        uimenu(menu,'Text','Compile/Release Model','MenuSelectedFcn',@(~,~) obj.ctxToggleCompileModel(node));
+                    case 3202 % model under Requirement/Simulation
+                        uimenu(menu,'Text','Open Model','MenuSelectedFcn',@(~,~) obj.ctxOpenModel(node));
+                    case 3203 % method under Requirement
+                        uimenu(menu,'Text','Open Method','MenuSelectedFcn',@(~,~) obj.ctxOpenMethod(node));
+                end
+            end
+        end
+
         function onTreeCheckedChanged(obj, ~, ~)
-            % noop; placeholder for future propagation logic
+            % Update parent states based on child check states to emulate
+            % mixed-state propagation. MATLAB uitree does not display a
+            % tri-state UI, but parents will be checked only when all
+            % children are checked.
+            obj.updateAllParentStates();
         end
 
         function configureTreeContextMenu(obj)
@@ -363,7 +494,10 @@ classdef StabTree2 < handle
                 obj.TreeContextMenu = [];
                 return;
             end
-            obj.TreeContextMenu = uicontextmenu(fig);
+            if ~isempty(obj.TreeContextMenu) && isvalid(obj.TreeContextMenu)
+                delete(obj.TreeContextMenu);
+            end
+            obj.TreeContextMenu = uicontextmenu(fig,'ContextMenuOpeningFcn',@(m,e) obj.onTreeContextMenuOpening(m,e));
             obj.TreeObj.ContextMenu = obj.TreeContextMenu;
         end
 
@@ -427,6 +561,7 @@ classdef StabTree2 < handle
             lmNode    = uitreenode(aNode,'Text','Linear Model Definition','NodeData',2102);
             reqNode   = uitreenode(aNode,'Text','Requirement','NodeData',2103);
             simNode   = uitreenode(aNode,'Text','Simulation','NodeData',2104);
+            massNode  = uitreenode(aNode,'Text','Mass Properties','NodeData',2106);
             batchNode = uitreenode(aNode,'Text','Batch runs','NodeData',2105);
             %#ok<NASGU>
             % Populate from analysis object contents if present
@@ -467,6 +602,25 @@ classdef StabTree2 < handle
             catch
             end
             try
+                % Mass Properties branch
+                if isprop(an,'MassProperties') && ~isempty(an.MassProperties)
+                    mp = an.MassProperties;
+                    for i = 1:numel(mp)
+                        label = mp(i).Label;
+                        if isempty(label)
+                            try
+                                label = mp(i).WeightCode;
+                            catch
+                                label = sprintf('MassProperty %d', i);
+                            end
+                        end
+                        mNode = uitreenode(massNode,'Text',label,'NodeData',3401,'UserData',mp(i));
+                        obj.setNodeChecked(mNode,true);
+                    end
+                end
+            catch
+            end
+            try
                 % Batch runs from SavedTaskCollectionObjBatch
                 if ~isempty(an.SavedTaskCollectionObjBatch) && ~isempty(an.SavedTaskCollectionObjBatch.TrimTaskCollObj)
                     for i = 1:numel(an.SavedTaskCollectionObjBatch.TrimTaskCollObj)
@@ -474,6 +628,14 @@ classdef StabTree2 < handle
                         tNode = uitreenode(batchNode,'Text',label,'NodeData',4100,'UserData',an.SavedTaskCollectionObjBatch.TrimTaskCollObj(i).UUID);
                         obj.setNodeChecked(tNode,true);
                     end
+                end
+            catch
+            end
+            % Notify mass properties availability for this analysis index
+            try
+                idx = find(obj.AnalysisNode.Children == aNode,1);
+                if ~isempty(idx) && isprop(an,'MassProperties')
+                    notify(obj,'MassPropertyAdded',UserInterface.UserInterfaceEventData(struct('Index',idx,'MassProperty',an.MassProperties)));
                 end
             catch
             end
@@ -485,6 +647,53 @@ classdef StabTree2 < handle
                 return;
             end
             m = obj.areNodesChecked(node.Children);
+        end
+
+        function setNodesChecked(obj, nodes, value)
+            if isempty(nodes)
+                return;
+            end
+            value = logical(value);
+            for k = 1:numel(nodes)
+                obj.setNodeChecked(nodes(k), value);
+                if ~isempty(nodes(k).Children)
+                    obj.setNodesChecked(nodes(k).Children, value);
+                end
+            end
+            obj.updateAllParentStates();
+        end
+
+        function updateAllParentStates(obj)
+            % Walk all analysis nodes and update parent states based on
+            % children. Parent is checked only when all children are checked.
+            if isempty(obj.AnalysisNode) || isempty(obj.AnalysisNode.Children)
+                return;
+            end
+            aKids = obj.AnalysisNode.Children;
+            for i = 1:numel(aKids)
+                obj.updateNodeParentStateRec(aKids(i));
+            end
+        end
+
+        function updateNodeParentStateRec(obj, node)
+            % Post-order traversal: update children first
+            for k = 1:numel(node.Children)
+                obj.updateNodeParentStateRec(node.Children(k));
+            end
+            children = node.Children;
+            if isempty(children)
+                return;
+            end
+            states = obj.areNodesChecked(children);
+            if all(states)
+                obj.setNodeChecked(node,true);
+            elseif any(states)
+                % Mixed: parent visually unchecked (no tri-state), but we
+                % could set a partial icon if desired.
+                obj.setNodeChecked(node,false);
+            else
+                obj.setNodeChecked(node,false);
+            end
         end
 
         function tf = areNodesChecked(obj,nodes)
@@ -559,6 +768,135 @@ classdef StabTree2 < handle
                 end
             catch
             end
+        end
+    end
+
+    %% Context menu actions (private)
+    methods (Access = private)
+        function ctxInsertAnalysisFromFile(obj)
+            [filename, pathname] = uigetfile({'*.mat'},'Select Analysis Task file',obj.BrowseStartDir,'MultiSelect','on');
+            drawnow(); pause(0.1);
+            if isequal(filename,0), return; end
+            if ~iscell(filename), filename = {filename}; end
+            for k = 1:numel(filename)
+                s = load(fullfile(pathname,filename{k}));
+                fn = fieldnames(s);
+                for j = 1:numel(fn)
+                    val = s.(fn{j});
+                    if isa(val,'lacm.AnalysisTask')
+                        obj.insertAnalysisObj_CB([],[],obj.AnalysisNode,[],val);
+                    end
+                end
+            end
+        end
+
+        function ctxRemoveAllAnalyses(obj)
+            kids = obj.AnalysisNode.Children;
+            if isempty(kids)
+                return;
+            end
+            idx = 1:numel(kids);
+            delete(kids);
+            notify(obj,'AnalysisObjectDeleted',UserInterface.UserInterfaceEventData(idx));
+        end
+
+        function ctxOpenAnalysis(obj, node)
+            try
+                reqDefObj = node.UserData;
+                reqEditObj = UserInterface.ObjectEditor.Editor('EditInProject',true,'Requirement',reqDefObj);
+                addlistener(reqEditObj,'ObjectLoaded',@(src,event) obj.ctxAnalysisEdited(node,event));
+            catch
+            end
+        end
+
+        function ctxSaveAnalysis(obj, node)
+            try
+                reqDefObj = node.UserData; %#ok<NASGU>
+                [filename, pathname] = uiputfile({'*.mat'},'Save Analysis Object','Analysis');
+                drawnow(); pause(0.1);
+                if isequal(filename,0), return; end
+                analysisObj = reqDefObj; %#ok<NASGU>
+                save(fullfile(pathname,filename),'analysisObj');
+                parentNode=node.Parent; idx = find(parentNode.Children==node,1)-1; %#ok<NASGU>
+                notify(obj,'AnalysisObjectSaved',UserInterface.UserInterfaceEventData({reqDefObj,idx}));
+            catch
+            end
+        end
+
+        function ctxRemoveAnalysis(obj, node)
+            parentNode = node.Parent;
+            idx = find(parentNode.Children == node,1);
+            delete(node);
+            if ~isempty(idx)
+                notify(obj,'AnalysisObjectDeleted',UserInterface.UserInterfaceEventData(idx));
+            end
+        end
+
+        function ctxOpenModel(~, node)
+            mdlName = '';
+            if ~isempty(node.UserData) && ischar(node.UserData)
+                mdlName = node.UserData;
+            else
+                mdlName = node.Text;
+            end
+            if ~isempty(mdlName)
+                try, open_system(mdlName); catch, end
+            end
+        end
+
+        function ctxToggleCompileModel(obj, node)
+            mdlName = '';
+            if ~isempty(node.UserData) && ischar(node.UserData)
+                mdlName = node.UserData;
+            else
+                mdlName = node.Text;
+            end
+            if isempty(mdlName), return; end
+            try
+                if ~bdIsLoaded(mdlName)
+                    load_system(mdlName);
+                end
+                simStat = get_param(mdlName,'SimulationStatus');
+                if strcmp(simStat,'paused')
+                    feval(mdlName,[],[],[],'term');
+                else
+                    feval(mdlName,[],[],[],'compile');
+                end
+                % Update any title if needed (not rendering HTML here)
+                % Re-evaluate parent states
+                obj.updateAllParentStates();
+            catch
+            end
+        end
+
+        function ctxOpenMethod(~, node)
+            try
+                edit(node.Text);
+            catch
+            end
+        end
+
+        function ctxAnalysisEdited(obj, node, eventdata)
+            try
+                node.UserData = eventdata.Object;
+                node.Text = eventdata.Object.Title;
+                % Rebuild children
+                delete(node.Children);
+                obj.buildAnalysisChildren(node, eventdata.Object);
+                % Notify edited
+                parentNode = node.Parent;
+                idx = find(parentNode.Children==node,1)-1;
+                notify(obj,'AnalysisObjectEdited',UserInterface.UserInterfaceEventData({eventdata.Object,idx}));
+                notify(obj,'SaveProjectEvent');
+            catch
+            end
+        end
+
+        % Compatibility no-op: update any model compiled state visuals
+        function setColor4MdlCompiledState(obj, varargin)
+            %#ok<*INUSD>
+            % Not visually represented in uitree; ensure tree remains valid
+            obj.updateAllParentStates();
         end
     end
 end

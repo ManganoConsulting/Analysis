@@ -7,7 +7,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
         
         
         OperCondCollObj UserInterface.StabilityControl.OCCStabControl
-        Tree UserInterface.StabilityControl.StabTree
+        Tree
         AxisColl UserInterface.AxisPanelCollection
         SimAxisColl = SimViewer.Main.empty 
         PostSimAxisColl UserInterface.AxisPanelCollection
@@ -2410,15 +2410,15 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             reqObj = eventdata.Object;
             switch class(reqObj)
                 case 'lacm.TrimSettings'
-                    insertTrimDefObj_CB( obj.Tree , [] , [] , obj.Tree.TrimDefNode , [] , reqObj);
+                    insertTrimDefObj_CB( obj.Tree , [] , [] , [] , [] , reqObj);
                 case 'lacm.LinearModel'
-                    insertLinMdlObj_CB( obj.Tree , [] , [] , obj.Tree.LinMdlDefNode , [] , reqObj);
+                    insertLinMdlObj_CB( obj.Tree , [] , [] , [] , [] , reqObj);
                 case 'Requirements.RequirementTypeOne'
-                    insertReqObj_CB( obj.Tree , [] , [] , obj.Tree.MethodNode , [] , reqObj);
+                    insertReqObj_CB( obj.Tree , [] , [] , [] , [] , reqObj);
                 case 'Requirements.SimulationCollection'
-                    insertReqObj_CB( obj.Tree , [] , [] , obj.Tree.SimulationObjectNode , [] , reqObj);
+                    insertReqObj_CB( obj.Tree , [] , [] , [] , [] , reqObj);
 %                 case 'Requirements.RequirementTypeOnePost'
-%                     insertReqObj_CB( obj.Tree , [] , [] , obj.Tree.PostSimulationObjectNode , [] , reqObj);
+%                     insertReqObj_CB( obj.Tree , [] , [] , [] , [] , reqObj);
                 case 'lacm.AnalysisTask'
                     insertAnalysisObj_CB( obj.Tree , [] , [] , obj.Tree.AnalysisNode , [] , reqObj);
             end
