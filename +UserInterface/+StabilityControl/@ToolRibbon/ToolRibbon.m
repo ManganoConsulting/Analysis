@@ -984,46 +984,80 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
         end % buildRibbonHtml
 
         function assets = buildRibbonAssets(obj)
-            thisDir = fileparts(mfilename('fullpath'));
-            iconDir = fullfile(thisDir,'..','..','Resources');
-
             assets = struct();
-            assets.new = obj.encodeIcon(fullfile(iconDir,'New_24.png'));
-            assets.open = obj.encodeIcon(fullfile(iconDir,'Open_24.png'));
-            assets.load = obj.encodeIcon(fullfile(iconDir,'LoadArrow_24.png'));
-            assets.save = obj.encodeIcon(fullfile(iconDir,'Save_Dirty_24.png'));
-            assets.run = obj.encodeIcon(fullfile(iconDir,'RunSave_24.png'));
-            assets.add = obj.encodeIcon(fullfile(iconDir,'New_16.png'));
-            assets.table = obj.encodeIcon(fullfile(iconDir,'Clean_16.png'));
-            assets.report = obj.encodeIcon(fullfile(iconDir,'report_app_24.png'));
-            assets.analysis = obj.encodeIcon(fullfile(iconDir,'analysis_24.png'));
-            assets.trim = obj.encodeIcon(fullfile(iconDir,'airplaneTrim_24.png'));
-            assets.model = obj.encodeIcon(fullfile(iconDir,'linmdl_24.png'));
-            assets.requirement = obj.encodeIcon(fullfile(iconDir,'InOut_24.png'));
-            assets.simulation = obj.encodeIcon(fullfile(iconDir,'Simulink_24.png'));
-            assets.settings = obj.encodeIcon(fullfile(iconDir,'Settings_16.png'));
+            assets.new = obj.encodeIcon('New_24.png');
+            assets.open = obj.encodeIcon('Open_24.png');
+            assets.load = obj.encodeIcon('LoadArrow_24.png');
+            assets.save = obj.encodeIcon('Save_Dirty_24.png');
+            assets.run = obj.encodeIcon('RunSave_24.png');
+            assets.add = obj.encodeIcon('New_16.png');
+            assets.table = obj.encodeIcon('Clean_16.png');
+            assets.report = obj.encodeIcon('report_app_24.png');
+            assets.analysis = obj.encodeIcon('Analysis_24.png');
+            assets.trim = obj.encodeIcon('airplaneTrim_24.png');
+            assets.model = obj.encodeIcon('linmdl_24.png');
+            assets.requirement = obj.encodeIcon('InOut_24.png');
+            assets.simulation = obj.encodeIcon('Simulink_24.png');
+            assets.settings = obj.encodeIcon('Settings_16.png');
         end % buildRibbonAssets
 
-        function uri = encodeIcon(~, filename)
-            if exist(filename,'file') ~= 2
-                uri = '';
+        function uri = encodeIcon(~, iconName)
+            persistent iconCache iconBaseDir
+
+            uri = '';
+            if nargin < 2 || isempty(iconName)
                 return;
             end
 
-            fid = fopen(filename,'rb');
+            if isempty(iconBaseDir)
+                thisDir = fileparts(mfilename('fullpath'));
+                iconBaseDir = fullfile(thisDir,'..','..','Resources');
+            end
+
+            if isstring(iconName)
+                iconName = char(iconName);
+            elseif ~ischar(iconName)
+                return;
+            end
+
+            iconName = strtrim(iconName);
+            if isempty(iconName)
+                return;
+            end
+
+            if strncmp(iconName,'data:',5)
+                uri = iconName;
+                return;
+            end
+
+            if isempty(iconCache)
+                iconCache = containers.Map('KeyType','char','ValueType','char');
+            end
+
+            candidatePath = iconName;
+            if exist(candidatePath,'file') ~= 2
+                candidatePath = fullfile(iconBaseDir, iconName);
+            end
+
+            cacheKey = char(candidatePath);
+            if isKey(iconCache, cacheKey)
+                uri = iconCache(cacheKey);
+                return;
+            end
+
+            fid = fopen(candidatePath,'rb');
             if fid < 0
-                uri = '';
                 return;
             end
 
             cleaner = onCleanup(@()fclose(fid)); %#ok<NASGU>
-            data = fread(fid,'*uint8');
-            if isempty(data)
-                uri = '';
+            raw = fread(fid,Inf,'*uint8');
+            if isempty(raw)
                 return;
             end
 
-            uri = ['data:image/png;base64,' matlab.net.base64encode(uint8(data(:)))];
+            uri = ['data:image/png;base64,' matlab.net.base64encode(raw)];
+            iconCache(cacheKey) = uri;
         end % encodeIcon
 
         function label = resolveTrimState(~, state)
@@ -1111,13 +1145,13 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
             items = struct('Id',{},'Label',{},'Icon',{},'Shortcut',{},'Callback',{});
             switch lower(char(menuId))
                 case 'menu-new'
-                    items(end+1) = struct('Id','new-analysis','Label','Task','Icon','analysis_24.png','Shortcut','', 'Callback',@()obj.executeCommand('new','analysis',[]));
+                    items(end+1) = struct('Id','new-analysis','Label','Task','Icon','Analysis_24.png','Shortcut','', 'Callback',@()obj.executeCommand('new','analysis',[]));
                     items(end+1) = struct('Id','new-trim','Label','Trim','Icon','airplaneTrim_24.png','Shortcut','', 'Callback',@()obj.executeCommand('new','trim',[]));
                     items(end+1) = struct('Id','new-model','Label','Linear Model','Icon','linmdl_24.png','Shortcut','', 'Callback',@()obj.executeCommand('new','model',[]));
                     items(end+1) = struct('Id','new-req','Label','Requirement','Icon','InOut_24.png','Shortcut','', 'Callback',@()obj.executeCommand('new','requirement',[]));
                     items(end+1) = struct('Id','new-sim','Label','Simulation Requirement','Icon','Simulink_24.png','Shortcut','', 'Callback',@()obj.executeCommand('new','simulation',[]));
                 case 'menu-open'
-                    items(end+1) = struct('Id','open-analysis','Label','Task','Icon','analysis_24.png','Shortcut','', 'Callback',@()obj.executeCommand('open','analysis',[]));
+                    items(end+1) = struct('Id','open-analysis','Label','Task','Icon','Analysis_24.png','Shortcut','', 'Callback',@()obj.executeCommand('open','analysis',[]));
                     items(end+1) = struct('Id','open-trim','Label','Trim','Icon','airplaneTrim_24.png','Shortcut','', 'Callback',@()obj.executeCommand('open','trim',[]));
                     items(end+1) = struct('Id','open-model','Label','Linear Model','Icon','linmdl_24.png','Shortcut','', 'Callback',@()obj.executeCommand('open','model',[]));
                     items(end+1) = struct('Id','open-req','Label','Requirement','Icon','InOut_24.png','Shortcut','', 'Callback',@()obj.executeCommand('open','requirement',[]));
@@ -1391,33 +1425,8 @@ classdef ToolRibbon < handle & UserInterface.GraphicsObject
             end
         end % buildRibbonDropdownHtml
 
-        function dataUri = encodeRibbonIcon(~, iconName)
-            persistent iconCache iconBaseDir
-            if isempty(iconBaseDir)
-                thisDir = fileparts(mfilename('fullpath'));
-                iconBaseDir = fullfile(thisDir,'..','..','Resources');
-            end
-            if isempty(iconName)
-                dataUri = '';
-                return;
-            end
-            key = char(iconName);
-            if isempty(iconCache)
-                iconCache = containers.Map('KeyType','char','ValueType','char');
-            elseif isKey(iconCache,key)
-                dataUri = iconCache(key);
-                return;
-            end
-            fullPath = fullfile(iconBaseDir,key);
-            fid = fopen(fullPath,'rb');
-            if fid < 0
-                dataUri = '';
-                return;
-            end
-            cleaner = onCleanup(@()fclose(fid)); %#ok<NASGU>
-            raw = fread(fid,Inf,'*uint8');
-            dataUri = ['data:image/png;base64,' matlab.net.base64encode(raw')];
-            iconCache(key) = dataUri;
+        function dataUri = encodeRibbonIcon(obj, iconName)
+            dataUri = obj.encodeIcon(iconName);
         end % encodeRibbonIcon
 
         function value = extractNumericArg(~, args)
