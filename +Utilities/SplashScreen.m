@@ -52,12 +52,53 @@ function info = iPrepareParentFigure(parentFigure)
 end
 
 function imagePath = iGetSplashImagePath()
+    % Resolve splash image path with local-first, then library fallbacks
     utilitiesFolder = fileparts(mfilename('fullpath'));
     projectRoot = fileparts(utilitiesFolder);
-    imagePath = fullfile(projectRoot, '+UserInterface', 'Resources', 'v5_splashscreen_badge_dynamics.png');
-    if exist(imagePath, 'file') ~= 2
+    libSrc = fullfile(projectRoot, 'external', 'library-matlab', 'src');
+
+    % Candidate directories in priority order
+    dirCandidates = {
+        fullfile(projectRoot, '+UserInterface', 'Resources');
+        fullfile(libSrc, '+UserInterface', 'Resources');
+        fullfile(libSrc, '+SimViewer', 'Resources');
+        fullfile(libSrc, '@Application', 'private')
+    };
+
+    % Candidate filenames in priority order
+    fileCandidates = {
+        'v5_splashscreen_badge_dynamics.png';
+        'v5_splashscreen_badge.png';
+        'ACDSplash_Dynamics.png';
+        'ACDSplash.png'
+    };
+
+    imagePath = '';
+    for d = 1:numel(dirCandidates)
+        for f = 1:numel(fileCandidates)
+            cand = fullfile(dirCandidates{d}, fileCandidates{f});
+            if exist(cand, 'file') == 2
+                imagePath = cand;
+                break;
+            end
+        end
+        if ~isempty(imagePath)
+            break;
+        end
+    end
+
+    if isempty(imagePath)
+        % Build diagnostic message
+        allTried = cell(numel(dirCandidates)*numel(fileCandidates),1);
+        k = 1;
+        for d = 1:numel(dirCandidates)
+            for f = 1:numel(fileCandidates)
+                allTried{k} = fullfile(dirCandidates{d}, fileCandidates{f});
+                k = k + 1;
+            end
+        end
         error('Utilities:SplashScreen:MissingImage', ...
-            'Splash screen image ''%s'' not found.', imagePath);
+            'Splash screen image not found. Searched:\n%s', strjoin(allTried, newline));
     end
 end
 
