@@ -1254,7 +1254,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 operCondColl = obj.OperCondCollObj(obj.AnalysisTabSelIndex);   
             end
         
-            expOpt = UserInterface.ExportOptions();
+            expOpt = UserInterface.ExportOptions(obj.Figure);
             uiwait(expOpt.Figure);
         
             if expOpt.Range == 0
@@ -1334,9 +1334,10 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             %   Implements new, template, and append report generation
             %   similar to the ControlDesign tool.
 
-            rptType = questdlg('Select report type', 'Export Report', ...
-                'New', 'Template', 'Append', 'New');
-            if isempty(rptType); return; end
+            rptOptions = {'New','Template','Append','Cancel'};
+            rptType = uiconfirm(obj.Figure, 'Select report type', 'Export Report', ...
+                'Options', rptOptions, 'DefaultOption', 'New', 'CancelOption', 'Cancel');
+            if strcmp(rptType, 'Cancel'); return; end
 
             switch rptType
                 case 'Append'
@@ -1873,9 +1874,10 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             %GENERATEREPORTOPENSOURCE Export a report and save as PDF.
             %   Mirrors generateReportLegacy but always writes a PDF file.
 
-            rptType = questdlg('Select report type', 'Export Report', ...
-                'New', 'Template', 'Append', 'New');
-            if isempty(rptType); return; end
+            rptOptions = {'New','Template','Append','Cancel'};
+            rptType = uiconfirm(obj.Figure, 'Select report type', 'Export Report', ...
+                'Options', rptOptions, 'DefaultOption', 'New', 'CancelOption', 'Cancel');
+            if strcmp(rptType, 'Cancel'); return; end
 
             switch rptType
                 case 'Append'
@@ -2459,9 +2461,10 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             if ~isequal(filename,0) 
                 
                 % Ensure user want to continue
-                choice = questdlg('The current project will close. Would you like to continue?', ...
-                    'Close Project?', ...
-                    'Yes','No','No');
+                choice = uiconfirm(obj.Figure, ...
+                    'The current project will close. Would you like to continue?', ...
+                    'Close Project?', 'Options', {'Yes','No'}, ...
+                    'DefaultOption', 'No', 'CancelOption', 'No');
                 % Handle response
                 switch choice
                     case 'Yes'
@@ -2988,9 +2991,11 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 %--------------------------------------------------------------
                 notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData('Saving Trims...','info'));
                 %--------------------------------------------------------------
-                choice = questdlg('An output file is not selected.  How would you like to proceeed?', ...simState
-                    'Saving...', ...
-                    'Create a new output file','Open and existing output file','Do not save','Create a new output file');
+                choice = uiconfirm(obj.Figure, ...
+                    'An output file is not selected.  How would you like to proceeed?', ...
+                    'Saving...', 'Options', {'Create a new output file', ...
+                    'Open and existing output file', 'Do not save', 'Cancel'}, ...
+                    'DefaultOption', 'Create a new output file', 'CancelOption', 'Cancel');
 
                  % Handle response
                 switch choice
@@ -3005,9 +3010,10 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                             fileStruct = load(fileName);
                             fnames = fieldnames(fileStruct);
 
-                            choiceAppend = questdlg('Would you like to append to the existing data?', ...
-                                'Saving...', ...
-                                'Yes','No','Yes');
+                            choiceAppend = uiconfirm(obj.Figure, ...
+                                'Would you like to append to the existing data?', ...
+                                'Saving...', 'Options', {'Yes','No','Cancel'}, ...
+                                'DefaultOption', 'Yes', 'CancelOption', 'Cancel');
                             switch choiceAppend
                                 case 'Yes'
                                     obj.AppendData = true;
@@ -3026,15 +3032,18 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
                     case 'Do not save'
                         % Do nothing
+                    otherwise
+                        return;
                 end
 
             elseif length(selOutputFile) == 1
                 selOutputFile = selOutputFile{:};
                 fileStruct = load(selOutputFile);
                 fnames = fieldnames(fileStruct);
-                choiceAppend = questdlg('Would you like to append to the existing data?', ...
-                                'Saving...', ...
-                                'Yes','No','Yes');
+                choiceAppend = uiconfirm(obj.Figure, ...
+                    'Would you like to append to the existing data?', ...
+                    'Saving...', 'Options', {'Yes','No','Cancel'}, ...
+                    'DefaultOption', 'Yes', 'CancelOption', 'Cancel');
                 switch choiceAppend
                     case 'Yes'
                         obj.AppendData = true;
@@ -3236,7 +3245,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 
                 switch Mexc.identifier
                     case 'MATLAB:run:FileNotFound'
-                        choice = Utilities.questdlgNonModal(['The file ''',constantsFile,''' does NOT exist on the Matlab path. Please add the path and press continue.'], ...
+                        choice = Utilities.questdlgNonModal(obj.Figure, ['The file ''',constantsFile,''' does NOT exist on the Matlab path. Please add the path and press continue.'], ...
                             'Add Path', ...
                             'Continue','Cancel','Continue');
                         % Handle response
@@ -3250,7 +3259,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                                 return;
                         end
                     case 'Simulink:Commands:OpenSystemUnknownSystem'
-                        choice = Utilities.questdlgNonModal(['The model ''',nodeName,''' does NOT exist on the Matlab path. Please add the path and press continue.'], ...
+                        choice = Utilities.questdlgNonModal(obj.Figure, ['The model ''',nodeName,''' does NOT exist on the Matlab path. Please add the path and press continue.'], ...
                             'Add Path', ...
                             'Continue','Cancel','Continue');
                         % Handle response

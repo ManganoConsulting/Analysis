@@ -1,10 +1,11 @@
 classdef ExportOptions < handle
     
     %% Public properties - Object Handles
-    properties (Transient = true)  
+    properties (Transient = true)
         ButtonGroup
         Figure
-        
+        DialogParent matlab.ui.Figure = matlab.ui.Figure.empty
+
         All_Button
         Select_Button
         SelectPages_EB
@@ -59,7 +60,11 @@ classdef ExportOptions < handle
     
     %% Methods - Constructor
     methods      
-        function obj = ExportOptions( )
+        function obj = ExportOptions(parentFigure)
+            if nargin < 1
+                parentFigure = [];
+            end
+            obj.DialogParent = Utilities.getParentFigure(parentFigure);
             createView( obj );
         end % ExportOptions
     end % Constructor
@@ -141,7 +146,21 @@ classdef ExportOptions < handle
             obj.ButtonGroup.Visible = 'on';
         end % createView
     end
-  
+
+    %% Methods - Private
+    methods (Access = private)
+        function fig = getDialogParent(obj)
+            fig = obj.DialogParent;
+            if isempty(fig) || ~isvalid(fig)
+                fig = Utilities.getParentFigure(obj.Figure);
+            end
+            if isempty(fig) || ~isvalid(fig)
+                error('UserInterface:ExportOptions:MissingParentFigure', ...
+                    'A valid UIFigure parent must be supplied when creating ExportOptions.');
+            end
+        end
+    end
+
     %% Methods - Protected Callbacks
     methods (Access = protected)
         function selectionChg( obj , ~ , eventdata )
@@ -159,7 +178,7 @@ classdef ExportOptions < handle
             try
                 obj.Range = getStrRangeAsVector(str);
             catch
-                msgbox('Only numeric characters "," and "-" can be used to define a range')
+                uialert(obj.getDialogParent(), 'Only numeric characters "," and "-" can be used to define a range', 'Invalid Range');
                 update(obj);
             end
         end % selectedPages_CB

@@ -130,9 +130,9 @@ classdef DYNMain < handle
             if ~exist(eventdata.Object,'file')
                 % Remove from recent projects
                 prevProjFile = fullfile(obj.ApplicationDataFolder,'previousprojects.flt');
-                Utilities.removeLineInFile( prevProjFile , eventdata.Object );  
+                Utilities.removeLineInFile( prevProjFile , eventdata.Object );
                 launchStartUp( obj );
-                msgbox('This project no longer exists.');
+                uialert(obj.Figure, 'This project no longer exists.', 'Project Missing');
                 return;
             end
             drawnow();
@@ -245,7 +245,7 @@ classdef DYNMain < handle
             verOK = compareVersionNumbers(a, b);
             
             if ~verOK
-                msgbox(['Project Version ',b,' does not match this FLIGHT Dynamics Version ',a,'.'],'Version Info');
+                uialert(obj.Figure, ['Project Version ',b,' does not match this FLIGHT Dynamics Version ',a,'.'], 'Version Info');
             end
                 
             
@@ -348,9 +348,10 @@ classdef DYNMain < handle
             
             releaseAllTrimMdls(obj.ToolObj, [], []);
 
-            choice = questdlg('Would you like to save the current project before closing?', ...
-                'Closing...', ...
-                'Yes','No','Cancel','Cancel');
+            choice = uiconfirm(obj.Figure, ...
+                'Would you like to save the current project before closing?', ...
+                'Closing...', 'Options', {'Yes','No','Cancel'}, ...
+                'DefaultOption', 'Cancel', 'CancelOption', 'Cancel');
             drawnow();pause(0.5);
              % Handle response
             switch choice

@@ -1,12 +1,13 @@
 classdef StabTree < UserInterface.tree
     
     %% Public properties - Object Handles
-    properties (Transient = true) 
+    properties (Transient = true)
         TrimSettingsNode
         MassPropNode
-        SimNode  
-        AnalysisNode     
+        SimNode
+        AnalysisNode
         MassPropGUIObj = UserInterface.StabilityControl.MassPropGUI.empty
+        DialogParent matlab.ui.Figure = matlab.ui.Figure.empty
     end % Public properties
   
     %% Private properties - Data Storage
@@ -72,10 +73,16 @@ classdef StabTree < UserInterface.tree
     methods  
         
         function obj = StabTree(parent)
-            
+
             % Call superclass constructor
             obj = obj@UserInterface.tree(parent);
-            
+
+            % Store the owning UIFigure for dialog parenting
+            obj.DialogParent = Utilities.getParentFigure(parent);
+            if isempty(obj.DialogParent) || ~isvalid(obj.DialogParent)
+                obj.DialogParent = Utilities.getParentFigure(obj);
+            end
+
             % - UItree setup section -------------------------------------
             %  Note: the use of uitree and the other java functionality.                            
             % -------------------------------------------------------------------------
@@ -145,7 +152,7 @@ classdef StabTree < UserInterface.tree
 %                 parentNode = obj.AnalysisNode.getChildAt(selAnlInd - 1).getChildAt(0).getChildAt(0);
                 parentNode = obj.AnalysisNode.getChildAt(selAnlInd - 1).getChildAt(4);
             catch
-                msgbox('Unable to add the run cases.');
+                obj.showAlert('Unable to add the run cases.', 'Run Cases');
                 return;
             end
             obj.TreeModel.insertNodeInto(...
@@ -540,10 +547,10 @@ classdef StabTree < UserInterface.tree
                         % check for correct class
 
                         if ~isa(varStruct.(varNames{i}),reqClass)
-                            msgbox({'The file you are attempting to load contains one',...
+                            obj.showAlert({'The file you are attempting to load contains one',...
                                 'or more variables with the incorrect format'...
                                 'The variable ',varNames{i},' will not be loaded.'},...
-                                'Name Conflict','error')
+                                'Name Conflict','Icon','error');
                             continue;
                         end
                         % add to requirement object array
@@ -604,10 +611,10 @@ classdef StabTree < UserInterface.tree
                         % check for correct class
 
                         if ~isa(varStruct.(varNames{i}),reqClass)
-                            msgbox({'The file you are attempting to load contains one',...
+                            obj.showAlert({'The file you are attempting to load contains one',...
                                 'or more variables with the incorrect format'...
                                 'The variable ',varNames{i},' will not be loaded.'},...
-                                'Name Conflict','error')
+                                'Name Conflict','Icon','error');
                             continue;
                         end
                        % add to requirement object array
@@ -654,10 +661,10 @@ classdef StabTree < UserInterface.tree
                         % check for correct class
 
                         if ~isa(varStruct.(varNames{i}),reqClass)
-                            msgbox({'The file you are attempting to load contains one',...
+                            obj.showAlert({'The file you are attempting to load contains one',...
                                 'or more variables with the incorrect format'...
                                 'The variable ',varNames{i},' will not be loaded.'},...
-                                'Name Conflict','error')
+                                'Name Conflict','Icon','error');
                             continue;
                         end
                         % add to requirement object array
@@ -694,7 +701,7 @@ classdef StabTree < UserInterface.tree
                 filename = {filename};
             end
             
-            msgbox('Remember to set the correct units.');
+            obj.showAlert('Remember to set the correct units.', 'Units');
             %disp('Ask user to insert units here.');
             
             removeAllChildNodes( obj , parentNode  );
@@ -893,10 +900,10 @@ classdef StabTree < UserInterface.tree
                         % check for correct class
 
                         if ~isa(varStruct.(varNames{i}),reqClass)
-                            msgbox({'The file you are attempting to load contains one',...
+                            obj.showAlert({'The file you are attempting to load contains one',...
                                 'or more variables with the incorrect format'...
                                 'The variable ',varNames{i},' will not be loaded.'},...
-                                'Name Conflict','error')
+                                'Name Conflict','Icon','error');
                             continue;
                         end
                         reqObj(end+1) = varStruct.(varNames{i}); 
@@ -981,10 +988,10 @@ classdef StabTree < UserInterface.tree
                         % check for correct class
 
                         if ~isa(varStruct.(varNames{i}),reqClass)
-                            msgbox({'The file you are attempting to load contains one',...
+                            obj.showAlert({'The file you are attempting to load contains one',...
                                 'or more variables with the incorrect format'...
                                 'The variable ',varNames{i},' will not be loaded.'},...
-                                'Name Conflict','error')
+                                'Name Conflict','Icon','error');
                             continue;
                         end
                         reqObj(end+1) = varStruct.(varNames{i}); 
@@ -1142,9 +1149,8 @@ classdef StabTree < UserInterface.tree
                 
                 % Warn User that all mass Properties will be removed in all
                 % run cases
-                choice = questdlg('Mass Properties will be removed in all Run Cases. Continue?', ...
-                    'Mass Properties', ...
-                    'Yes','No','Yes');
+                choice = obj.confirmDialog('Mass Properties will be removed in all Run Cases. Continue?', ...
+                    'Mass Properties', {'Yes','No'}, 'Yes', 'No');
                 switch choice
                     case 'Yes'
                          % Do nothing and continue
@@ -1246,9 +1252,8 @@ classdef StabTree < UserInterface.tree
                 
                 % Warn User that all mass Properties will be removed in all
                 % run cases
-                choice = questdlg('Mass Properties will be reset in all Run Cases. Continue?', ...
-                    'Mass Properties', ...
-                    'Yes','No','Yes');
+                choice = obj.confirmDialog('Mass Properties will be reset in all Run Cases. Continue?', ...
+                    'Mass Properties', {'Yes','No'}, 'Yes', 'No');
                 switch choice
                     case 'Yes'
                          % Do nothing and continue
@@ -1777,12 +1782,51 @@ classdef StabTree < UserInterface.tree
         
     end
     
-    %% Methods - Private    
-    methods (Access = private) 
-        
+    %% Methods - Private
+    methods (Access = private)
+
+        function fig = getDialogParent(obj)
+            fig = obj.DialogParent;
+            if isempty(fig) || ~isvalid(fig)
+                fig = Utilities.getParentFigure(obj);
+            end
+        end % getDialogParent
+
+        function text = formatDialogMessage(~, message)
+            text = Utilities.formatDialogMessage(message);
+        end % formatDialogMessage
+
+        function showAlert(obj, message, title, varargin)
+            fig = obj.getDialogParent();
+            if isempty(fig) || ~isvalid(fig)
+                return;
+            end
+            text = obj.formatDialogMessage(message);
+            uialert(fig, text, title, varargin{:});
+        end % showAlert
+
+        function choice = confirmDialog(obj, message, title, options, defaultOption, cancelOption)
+            fig = obj.getDialogParent();
+            if isempty(fig) || ~isvalid(fig)
+                choice = '';
+                return;
+            end
+            text = obj.formatDialogMessage(message);
+            args = {'Options', options};
+            if nargin >= 5 && ~isempty(defaultOption)
+                args = [args, {'DefaultOption', defaultOption}];
+            end
+            if nargin >= 6 && ~isempty(cancelOption)
+                args = [args, {'CancelOption', cancelOption}];
+            elseif any(strcmp(options,'Cancel'))
+                args = [args, {'CancelOption','Cancel'}];
+            end
+            choice = uiconfirm(fig, text, title, args{:});
+        end % confirmDialog
+
         function fireSelectedObjectChangedEvent( obj , node )
             if any(strcmp({'Mass Properties'},{char(node.getName),char(node.getParent.getName)}))
-                
+
                 if ~isempty(obj.MassPropGUIObj) %isa(obj.MassPropGUIObj,'UserInterface.StabilityControl.MassPropGUI')
                     [~,selLA] = getSelectedMassPropObjs( obj ); 
                     obj.MassPropGUIObj.updateSelected(selLA);
