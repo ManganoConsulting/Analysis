@@ -52,6 +52,7 @@ classdef OCCStabControl < lacm.OperatingConditionCollection
         FilterLabelCont matlab.ui.control.Label = matlab.ui.control.Label.empty
        
         RibbonCardPanel
+        DialogParent matlab.ui.Figure = matlab.ui.Figure.empty
     end % Public properties
     
     %% Table View Properties - Object Handles
@@ -91,10 +92,12 @@ classdef OCCStabControl < lacm.OperatingConditionCollection
             switch nargin
                 case 1
                     obj.Parent = parent;
+                    obj.DialogParent = Utilities.getParentFigure(parent);
                     createView(obj);
-                case 2    
+                case 2
+                    obj.DialogParent = Utilities.getParentFigure(parent);
                     createView(obj, parent , false , toolribbonH);
-                case 3         
+                case 3
             end
             
         end % OCCStabControl
@@ -309,15 +312,21 @@ classdef OCCStabControl < lacm.OperatingConditionCollection
     methods 
         
         function createView( obj , parent , loadingWrkspc , toolribbonH )
-            
+
             % Init inputs for project loading
             if nargin > 1
-                obj.Parent = parent;   
+                obj.Parent = parent;
             end
             if nargin < 3
                 loadingWrkspc = false;
             end
-            
+
+            if nargin > 1 && ~isempty(parent)
+                obj.DialogParent = Utilities.getParentFigure(parent);
+            elseif isempty(obj.DialogParent) || ~isvalid(obj.DialogParent)
+                obj.DialogParent = Utilities.getParentFigure(obj.Parent);
+            end
+
             % Create top container
             obj.Container = uicontainer('Parent',obj.Parent,'Units','normal','Position',[0,0,1,1]);
             % Create Tab Group Inside Container
@@ -814,7 +823,7 @@ classdef OCCStabControl < lacm.OperatingConditionCollection
             if all(logArray)
                 x = cell2mat(x_cell);
             else
-                msgbox('X component must be numeric.');
+                uialert(obj.getDialogParent(), 'X component must be numeric.', 'Invalid Data');
                 return;
             end
             xUnits = obj.TableData{obj.SelectedRows(obj.FirstSelectedRow == obj.SelectedRows),3};
@@ -826,7 +835,7 @@ classdef OCCStabControl < lacm.OperatingConditionCollection
             if all(logArray)
                 y = cell2mat(y_cell);
             else
-                msgbox('Y component must be numeric.');
+                uialert(obj.getDialogParent(), 'Y component must be numeric.', 'Invalid Data');
                 return;
             end
             yUnits = obj.TableData{obj.SelectedRows(obj.SecondSelectedRow == obj.SelectedRows),3};
@@ -911,6 +920,16 @@ classdef OCCStabControl < lacm.OperatingConditionCollection
         
     end
     
+    %% Methods - Private helpers
+    methods (Access = private)
+        function fig = getDialogParent(obj)
+            fig = obj.DialogParent;
+            if isempty(fig) || ~isvalid(fig)
+                fig = Utilities.getParentFigure(obj.Parent);
+            end
+        end % getDialogParent
+    end
+
     %% Method - Delete
     methods
         
