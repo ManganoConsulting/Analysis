@@ -45,6 +45,14 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
         OperCondContainer
         
         RibbonCardPanel
+
+        % New: uihtml-based ribbon (ControlDesign style)
+        ToolRibbonHtml matlab.ui.control.HTML
+        ToolRibbonState struct = struct()
+        RibbonDropdowns struct = struct()
+        ActiveRibbonDropdown char = ''
+        RibbonDropdownOriginalFigureFcn struct = struct('Stored',false,'Value',[])
+        ToolRibbonParentSizeListener event.listener
     end % Public properties
   
     %% Public properties - Data Storage
@@ -151,48 +159,9 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             obj.RibbonCardPanel = UserInterface.CardPanel(0,'Parent',obj.Parent,...
                 'Units','Pixels',...
                 'Position',[ 860 , position(4) - 93 , position(3) - 860 , 93 ]);
-            
-             % Create Ribbon Object
-            obj.RibbonObj = UserInterface.StabilityControl.ToolRibbon(obj.RibbonPanel,obj.VersionNumber,obj.InternalVersionNumber,obj.TrimSettings);
-            addlistener(obj.RibbonObj,'SaveWorkspace',@obj.saveWorkspace);
-            addlistener(obj.RibbonObj,'LoadWorkspace',@obj.loadWorkspace);
-            addlistener(obj.RibbonObj,'LoadConfiguration',@obj.loadConfiguration);
-            addlistener(obj.RibbonObj,'NewConfiguration',@obj.newConfiguration);
-            addlistener(obj.RibbonObj,'Run',@obj.runTask);
-            addlistener(obj.RibbonObj,'RunSave',@obj.runTaskAndSave);
-            addlistener(obj.RibbonObj,'LoadBatchRun',@obj.loadBatchRun);
-            addlistener(obj.RibbonObj,'UnitsChanged',@obj.unitsChanged);
-            addlistener(obj.RibbonObj,'ClearTable',@obj.clearTable);
-            addlistener(obj.RibbonObj,'SaveOperCond',@obj.saveOperCond);
-            addlistener(obj.RibbonObj,'NewTrimObject',@obj.newTrimObj_CB);
-            addlistener(obj.RibbonObj,'NewLinearModelObject',@obj.newLinMdlObj_CB);
-            addlistener(obj.RibbonObj,'NewMethodObject',@obj.newMethodObj_CB);
-            addlistener(obj.RibbonObj,'NewSimulationReqObject',@obj.newSimulationObj_CB);
-            addlistener(obj.RibbonObj,'OpenObject',@obj.openObjInEditor_CB);
-            addlistener(obj.RibbonObj,'NewProject',@obj.newProject_CB);
-            addlistener(obj.RibbonObj,'LoadProject',@obj.loadProject_CB);
-            addlistener(obj.RibbonObj,'CloseProject',@obj.closeProject_CB); 
-%             addlistener(obj.RibbonObj,'ShowInvalidTrim',@obj.showInvalidTrim_CB);
-            addlistener(obj.RibbonObj,'ShowLogSignals',@obj.showLogSignals_CB);
-            addlistener(obj.RibbonObj,'UseAllCombinations',@obj.useAllCombinations_CB);
-            addlistener(obj.RibbonObj,'Add2Batch',@obj.addBatch2AnalysisNode_CB);
-            addlistener(obj.RibbonObj,'ExportTable',@obj.exportTable_CB);
-            addlistener(obj.RibbonObj,'GenerateReport',@obj.generateReport_CB);
-            addlistener(obj.RibbonObj,'NewAnalysis',@obj.newAnalysisObj_CB);
-            addlistener(obj.RibbonObj,'LoadAnalysisObject',@obj.loadAnalysisObj);            
-            addlistener(obj.RibbonObj,'SetNumPlotsPlts',@obj.setNumPlotsPlts);
-            addlistener(obj.RibbonObj,'SetNumPlotsPostPlts',@obj.setNumPlotsPostPlts);
-            addlistener(obj.RibbonObj,'ShowTrimsChanged',@obj.showTrims_CB);
-            addlistener(obj.RibbonObj,'TrimSettingsChanged',@obj.trimSettings_CB);
-            
-            
-            % Update toolRibon trim settings
-            
-            
-            % Set toolribbon checkboxes
-            setShowLoggedSignals(obj.RibbonObj, obj.ShowLoggedSignalsState);
-            setShowInvalidTrim(obj.RibbonObj, obj.ShowInvalidTrimState);
-            setUseAllCombinations(obj.RibbonObj, obj.UseAllCombinationsState);
+
+            % Create uihtml-based ribbon (ControlDesign style, Analysis layout)
+            obj.createToolRibbon();
 
             % Create Main Container
 
