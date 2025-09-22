@@ -387,12 +387,13 @@ function createToolRibbon(obj)
 
         closeAllRibbonDropdowns();
         dropdown = uihtml(fig, 'HTMLSource', htmlPopup, 'Position', [dropX dropY dropW dropH]);
-        dropdown.DataChangedFcn = @(~,evt)dropdownDataHandler(char(menuId), evt.Data);
-        dropdown.Tag = sprintf('RibbonDropdown_%s', char(menuId));
+        fieldKey = makeFieldKey(menuId);
+        dropdown.DataChangedFcn = @(~,evt)dropdownDataHandler(fieldKey, evt.Data);
+        dropdown.Tag = sprintf('RibbonDropdown_%s', char(fieldKey));
         try, uistack(dropdown,'top'); end %#ok<TRYNC>
 
-        obj.RibbonDropdowns.(char(menuId)) = struct('Component', dropdown, 'Callbacks', {items});
-        obj.ActiveRibbonDropdown = char(menuId);
+        obj.RibbonDropdowns.(fieldKey) = struct('Component', dropdown, 'Callbacks', {items});
+        obj.ActiveRibbonDropdown = fieldKey;
         setRibbonFigureCallback();
     end
 
@@ -428,10 +429,11 @@ function createToolRibbon(obj)
             hideRibbonDropdown(menuKey);
             return;
         end
-        if ~isstruct(obj.RibbonDropdowns) || ~isfield(obj.RibbonDropdowns, menuKey)
+        key = makeFieldKey(menuKey);
+        if ~isstruct(obj.RibbonDropdowns) || ~isfield(obj.RibbonDropdowns, key)
             return;
         end
-        entry = obj.RibbonDropdowns.(menuKey);
+        entry = obj.RibbonDropdowns.(key);
         cbs = entry.Callbacks;
         if iscell(cbs), cbs = cbs{1}; end
         for idx = 1:numel(cbs)
@@ -443,12 +445,12 @@ function createToolRibbon(obj)
                 break;
             end
         end
-        hideRibbonDropdown(menuKey);
+        hideRibbonDropdown(key);
     end
 
     function hideRibbonDropdown(menuId)
         if nargin < 1 || isempty(menuId), return; end
-        menuKey = char(menuId);
+        menuKey = makeFieldKey(menuId);
         if ~isstruct(obj.RibbonDropdowns)
             obj.RibbonDropdowns = struct();
         end
@@ -462,13 +464,20 @@ function createToolRibbon(obj)
             end
             obj.RibbonDropdowns = rmfield(obj.RibbonDropdowns, menuKey);
         end
-        if strcmp(obj.ActiveRibbonDropdown, menuKey)
-            obj.ActiveRibbonDropdown = '';
+        if ischar(obj.ActiveRibbonDropdown) || isstring(obj.ActiveRibbonDropdown)
+            if strcmp(char(obj.ActiveRibbonDropdown), char(menuKey))
+                obj.ActiveRibbonDropdown = '';
+            end
         end
         if isempty(fieldnames(obj.RibbonDropdowns))
             obj.RibbonDropdowns = struct();
             restoreRibbonFigureCallback();
         end
+    end
+
+    function key = makeFieldKey(id)
+        % Produce a valid struct field key from an arbitrary id (e.g., 'menu-save')
+        key = matlab.lang.makeValidName(char(id), 'ReplacementStyle', 'underscore');
     end
 
     function closeAllRibbonDropdowns()
