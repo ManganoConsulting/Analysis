@@ -76,7 +76,8 @@ classdef StabTree2 < handle
             end
 
             % Create MATLAB uitree with checkboxes
-            obj.TreeObj = uitree(parent,'checkbox');
+            parentPos = getpixelposition(parent);
+            obj.TreeObj = uitree(parent,'checkbox','Position',parentPos);
             obj.TreeObj.SelectionChangedFcn = @(src,event) obj.onTreeSelectionChanged(src,event);
             obj.TreeObj.CheckedNodesChangedFcn = @(src,event) obj.onTreeCheckedChanged(src,event);
             obj.LastContextNode = [];
