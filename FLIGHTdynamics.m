@@ -3,7 +3,7 @@ function figH = FLIGHTdynamics()
     persistent appInstance
 
     if isempty(appInstance) || ~isvalid(appInstance)
-        Application.removeInstallsFromMPath();
+        % Application.removeInstallsFromMPath();
         addpath(fileparts(mfilename('fullpath')));
         appInstance = app.FlightDynamicsApp();
     end

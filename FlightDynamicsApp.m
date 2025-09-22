@@ -15,7 +15,7 @@ classdef FlightDynamicsApp < matlab.apps.AppBase
         end
 
         function startupFcn(app)
-            Application.removeInstallsFromMPath();
+            % Application.removeInstallsFromMPath();
             rootFolder = fileparts(fileparts(which('app.FlightDynamicsApp')));
             if ~isempty(rootFolder)
                 addpath(rootFolder);
