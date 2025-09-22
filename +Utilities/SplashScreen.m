@@ -58,9 +58,13 @@ function imagePath = iGetSplashImagePath()
     libSrc = fullfile(projectRoot, 'external', 'library-matlab', 'src');
 
     % Candidate directories in priority order
+    % 1) Analysis-local resources (keeps library submodule clean)
+    % 2) Junction to library resources
+    % 3) SimViewer shared resources
+    % 4) Application private (legacy)
     dirCandidates = {
+        fullfile(projectRoot, '+UserInterface', '+StabilityControl', 'Resources');
         fullfile(projectRoot, '+UserInterface', 'Resources');
-        fullfile(libSrc, '+UserInterface', 'Resources');
         fullfile(libSrc, '+SimViewer', 'Resources');
         fullfile(libSrc, '@Application', 'private')
     };
