@@ -746,43 +746,6 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             releaseWaitPtr(obj);
         end % analysisObjectEdited
         
-        function addBatch2AnalysisNode_CB( obj , ~ , eventData )
-            setWaitPtr(obj);
-            
-            analysisObj = obj.AnalysisObjects(obj.AnalysisTabSelIndex);
-            
-            batchRunNumber = length(obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj) + 1;
-            
-            panel = obj.TaskCollectionCardPanel(obj.AnalysisTabSelIndex).addPanel(1);
-            
-            obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end + 1) = lacm.TrimTaskCollection( panel, {''}, ['Run ',num2str(batchRunNumber)]) ; 
-            updateSelectedConfiguration(obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end),analysisObj.TrimTask);
-
-            uuid = obj.Tree.addBatchObj( obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end) , obj.AnalysisTabSelIndex , ['Run ',num2str(batchRunNumber)] );
-            obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end).Label = ['Run ',num2str(batchRunNumber)];
-            obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end).UUID = uuid;
-
-            addlistener(obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end),'ShowLogMessage',@obj.showLogMessage_CB);
-            addlistener(obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end),'ShowLogMessage',@obj.showLogMessage_CB);   
-            addlistener(obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end),'LabelUpdated',@(src,event) obj.batchObjLabelUpdated(src,event,uuid)); 
-            
-            if ~isempty(analysisObj.TrimTask.FlapSimulinkName)
-                obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end).Flap_text.String   =  analysisObj.TrimTask.FlapSimulinkName;
-                obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end).FlapText           =  analysisObj.TrimTask.FlapSimulinkName;
-            end
-            
-            if ~isempty(analysisObj.TrimTask.LandingGearSimulinkName)
-                obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end).ACconfig_text.String   =  analysisObj.TrimTask.LandingGearSimulinkName;
-                obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end).GearText               =  analysisObj.TrimTask.LandingGearSimulinkName;
-            end
-            
-            massPropertyAddedToPanel(obj, obj.AnalysisTabSelIndex, analysisObj.MassProperties, batchRunNumber);    
-            
-            analysisObj.SavedTaskCollectionObjBatch = obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex);
-            
-            
-            releaseWaitPtr(obj);
-        end % addBatch2AnalysisNode_CB
         
         function analysisObjSelectedInTree( obj , ~ , eventData )
             selTabIndex = eventData.Object;
@@ -831,42 +794,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             end
         end % simAxisEvent_CB
            
-        function saveOperCond( obj , ~ , eventData  )
-            [filename, pathname] = uiputfile({'*.mat'},'Save Operating Conditions','OperatingCondition');
-            if isequal(filename,0)
-                return;
-            end
-            if ~isempty(obj.AnalysisTabSelIndex)
-                setWaitPtr(obj);
-                if eventData.Value == 1
-                    operCond = obj.OperCondCollObj(obj.AnalysisTabSelIndex).OperatingCondition; 
-                else
-                    operCondTemp = obj.OperCondCollObj(obj.AnalysisTabSelIndex).OperatingCondition; 
-                    operCond = operCondTemp([operCondTemp.SuccessfulTrim]);
-
-                end
-                if isempty(operCond)
-                    operCond = lacm.OperatingCondition.empty; %#ok<NASGU>
-                end
-                save(fullfile(pathname,filename),'operCond');
-                releaseWaitPtr(obj);
-            end        
-        end % saveOperCond
         
-        function unitsChanged( obj , ~ , eventData  )
-            
-            obj.Units = eventData.Object;
-            
-        end % unitsChanged
         
-        function clearTable( obj , ~ , ~  )
-            if ~isempty(obj.AnalysisTabSelIndex)
-                obj.OperCondCollObj(obj.AnalysisTabSelIndex).clear();
-                obj.OperCondCollObj(obj.AnalysisTabSelIndex).OperatingConditionStructureIsDefined = false;
-            end
-
-            
-        end % clearTable       
         
         function modelChanged( obj , ~ , eventData  )
             % Find all names
@@ -920,24 +849,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             
         end % autoSaveFileName_CB
               
-        function showLogSignals_CB( obj , ~ , eventdata )
-            obj.ShowLoggedSignalsState = eventdata.Value;
-        
-            if obj.ShowLoggedSignalsState
-                notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData('All Models will be released.','info'));
-                releaseAllTrimMdls(obj, [], []);
-%                 setColor4MdlCompiledState(obj.Tree,[], []);
-            end
-            
-          	obj.RunSignalLog =  eventdata.Value;
-            for i = 1:length(obj.OperCondCollObj)
-                obj.OperCondCollObj(i).OperatingConditionStructureIsDefined = false;
-            end
-        end % showLogSignals_CB
 
-        function useAllCombinations_CB( obj , ~ , eventdata )
-            obj.UseAllCombinationsState = eventdata.Value;
-        end % useAllCombinations_CB
         
         function showSimViewer( obj , hobj , eventData , title )
             
@@ -956,37 +868,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             Common.SimulationViewer.SimulationViewer.Main(simObj.SimulationData.Output,'Title',title,'RunLabel','Trim');
         end % autoSave_CB
         
-        function setNumPlotsPlts( obj , ~ , eventdata )
-            numbPlots = eventdata.Object;
-            setOrientation( obj.AxisColl(obj.AnalysisTabSelIndex)  , numbPlots );            
-            obj.NumberOfPlotPerPagePlts = numbPlots;
-            
-        end % setNumPlotsPlts
         
-        function setNumPlotsPostPlts( obj , ~ , eventdata )
-            numbPlots = eventdata.Object;
-            setOrientation( obj.PostSimAxisColl(obj.AnalysisTabSelIndex) , numbPlots );            
-            obj.NumberOfPlotPerPagePostPlts = numbPlots;
-            
-        end % setNumPlotsPostPlts
         
-        function showTrims_CB(obj , ~ , eventdata )
-                        
-            if isempty(obj.AnalysisTabSelIndex)
-                return;
-            else
-                if strcmp(eventdata.Object,'Show All Trims')
-                    obj.ShowInvalidTrimState = 0;
-                    updateValidTrimDisplay( obj.OperCondCollObj(obj.AnalysisTabSelIndex) , 0 );
-                elseif strcmp(eventdata.Object,'Show Valid Trims')
-                      obj.ShowInvalidTrimState = 1;
-                    updateValidTrimDisplay( obj.OperCondCollObj(obj.AnalysisTabSelIndex) , 1 );  
-                else 
-                    obj.ShowInvalidTrimState = 2;
-                    updateValidTrimDisplay( obj.OperCondCollObj(obj.AnalysisTabSelIndex) , 2 );
-                end
-            end
-        end % showTrims_CB
         
     	function updateValidTrims(obj)
                         
@@ -1005,10 +888,6 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
         end % updateValidTrims
         
         
-        function trimSettings_CB(obj , ~ , eventdata )
-            obj.TrimSettings = copy(eventdata.Object);        
-
-        end % trimSettings_CB       
         
     end
     
@@ -1046,147 +925,20 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
     %% Calllback Load
     methods (Access = protected) 
         
-        function loadAnalysisObj( obj , ~ , ~ )
-            insertAnalysisObj_CB( obj.Tree , [] , [] , obj.Tree.AnalysisNode , [] , lacm.AnalysisTask.empty);
-        end % loadAnalysisObj_CB    
         
     end
     
     %% Callback New
     methods (Access = protected) 
 
-        function newAnalysisObj_CB( obj , ~ , ~ )
         
-            reqEditObj = UserInterface.ObjectEditor.Editor('Requirement',lacm.AnalysisTask);
-            addlistener(reqEditObj,'ObjectCreated',@(src,event) obj.reqObjCreated(src,event));
-        end % newAnalysisObj_CB
         
-        function newTrimObj_CB( obj , ~ , ~ )
         
-            reqEditObj = UserInterface.ObjectEditor.Editor('Requirement',lacm.TrimSettings,'ShowLoadButton',false);
-            addlistener(reqEditObj,'ObjectCreated',@(src,event) obj.reqObjCreated(src,event));
-            
-            simModelName = obj.Tree.getSelectedSimModel();
-            if ~isempty(simModelName)
-                createDefault( reqEditObj.CurrentReqObj , simModelName );
-            end
-        end % newTrimObj_CB
         
-        function newLinMdlObj_CB( obj , ~ , ~ )            
-
-            reqEditObj = UserInterface.ObjectEditor.Editor('Requirement',lacm.LinearModel,'ShowLoadButton',false);
-            addlistener(reqEditObj,'ObjectCreated',@(src,event) obj.reqObjCreated(src,event));
-            
-            simModelName = obj.Tree.getSelectedSimModel();
-            if ~isempty(simModelName)
-                createDefault( reqEditObj.CurrentReqObj , simModelName );
-            end
-        end % newLinMdlObj_CB
         
-        function newMethodObj_CB( obj , ~ , ~ )
-  
-            reqEditObj = UserInterface.ObjectEditor.Editor('Requirement',Requirements.RequirementTypeOne,'ShowLoadButton',false);
-            addlistener(reqEditObj,'ObjectCreated',@(src,event) obj.reqObjCreated(src,event));
-        end % newMethodObj_CB
         
-        function newSimulationObj_CB( obj , ~ , ~ )
-
-            reqEditObj = UserInterface.ObjectEditor.Editor('Requirement',Requirements.SimulationCollection,'ShowLoadButton',false);
-            addlistener(reqEditObj,'ObjectCreated',@(src,event) obj.reqObjCreated(src,event));
-        end % newSimulationObj_CB     
-        
-        function openObjInEditor_CB( obj , ~ , eventdata )
-            
-            [filename, pathname] = uigetfile({'*.mat'},['Select ',eventdata.Value,' Object File:'],obj.ProjectDirectory);
-            drawnow();pause(0.5);
-
-            if isequal(filename,0)
-                return;
-            end
-            
-            varStruct = load(fullfile(pathname,filename));
-            varNames = fieldnames(varStruct);
-            
-
-            if strcmp(eventdata.Value,'Analysis')
-                reqEditObj = UserInterface.ObjectEditor.Editor('EditInProject',false,'Requirement', varStruct.(varNames{1}));
-            else
-                reqEditObj = UserInterface.ObjectEditor.Editor('Requirement',lacm.TrimSettings,'ShowLoadButton',false);
-                addlistener(reqEditObj,'ObjectCreated',@(src,event) obj.reqObjCreated(src,event));
-
-                loadObject( reqEditObj , varStruct.(varNames{1}) );
-            end
-
-        end % openTrimObj_CB 
-        
-        function exportTable_CB( obj , ~ , eventData )
-            if isempty(obj.AnalysisTabSelIndex)
-                return;
-            else
-                operCondColl = obj.OperCondCollObj(obj.AnalysisTabSelIndex);   
-            end
-        
-            expOpt = UserInterface.ExportOptions(obj.Figure);
-            uiwait(expOpt.Figure);
-        
-            if expOpt.Range == 0
-                return;
-            end
-        
-            maxLength =  size(operCondColl.TableData,2);
-        
-            if isempty(expOpt.Range)
-                colIndices = 1:maxLength;
-            else
-                colIndices = [1:3,expOpt.Range + 3];
-                colIndices = colIndices(colIndices <= maxLength);
-            end
-        
-            operCondTableData = operCondColl.TableData(:,colIndices);
-            if isempty(operCondTableData)
-                operCondTableData = {};
-            end
-
-            exportData = operCondTableData;
-            if expOpt.Transpose
-                exportData = exportData.';
-            end
-
-            if strcmp(eventData.Object,'mat')
-                [filename, pathname] = uiputfile({'*.mat'}, 'Save Operating Condition Table Data', 'TableData');
-                if isequal(filename,0)
-                    return;
-                end
-                operCondTableData = exportData; %#ok<NASGU>
-                save(fullfile(pathname,filename), 'operCondTableData');
-
-            elseif strcmp(eventData.Object,'csv')
-                [filename, pathname] = uiputfile({'*.csv'}, 'Save Operating Condition Table Data', 'TableData');
-                if isequal(filename,0)
-                    return;
-                end
-                Utilities.cell2csv(fullfile(pathname,filename), exportData, ',');
-
-            else
-                [filename, pathname] = uiputfile({'*.m'}, 'Save Operating Condition Table Data', 'TableData');
-                if isequal(filename,0)
-                    return;
-                end
-                Utilities.cell2mfile(fullfile(pathname,filename), exportData);
-            end
-        end % exportTable_CB
 
 
-        function generateReport_CB( obj , ~ , eventData )
-            if nargin < 3 || isempty(eventData) || isempty(eventData.Object)
-                format = 'PDF';
-            else
-                format = eventData.Object;
-            end
-
-            obj.UseLegacyReport = strcmpi(format,'MS Word');
-            obj.generateReport();
-        end % generateReport_CB
 
         function generateReport(obj)
             %GENERATEREPORT Dispatch to the selected report generator.
@@ -2301,24 +2053,124 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
         
     end
     
-    %% Methods - Workspace Callbacks
+    %% Methods - Tool Ribbon Callbacks
+    % Callbacks invoked by Tool Ribbon commands, organized alphabetically.
     methods
-        
-        function saveWorkspace( obj , ~ , ~  )
+        function addBatch2AnalysisNode_CB( obj , ~ , eventData )
+            setWaitPtr(obj);
             
-            [file,path] = uiputfile( ...
-                {'*.fltd',...
-                 'FLIGHTdynamics Project Files (*.fltd)';
-                 '*.*',  'All Files (*.*)'},...
-                 'Save Project as',obj.SavedProjectLocation);%fullfile(obj.ProjectDirectory,'Project.fltc'));
-            if isequal(file,0) || isequal(path,0)
+            analysisObj = obj.AnalysisObjects(obj.AnalysisTabSelIndex);
+            
+            batchRunNumber = length(obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj) + 1;
+            
+            panel = obj.TaskCollectionCardPanel(obj.AnalysisTabSelIndex).addPanel(1);
+            
+            obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end + 1) = lacm.TrimTaskCollection( panel, {''}, ['Run ',num2str(batchRunNumber)]) ; 
+            updateSelectedConfiguration(obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end),analysisObj.TrimTask);
+
+            uuid = obj.Tree.addBatchObj( obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end) , obj.AnalysisTabSelIndex , ['Run ',num2str(batchRunNumber)] );
+            obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end).Label = ['Run ',num2str(batchRunNumber)];
+            obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end).UUID = uuid;
+
+            addlistener(obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end),'ShowLogMessage',@obj.showLogMessage_CB);
+            addlistener(obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end),'ShowLogMessage',@obj.showLogMessage_CB);   
+            addlistener(obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end),'LabelUpdated',@(src,event) obj.batchObjLabelUpdated(src,event,uuid)); 
+            
+            if ~isempty(analysisObj.TrimTask.FlapSimulinkName)
+                obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end).Flap_text.String   =  analysisObj.TrimTask.FlapSimulinkName;
+                obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end).FlapText           =  analysisObj.TrimTask.FlapSimulinkName;
+            end
+            
+            if ~isempty(analysisObj.TrimTask.LandingGearSimulinkName)
+                obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end).ACconfig_text.String   =  analysisObj.TrimTask.LandingGearSimulinkName;
+                obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex).TrimTaskCollObj(end).GearText               =  analysisObj.TrimTask.LandingGearSimulinkName;
+            end
+            
+            massPropertyAddedToPanel(obj, obj.AnalysisTabSelIndex, analysisObj.MassProperties, batchRunNumber);    
+            
+            analysisObj.SavedTaskCollectionObjBatch = obj.TaskCollectionObjBatch(obj.AnalysisTabSelIndex);
+            
+            
+            releaseWaitPtr(obj);
+        end % addBatch2AnalysisNode_CB
+
+        function clearTable( obj , ~ , ~  )
+            if ~isempty(obj.AnalysisTabSelIndex)
+                obj.OperCondCollObj(obj.AnalysisTabSelIndex).clear();
+                obj.OperCondCollObj(obj.AnalysisTabSelIndex).OperatingConditionStructureIsDefined = false;
+            end
+
+            
+        end % clearTable       
+
+        function exportTable_CB( obj , ~ , eventData )
+            if isempty(obj.AnalysisTabSelIndex)
                 return;
             else
-                notify(obj,'SaveProject',GeneralEventData({path , file}) );
+                operCondColl = obj.OperCondCollObj(obj.AnalysisTabSelIndex);   
             end
-                
-        end %saveWorkspace
         
+            expOpt = UserInterface.ExportOptions(obj.Figure);
+            uiwait(expOpt.Figure);
+        
+            if expOpt.Range == 0
+                return;
+            end
+        
+            maxLength =  size(operCondColl.TableData,2);
+        
+            if isempty(expOpt.Range)
+                colIndices = 1:maxLength;
+            else
+                colIndices = [1:3,expOpt.Range + 3];
+                colIndices = colIndices(colIndices <= maxLength);
+            end
+        
+            operCondTableData = operCondColl.TableData(:,colIndices);
+            if isempty(operCondTableData)
+                operCondTableData = {};
+            end
+
+            exportData = operCondTableData;
+            if expOpt.Transpose
+                exportData = exportData.';
+            end
+
+            if strcmp(eventData.Object,'mat')
+                [filename, pathname] = uiputfile({'*.mat'}, 'Save Operating Condition Table Data', 'TableData');
+                if isequal(filename,0)
+                    return;
+                end
+                operCondTableData = exportData; %#ok<NASGU>
+                save(fullfile(pathname,filename), 'operCondTableData');
+
+            elseif strcmp(eventData.Object,'csv')
+                [filename, pathname] = uiputfile({'*.csv'}, 'Save Operating Condition Table Data', 'TableData');
+                if isequal(filename,0)
+                    return;
+                end
+                Utilities.cell2csv(fullfile(pathname,filename), exportData, ',');
+
+            else
+                [filename, pathname] = uiputfile({'*.m'}, 'Save Operating Condition Table Data', 'TableData');
+                if isequal(filename,0)
+                    return;
+                end
+                Utilities.cell2mfile(fullfile(pathname,filename), exportData);
+            end
+        end % exportTable_CB
+
+        function generateReport_CB( obj , ~ , eventData )
+            if nargin < 3 || isempty(eventData) || isempty(eventData.Object)
+                format = 'PDF';
+            else
+                format = eventData.Object;
+            end
+
+            obj.UseLegacyReport = strcmpi(format,'MS Word');
+            obj.generateReport();
+        end % generateReport_CB
+
         function loadWorkspace( obj , ~ , ~  )            
             Utilities.setWaitPtr(obj.Figure);
             [filename, pathname] = uigetfile(...%{'*.mat'},'Select saved project');
@@ -2351,30 +2203,177 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             Utilities.releaseWaitPtr(obj.Figure);
             reSize( obj , [] , [] );
         end % loadWorkspace
+
+        function saveOperCond( obj , ~ , eventData  )
+            [filename, pathname] = uiputfile({'*.mat'},'Save Operating Conditions','OperatingCondition');
+            if isequal(filename,0)
+                return;
+            end
+            if ~isempty(obj.AnalysisTabSelIndex)
+                setWaitPtr(obj);
+                if eventData.Value == 1
+                    operCond = obj.OperCondCollObj(obj.AnalysisTabSelIndex).OperatingCondition; 
+                else
+                    operCondTemp = obj.OperCondCollObj(obj.AnalysisTabSelIndex).OperatingCondition; 
+                    operCond = operCondTemp([operCondTemp.SuccessfulTrim]);
+
+                end
+                if isempty(operCond)
+                    operCond = lacm.OperatingCondition.empty; %#ok<NASGU>
+                end
+                save(fullfile(pathname,filename),'operCond');
+                releaseWaitPtr(obj);
+            end        
+        end % saveOperCond
+
+        function saveWorkspace( obj , ~ , ~  )
+            
+            [file,path] = uiputfile( ...
+                {'*.fltd',...
+                 'FLIGHTdynamics Project Files (*.fltd)';
+                 '*.*',  'All Files (*.*)'},...
+                 'Save Project as',obj.SavedProjectLocation);%fullfile(obj.ProjectDirectory,'Project.fltc'));
+            if isequal(file,0) || isequal(path,0)
+                return;
+            else
+                notify(obj,'SaveProject',GeneralEventData({path , file}) );
+            end
+                
+        end % saveWorkspace
+
+        function setNumPlotsPlts( obj , ~ , eventdata )
+            numbPlots = eventdata.Object;
+            setOrientation( obj.AxisColl(obj.AnalysisTabSelIndex)  , numbPlots );            
+            obj.NumberOfPlotPerPagePlts = numbPlots;
+            
+        end % setNumPlotsPlts
+
+        function setNumPlotsPostPlts( obj , ~ , eventdata )
+            numbPlots = eventdata.Object;
+            setOrientation( obj.PostSimAxisColl(obj.AnalysisTabSelIndex) , numbPlots );            
+            obj.NumberOfPlotPerPagePostPlts = numbPlots;
+            
+        end % setNumPlotsPostPlts
+
+        function showLogSignals_CB( obj , ~ , eventdata )
+            obj.ShowLoggedSignalsState = eventdata.Value;
         
-        function saveProject( obj , path , file )
-            notify(obj,'SaveProject',GeneralEventData({path , file}));
-        end % saveAsProject
-               
+            if obj.ShowLoggedSignalsState
+                notify(obj,'ShowLogMessageMain',UserInterface.LogMessageEventData('All Models will be released.','info'));
+                releaseAllTrimMdls(obj, [], []);
+%                 setColor4MdlCompiledState(obj.Tree,[], []);
+            end
+            
+          	obj.RunSignalLog =  eventdata.Value;
+            for i = 1:length(obj.OperCondCollObj)
+                obj.OperCondCollObj(i).OperatingConditionStructureIsDefined = false;
+            end
+        end % showLogSignals_CB
+
+        function showTrims_CB(obj , ~ , eventdata )
+                        
+            if isempty(obj.AnalysisTabSelIndex)
+                return;
+            else
+                if strcmp(eventdata.Object,'Show All Trims')
+                    obj.ShowInvalidTrimState = 0;
+                    updateValidTrimDisplay( obj.OperCondCollObj(obj.AnalysisTabSelIndex) , 0 );
+                elseif strcmp(eventdata.Object,'Show Valid Trims')
+                      obj.ShowInvalidTrimState = 1;
+                    updateValidTrimDisplay( obj.OperCondCollObj(obj.AnalysisTabSelIndex) , 1 );  
+                else 
+                    obj.ShowInvalidTrimState = 2;
+                    updateValidTrimDisplay( obj.OperCondCollObj(obj.AnalysisTabSelIndex) , 2 );
+                end
+            end
+        end % showTrims_CB
+
+        function trimSettings_CB(obj , ~ , eventdata )
+            obj.TrimSettings = copy(eventdata.Object);        
+
+        end % trimSettings_CB       
+
+        function unitsChanged( obj , ~ , eventData  )
+            
+            obj.Units = eventData.Object;
+            
+        end % unitsChanged
+
+        function useAllCombinations_CB( obj , ~ , eventdata )
+            obj.UseAllCombinationsState = eventdata.Value;
+        end % useAllCombinations_CB
     end
-    
-    %% Methods - Load Project
-    methods 
-       
-        function loadProject( obj , pathname , filename )
-            notify(obj,'LoadProject',GeneralEventData({pathname , filename}));
-            reSize( obj , [] , [] );
-        end % loadWorkspace_CB
+
+    methods (Access = protected)
+        % Protected Tool Ribbon callbacks
+        function loadAnalysisObj( obj , ~ , ~ )
+            insertAnalysisObj_CB( obj.Tree , [] , [] , obj.Tree.AnalysisNode , [] , lacm.AnalysisTask.empty);
+        end % loadAnalysisObj
+
+        function newAnalysisObj_CB( obj , ~ , ~ )
         
-        function addProjectPath( obj , path )
-            addProjectPath@UserInterface.Level1Container( obj , path )
-        end % addProjectPath
+            reqEditObj = UserInterface.ObjectEditor.Editor('Requirement',lacm.AnalysisTask);
+            addlistener(reqEditObj,'ObjectCreated',@(src,event) obj.reqObjCreated(src,event));
+        end % newAnalysisObj_CB
+
+        function newLinMdlObj_CB( obj , ~ , ~ )            
+
+            reqEditObj = UserInterface.ObjectEditor.Editor('Requirement',lacm.LinearModel,'ShowLoadButton',false);
+            addlistener(reqEditObj,'ObjectCreated',@(src,event) obj.reqObjCreated(src,event));
+            
+            simModelName = obj.Tree.getSelectedSimModel();
+            if ~isempty(simModelName)
+                createDefault( reqEditObj.CurrentReqObj , simModelName );
+            end
+        end % newLinMdlObj_CB
+
+        function newMethodObj_CB( obj , ~ , ~ )
+  
+            reqEditObj = UserInterface.ObjectEditor.Editor('Requirement',Requirements.RequirementTypeOne,'ShowLoadButton',false);
+            addlistener(reqEditObj,'ObjectCreated',@(src,event) obj.reqObjCreated(src,event));
+        end % newMethodObj_CB
+
+        function newSimulationObj_CB( obj , ~ , ~ )
+
+            reqEditObj = UserInterface.ObjectEditor.Editor('Requirement',Requirements.SimulationCollection,'ShowLoadButton',false);
+            addlistener(reqEditObj,'ObjectCreated',@(src,event) obj.reqObjCreated(src,event));
+        end % newSimulationObj_CB     
+
+        function newTrimObj_CB( obj , ~ , ~ )
         
-    end    
-      
-    %% Methods - Run Trim Callbacks
-    methods (Access = protected) 
-        
+            reqEditObj = UserInterface.ObjectEditor.Editor('Requirement',lacm.TrimSettings,'ShowLoadButton',false);
+            addlistener(reqEditObj,'ObjectCreated',@(src,event) obj.reqObjCreated(src,event));
+            
+            simModelName = obj.Tree.getSelectedSimModel();
+            if ~isempty(simModelName)
+                createDefault( reqEditObj.CurrentReqObj , simModelName );
+            end
+        end % newTrimObj_CB
+
+        function openObjInEditor_CB( obj , ~ , eventdata )
+            
+            [filename, pathname] = uigetfile({'*.mat'},['Select ',eventdata.Value,' Object File:'],obj.ProjectDirectory);
+            drawnow();pause(0.5);
+
+            if isequal(filename,0)
+                return;
+            end
+            
+            varStruct = load(fullfile(pathname,filename));
+            varNames = fieldnames(varStruct);
+            
+
+            if strcmp(eventdata.Value,'Analysis')
+                reqEditObj = UserInterface.ObjectEditor.Editor('EditInProject',false,'Requirement', varStruct.(varNames{1}));
+            else
+                reqEditObj = UserInterface.ObjectEditor.Editor('Requirement',lacm.TrimSettings,'ShowLoadButton',false);
+                addlistener(reqEditObj,'ObjectCreated',@(src,event) obj.reqObjCreated(src,event));
+
+                loadObject( reqEditObj , varStruct.(varNames{1}) );
+            end
+
+        end % openObjInEditor_CB
+
         function runTask( obj , ~ , ~ )
             
             try
@@ -2411,7 +2410,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             end
             
         end % runTask
-        
+
         function runTaskAndSave( obj , ~ , ~ )
             
             try
@@ -2456,6 +2455,37 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             end
             
         end % runTaskAndSave
+    end
+
+    %% Methods - Workspace Callbacks
+    methods
+        
+        
+        
+        function saveProject( obj , path , file )
+            notify(obj,'SaveProject',GeneralEventData({path , file}));
+        end % saveAsProject
+               
+    end
+    
+    %% Methods - Load Project
+    methods 
+       
+        function loadProject( obj , pathname , filename )
+            notify(obj,'LoadProject',GeneralEventData({pathname , filename}));
+            reSize( obj , [] , [] );
+        end % loadWorkspace_CB
+        
+        function addProjectPath( obj , path )
+            addProjectPath@UserInterface.Level1Container( obj , path )
+        end % addProjectPath
+        
+    end    
+      
+    %% Methods - Run Trim Callbacks
+    methods (Access = protected) 
+        
+        
         
         function operCond = run( obj )
             
