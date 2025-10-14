@@ -381,11 +381,14 @@ classdef Editor < UserInterface.Collection
                     obj.RibbonReady = true;
                     obj.sendRibbonConfig();
                     obj.sendRibbonState();
-                case 'click'
-                    if ~isfield(payload,'action')
-                        return;
+                case {'click','command'}
+                    % Accept both legacy 'click' and new 'command' events
+                    action = '';
+                    if isfield(payload,'action') && ~isempty(payload.action)
+                        action = lower(char(payload.action));
+                    elseif isfield(payload,'command') && ~isempty(payload.command)
+                        action = lower(char(payload.command));
                     end
-                    action = lower(char(payload.action));
                     switch action
                         case 'new'
                             obj.newButton_CB([],[]);
@@ -407,19 +410,9 @@ classdef Editor < UserInterface.Collection
             end
 
             icons = obj.RibbonAssets;
-            buttons = struct( ...
-                'new',struct('label','New','tooltip','Add New Item','icon',icons.new),...
-                'open',struct('label','Open','tooltip','Open existing workspace','icon',icons.open),...
-                'export',struct('label','Export','tooltip','Save and Load','icon',icons.export));
-
-            if obj.ShowLoadButton
-                buttons.load = struct('label','Load','tooltip','Load','icon',icons.loadSaved);
-            end
-
             payload = struct( ...
-                'type','init', ...
-                'groupLabel','FILE', ...
-                'buttons',buttons, ...
+                'type','config', ...
+                'icons',icons, ...
                 'showLoad',obj.ShowLoadButton, ...
                 'saved',logical(obj.Saved), ...
                 'loadIcons',struct('saved',icons.loadSaved,'unsaved',icons.loadUnsaved));
@@ -449,7 +442,10 @@ classdef Editor < UserInterface.Collection
             obj.RibbonHtml.Position = [0 0 width height];
         end % updateRibbonHtmlGeometry
 
-        function html = buildRibbonHtml(~)
+        function html = buildRibbonHtml(obj)
+            % Dark theme and non-scrollable ribbon consistent with StabilityControl
+            iconsJson = jsonencode(obj.RibbonAssets);
+            iconLine = ['  const initialIcons = ' iconsJson ';'];
             lines = {
                 '<!doctype html>'
                 '<html lang="en">'
@@ -457,150 +453,99 @@ classdef Editor < UserInterface.Collection
                 '<meta charset="utf-8">'
                 '<meta name="viewport" content="width=device-width, initial-scale=1">'
                 '<style>'
-                'html,body{margin:0;padding:0;height:100%;background:transparent;font-family:"Segoe UI",Tahoma,Arial,sans-serif;font-size:12px;color:#1f1f1f;}'
-                '.ribbon-bg{position:absolute;inset:0;display:flex;align-items:flex-start;gap:12px;padding:6px 10px;background:linear-gradient(180deg,#f8f8f8 0%,#e4e4e4 100%);border-bottom:1px solid #bcbcbc;box-sizing:border-box;}'
-                '.group{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;min-width:200px;height:100%;padding:4px 10px 6px;background:rgba(255,255,255,0.88);border:1px solid #c8c8c8;border-radius:4px;box-shadow:0 1px 0 rgba(255,255,255,0.9) inset;}'
-                '.button-strip{display:flex;gap:10px;flex-wrap:nowrap;}'
-                '.ribbon-button{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:68px;height:72px;padding:6px 8px;border:1px solid transparent;border-radius:4px;background:linear-gradient(180deg,#ffffff 0%,#e9e9e9 100%);box-shadow:0 1px 0 rgba(255,255,255,0.7) inset;cursor:pointer;transition:border-color .12s ease,box-shadow .12s ease,background .12s ease;}'
-                '.ribbon-button:hover{border-color:#8fb7df;box-shadow:0 0 0 1px rgba(151,189,232,0.45) inset,0 1px 2px rgba(0,0,0,0.15);background:linear-gradient(180deg,#fdfdfd 0%,#e7f1fb 100%);}'
-                '.ribbon-button:active{border-color:#6f9bd3;background:linear-gradient(180deg,#dbeaff 0%,#c4dcf7 100%);box-shadow:0 0 0 1px rgba(111,155,211,0.6) inset;}'
-                '.ribbon-button:focus-visible{outline:2px solid #0e67d2;outline-offset:1px;}'
-                '.ribbon-button.hidden{display:none !important;}'
-                '.icon-wrap{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:linear-gradient(180deg,#fdfdfd 0%,#ececec 100%);box-shadow:0 1px 0 rgba(255,255,255,0.7);}'
-                '.ribbon-button img{width:24px;height:24px;image-rendering:-webkit-optimize-contrast;}'
-                '.ribbon-button .label{text-transform:uppercase;font-size:10px;font-weight:600;letter-spacing:.6px;color:#303030;}'
-                '.ribbon-button.unsaved{background:linear-gradient(180deg,#fff6e6 0%,#fbdcae 100%);border-color:#f0a23a;box-shadow:0 0 0 1px rgba(240,162,58,0.35) inset;}'
-                '.group-label{margin-top:4px;text-align:center;font-size:10px;font-weight:600;letter-spacing:1.2px;color:#6b6b6b;text-transform:uppercase;}'
+                'html,body{margin:0;padding:0;height:100%;background:transparent;font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;font-size:11px;color:#f3f5f7;overflow:hidden;-ms-overflow-style:none;scrollbar-width:none;}'
+                '::-webkit-scrollbar{width:0;height:0;display:none;}'
+                '.ribbon-surface{position:absolute;inset:0;display:flex;align-items:stretch;gap:0;padding:2px 6px 4px;background:linear-gradient(180deg,#3c3f45 0%,#292c33 100%);border-bottom:1px solid #14161a;box-sizing:border-box;}'
+                '.group{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:3px;padding:0 6px 2px;border-right:1px solid rgba(255,255,255,0.15);min-height:100%;}'
+                '.group:last-of-type{border-right:none;}'
+                '.group-body{display:flex;gap:4px;align-items:flex-start;flex:1 1 auto;}'
+                '.button-base{display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid #1f2025;border-radius:4px;background:linear-gradient(180deg,#4f535c 0%,#2f3238 100%);box-shadow:0 1px 0 rgba(255,255,255,0.12) inset,0 1px 2px rgba(0,0,0,0.6);color:#f3f5f7;cursor:pointer;padding:4px;transition:background 0.15s ease,box-shadow 0.15s ease,transform 0.15s ease;}'
+                '.button-base:hover{background:linear-gradient(180deg,#5d616b 0%,#343840 100%);box-shadow:0 1px 0 rgba(255,255,255,0.18) inset,0 2px 4px rgba(0,0,0,0.55);}'
+                '.button-base:active{transform:translateY(1px);}'
+                '.button-base:focus-visible{outline:2px solid #0e67d2;outline-offset:1px;}'
+                '.button-vertical{flex-direction:column;min-width:50px;height:64px;padding:4px 4px 16px;gap:3px;position:relative;}'
+                '.label{text-transform:uppercase;font-size:9px;font-weight:600;letter-spacing:0.3px;color:#e6e8eb;text-align:center;}'
+                '.icon-box{width:22px;height:22px;border-radius:4px;background:linear-gradient(180deg,#5a5f69 0%,#3a3e46 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 0 rgba(255,255,255,0.12) inset;}'
+                '.icon-box img{width:16px;height:16px;image-rendering:-webkit-optimize-contrast;}'
+                '.group-label{text-align:center;font-size:10px;font-weight:600;letter-spacing:1px;color:#cfd2d6;text-transform:uppercase;margin-top:auto;padding:1px 0;background:linear-gradient(180deg,rgba(255,255,255,0.08) 0%,rgba(0,0,0,0.25) 100%);border:1px solid rgba(0,0,0,0.6);border-radius:3px;}'
                 '</style>'
                 '</head>'
                 '<body>'
-                '<div class="ribbon-bg" id="ribbonRoot">'
-                '  <div class="group" role="group" aria-labelledby="group-file-label">'
-                '    <div class="button-strip">'
-                '      <button type="button" class="ribbon-button" id="btn-new" data-action="new" title="New">'
-                '        <span class="icon-wrap"><img id="icon-new" alt="New icon" /></span>'
+                '<div class="ribbon-surface" id="ribbonRoot">'
+                '  <div class="group" data-group="file">'
+                '    <div class="group-body">'
+                '      <button type="button" class="button-base button-vertical" data-role="primary" data-command="new" title="New">'
+                '        <span class="icon-box"><img id="icon-new" alt="New"></span>'
                 '        <span class="label">New</span>'
                 '      </button>'
-                '      <button type="button" class="ribbon-button" id="btn-open" data-action="open" title="Open">'
-                '        <span class="icon-wrap"><img id="icon-open" alt="Open icon" /></span>'
+                '      <button type="button" class="button-base button-vertical" data-role="primary" data-command="open" title="Open">'
+                '        <span class="icon-box"><img id="icon-open" alt="Open"></span>'
                 '        <span class="label">Open</span>'
                 '      </button>'
-                '      <button type="button" class="ribbon-button hidden" id="btn-load" data-action="load" title="Load" aria-hidden="true">'
-                '        <span class="icon-wrap"><img id="icon-load" alt="Load icon" /></span>'
+                '      <button type="button" class="button-base button-vertical" id="btn-load" data-role="primary" data-command="load" title="Load">'
+                '        <span class="icon-box"><img id="icon-load" alt="Load"></span>'
                 '        <span class="label">Load</span>'
                 '      </button>'
-                '      <button type="button" class="ribbon-button" id="btn-export" data-action="export" title="Export">'
-                '        <span class="icon-wrap"><img id="icon-export" alt="Export icon" /></span>'
+                '      <button type="button" class="button-base button-vertical" data-role="primary" data-command="export" title="Export">'
+                '        <span class="icon-box"><img id="icon-export" alt="Export"></span>'
                 '        <span class="label">Export</span>'
                 '      </button>'
                 '    </div>'
-                '    <div class="group-label" id="group-file-label">FILE</div>'
+                '    <div class="group-label">File</div>'
                 '  </div>'
                 '</div>'
                 '<script>'
                 '(function(){'
-                '  const matlab = window.parent;'
-                '  const buttons = {'
-                '    new: document.getElementById("btn-new"),'
-                '    open: document.getElementById("btn-open"),'
-                '    load: document.getElementById("btn-load"),'
-                '    export: document.getElementById("btn-export")'
-                '  };'
-                '  const labelEl = document.getElementById("group-file-label");'
-                '  let loadIcons = {saved:"",unsaved:""};'
-                '  function send(msg){'
-                '    if(matlab && typeof matlab.postMessage === "function"){'
-                '      matlab.postMessage(msg,"*");'
-                '    }'
-                '  }'
-                '  function updateButton(id,cfg){'
-                '    const btn = buttons[id];'
-                '    if(!btn || !cfg){return;}'
-                '    const label = btn.querySelector(".label");'
-                '    if(label && cfg.label){label.textContent = cfg.label;}'
-                '    if(cfg.tooltip){'
-                '      btn.title = cfg.tooltip;'
-                '      btn.setAttribute("aria-label",cfg.tooltip);'
-                '    }'
-                '    const img = btn.querySelector("img");'
-                '    if(img && cfg.icon){img.src = cfg.icon;}'
-                '  }'
-                '  function toggleLoad(show){'
-                '    const btn = buttons.load;'
-                '    if(!btn){return;}'
-                '    if(show){'
-                '      btn.classList.remove("hidden");'
-                '      btn.setAttribute("aria-hidden","false");'
-                '    }else{'
-                '      btn.classList.add("hidden");'
-                '      btn.setAttribute("aria-hidden","true");'
-                '    }'
-                '  }'
-                '  function updateLoadState(saved){'
-                '    const btn = buttons.load;'
-                '    if(!btn){return;}'
-                '    btn.classList.toggle("unsaved", !saved);'
-                '    const img = btn.querySelector("img");'
-                '    if(img){'
-                '      const src = saved ? loadIcons.saved : (loadIcons.unsaved || loadIcons.saved);'
-                '      if(src){img.src = src;}'
-                '    }'
-                '  }'
-                '  Object.keys(buttons).forEach(key=>{' 
-                '    const btn = buttons[key];'
-                '    if(!btn){return;}'
-                '    btn.addEventListener("click",()=>{'
-                '      const action = btn.dataset.action;'
-                '      if(action){send({type:"click",action:action});}'
-                '    });'
+                '  let matlabComponent = null;'
+                '  const pending = [];'
+                '  function setup(htmlComponent){ matlabComponent = htmlComponent; while(pending.length){ const m = pending.shift(); try{ matlabComponent.Data = m; }catch(e){} } }'
+                '  window.setup = setup;'
+                '  function send(msg){ if(matlabComponent){ try{ matlabComponent.Data = msg; }catch(e){} } else { pending.push(msg); } }'
+                '  function setIcon(id, src){ const img = document.getElementById(id); if(!img){return;} if(src){ img.src = src; img.style.visibility = "visible"; } else { img.removeAttribute("src"); img.style.visibility = "hidden"; } }'
+                iconLine
+                '  function preloadIcons(){ try{ if(initialIcons){ setIcon("icon-new", initialIcons.new); setIcon("icon-open", initialIcons.open); setIcon("icon-load", initialIcons.loadSaved || initialIcons.loadUnsaved); setIcon("icon-export", initialIcons.export); } }catch(e){} }'
+                '  try{ preloadIcons(); }catch(e){}'
+                '  document.querySelectorAll("[data-role=\\"primary\\"][data-command]").forEach(btn=>{'
+                '    btn.addEventListener("click", ()=>{ send({type:"command", command:btn.dataset.command}); });'
                 '  });'
-                '  window.addEventListener("message",(event)=>{'
+                '  const btnLoad = document.getElementById("btn-load");'
+                '  window.addEventListener("message", (event)=>{'
                 '    const data = event.data || {};'
-                '    if(data.type === "init"){'
-                '      if(data.groupLabel){labelEl.textContent = data.groupLabel;}'
-                '      const btnCfg = data.buttons || {};'
-                '      updateButton("new", btnCfg.new);'
-                '      updateButton("open", btnCfg.open);'
-                '      updateButton("export", btnCfg.export);'
-                '      if(btnCfg.load){updateButton("load", btnCfg.load);}'
-                '      loadIcons = Object.assign({saved:"",unsaved:""}, data.loadIcons || {});'
-                '      const showLoad = (data.showLoad !== false) && !!btnCfg.load;'
-                '      toggleLoad(showLoad);'
-                '      if(typeof data.saved === "boolean"){'
-                '        updateLoadState(data.saved);'
-                '      }else{'
-                '        updateLoadState(true);'
-                '      }'
-                '    }else if(data.type === "state"){'
-                '      if(typeof data.saved === "boolean"){updateLoadState(data.saved);}'
+                '    if(data.type === "config"){'
+                '      const icons = data.icons || {};'
+                '      setIcon("icon-new", icons.new); setIcon("icon-open", icons.open); setIcon("icon-load", icons.loadSaved || icons.loadUnsaved); setIcon("icon-export", icons.export);'
+                '      if(btnLoad){ btnLoad.style.display = (data.showLoad===false)?"none":"flex"; }'
+                '    } else if (data.type === "state"){'
+                '      const saved = !!data.saved;'
+                '      const icons = (window.initialIcons || {});'
                 '    }'
                 '  });'
-                '  window.addEventListener("DOMContentLoaded",()=>{'
-                '    setTimeout(()=>send({type:"ready"}),0);'
-                '  });'
+                '  window.addEventListener("DOMContentLoaded", ()=>{ send({type:"ready"}); });'
                 '})();'
                 '</script>'
                 '</body>'
                 '</html>'
             };
-
             html = strjoin(lines, newline);
         end % buildRibbonHtml
 
         function assets = buildRibbonAssets(obj)
-            thisDir = fileparts(mfilename('fullpath'));
-            iconDir = fullfile(thisDir,'..','..','Resources');
-
+            % Use the same icon resolution strategy as StabilityControl ribbon:
+            % search +UserInterface/Resources and +SimViewer/Resources and embed as data URIs.
             assets = struct();
-            assets.new = obj.encodeIcon(fullfile(iconDir,'New_24.png'));
-            assets.open = obj.encodeIcon(fullfile(iconDir,'Open_24.png'));
-            assets.loadSaved = obj.encodeIcon(fullfile(iconDir,'LoadedArrow_24.png'));
-            assets.loadUnsaved = obj.encodeIcon(fullfile(iconDir,'LoadArrow_24.png'));
-            assets.export = obj.encodeIcon(fullfile(iconDir,'Export_24.png'));
-
+            assets.new        = obj.encodeIconByName('New_24.png');
+            assets.open       = obj.encodeIconByName('Open_24.png');
+            % Prefer LoadArrow_24.png which exists across ribbons; fallback to LoadedArrow_24.png if present only there.
+            tmpLoad           = obj.encodeIconByName('LoadArrow_24.png');
+            if isempty(tmpLoad)
+                tmpLoad = obj.encodeIconByName('LoadedArrow_24.png');
+            end
+            assets.loadSaved   = tmpLoad;
+            assets.loadUnsaved = obj.encodeIconByName('LoadArrow_24.png');
             if isempty(assets.loadUnsaved)
                 assets.loadUnsaved = assets.loadSaved;
             end
+            assets.export     = obj.encodeIconByName('Export_24.png');
         end % buildRibbonAssets
 
         function uri = encodeIcon(~, filename)
@@ -608,22 +553,41 @@ classdef Editor < UserInterface.Collection
                 uri = '';
                 return;
             end
-
             fid = fopen(filename,'rb');
             if fid < 0
                 uri = '';
                 return;
             end
-
             cleaner = onCleanup(@()fclose(fid)); %#ok<NASGU>
             data = fread(fid,'*uint8');
             if isempty(data)
                 uri = '';
                 return;
             end
-
             uri = ['data:image/png;base64,' matlab.net.base64encode(uint8(data(:)))];
         end % encodeIcon
+
+        function dirs = iconSearchDirs(~)
+            % Mirror StabilityControl search paths so icons resolve identically
+            thisDir = fileparts(mfilename('fullpath'));
+            dirs = {
+                fullfile(thisDir,'..','..','Resources'), ...
+                fullfile(thisDir,'..','..','..','+SimViewer','Resources') ...
+            };
+        end
+
+        function uri = encodeIconByName(obj, fileName)
+            % Search candidate folders for an icon file and return a data URI
+            candDirs = obj.iconSearchDirs();
+            for i = 1:numel(candDirs)
+                p = fullfile(candDirs{i}, fileName);
+                if exist(p,'file') == 2
+                    uri = obj.encodeIcon(p);
+                    if ~isempty(uri), return; end
+                end
+            end
+            uri = '';
+        end
 
     end
         
