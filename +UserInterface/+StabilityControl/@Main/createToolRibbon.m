@@ -1033,7 +1033,6 @@ iconLine
             '<script>'
             '(function(){'
             'function setup(htmlComponent){'
-            ' window.setup = setup;'
             ' const root = document.getElementById("dropdownRoot");'
             ' if(!root){return;}'
             ' root.querySelectorAll(".menu-item").forEach(btn=>{'
@@ -1043,6 +1042,7 @@ iconLine
             ' root.focus();'
             ' document.addEventListener("wheel",evt=>evt.preventDefault(),{passive:false});'
             '}'
+            'window.setup = setup;'
             '})();'
             '</script>'};
         scriptBlock = strjoin(scriptLines,'');
