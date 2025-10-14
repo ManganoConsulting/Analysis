@@ -15,6 +15,8 @@ classdef FlightDynamicsApp < matlab.apps.AppBase
         end
 
         function startupFcn(app)
+            % Add Library Path
+            addLibPath(app);
             % Application.removeInstallsFromMPath();
             rootFolder = fileparts(fileparts(which('app.FlightDynamicsApp')));
             if ~isempty(rootFolder)
@@ -62,6 +64,18 @@ classdef FlightDynamicsApp < matlab.apps.AppBase
 
             app.DynamicsMain = [];
             app.UIFigure = matlab.ui.Figure.empty;
+        end
+        
+        function addLibPath(app)
+            try
+                repoRoot = fileparts(mfilename('fullpath'));
+                libPath = fullfile(repoRoot, 'external', 'library-matlab', 'src');
+                if exist(libPath, 'dir')
+                    addpath(genpath(libPath));
+                end
+            catch ME
+                warning('startup:libraryPath', 'Failed to add library-matlab to path: %s', ME.message);
+            end
         end
     end
 
