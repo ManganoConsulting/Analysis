@@ -197,7 +197,8 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             end
             
             % Create Tab sections for Analysis Objects
-            obj.AnalysisTabGroub = uitabgroup('Parent',obj.LargePanel);
+            mpPos = getpixelposition(obj.MainPanel);
+            obj.AnalysisTabGroub = uitabgroup('Parent',obj.LargePanel,'Position',[ 1 , 1 , mpPos(3) , mpPos(4) - 5 ]);
             obj.AnalysisTabGroub.TabLocation = 'Top';
             obj.AnalysisTabGroub.SelectionChangedFcn = @obj.analysisTabChanged;
             
@@ -313,17 +314,6 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                 set(obj.TabConstants(ind),'Title','Parameters');
                 
                       
-                
-            % Create Objects
-            % Create Card Panel
-            % Create a Batch collection Object
-%             obj.TaskCollectionObjBatch(ind) = lacm.TrimTaskCollectionBatch;    
-%             obj.TaskCollectionCardPanel(ind) = UserInterface.CardPanel(1,'Parent',obj.TabManual(ind));
-%             obj.TaskCollectionObjBatch(ind).TrimTaskCollObj(1) = lacm.TrimTaskCollection( obj.TaskCollectionCardPanel(ind).Panel(1), {''}, 'Run 1') ; 
-%             updateSelectedConfiguration(obj.TaskCollectionObjBatch(ind).TrimTaskCollObj(1),analysisObj.TrimTask);
-%             uuid = obj.Tree.addBatchObj( obj.TaskCollectionObjBatch(ind).TrimTaskCollObj(1) , ind , 'Run 1' );
-%             obj.TaskCollectionObjBatch(ind).TrimTaskCollObj(1).UUID = uuid;
-
                 % Create Objects
                 numCards = length(obj.TaskCollectionObjBatch(ind).TrimTaskCollObj);
                 obj.TaskCollectionCardPanel(ind) = UserInterface.CardPanel(numCards,'Parent',obj.TabManual(ind));
@@ -334,16 +324,6 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     uuid = obj.TaskCollectionObjBatch(ind).TrimTaskCollObj(i).UUID;
                     addlistener(obj.TaskCollectionObjBatch(ind).TrimTaskCollObj(i),'LabelUpdated',  @(src,event) obj.batchObjLabelUpdated(src,event,uuid)); 
                 end
-                
-
-%             for i = 1:length(obj.TaskCollectionObjBatch(ind).TrimTaskCollObj)
-%                 
-%                 obj.TaskCollectionObjBatch(ind).TrimTaskCollObj(i).createView(obj.TaskCollectionCardPanel(ind).Panel(1), {''}, 'Run 1');
-%                 
-%             end
-            
-            
-            
             
             addlistener(obj.TaskCollectionObjBatch(ind).TrimTaskCollObj(1),'ShowLogMessage',@obj.showLogMessage_CB);
             addlistener(obj.TaskCollectionObjBatch(ind).TrimTaskCollObj(1),'ShowLogMessage',@obj.showLogMessage_CB);   
@@ -444,17 +424,6 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
                     uuid = obj.TaskCollectionObjBatch(ind).TrimTaskCollObj(i).UUID;
                     addlistener(obj.TaskCollectionObjBatch(ind).TrimTaskCollObj(i),'LabelUpdated',  @(src,event) obj.batchObjLabelUpdated(src,event,uuid)); 
                 end
-%                 obj.TaskCollectionCardPanel(ind) = UserInterface.CardPanel(1,'Parent',obj.TabManual(ind));  
-%                 createView(obj.TaskCollectionObj(ind),{''},obj.TaskCollectionCardPanel(ind).Panel(1));
-%                 updateSelectedConfiguration(obj.TaskCollectionObj(ind),analysisObjs(ind).TrimTask);
-%                 
-%                 numCards = length(obj.TaskCollectionObjBatch(ind).TrimTaskCollObj);
-%                 for i = 1:numCards 
-%                     panel = obj.TaskCollectionCardPanel(ind).addPanel(1);
-%                     createView(obj.TaskCollectionObjBatch(ind).TrimTaskCollObj(i),{''},panel );
-%                     addlistener(obj.TaskCollectionObjBatch(ind).TrimTaskCollObj(i),'ShowLogMessage',@obj.showLogMessage_CB);
-%                     addlistener(obj.TaskCollectionObjBatch(ind).TrimTaskCollObj(i),'LabelUpdated',  @(src,event) obj.batchObjLabelUpdated(src,event,i)); 
-%                 end
                 
 
                 %----------------------------------------------------------
@@ -1150,72 +1119,6 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
         end % openTrimObj_CB 
         
-%         function exportTable_CB( obj , ~ , eventData )
-%             if isempty(obj.AnalysisTabSelIndex)
-%                 return;
-%             else
-%                 operCondColl = obj.OperCondCollObj(obj.AnalysisTabSelIndex);   
-%             end
-%             
-%             expOpt = UserInterface.ExportOptions();
-%             
-%             uiwait(expOpt.Figure);
-%             
-%             if expOpt.Range == 0
-%                 return;
-%             end
-%             
-%             maxLength =  size(operCondColl.TableData,2);
-%             
-%             if isempty(expOpt.Range)
-%                 colIndices = 1:maxLength;
-%             else
-%                 colIndices = [1:3,expOpt.Range + 3];
-%                 colIndices = colIndices(colIndices <= maxLength);
-%             end
-% 
-%             
-%             
-%             operCondTableData = operCondColl.TableData(:,colIndices); 
-%             if isempty(operCondTableData)
-%                 operCondTableData = {}; 
-%             end
-%             
-%             if strcmp(eventData.Object,'mat')
-%                 [filename, pathname] = uiputfile({'*.mat'},'Save Operating Condition Table Data','TableData');
-%                 if isequal(filename,0)
-%                     return;
-%                 end
-%                 save(fullfile(pathname,filename),'operCondTableData');
-%             elseif strcmp(eventData.Object,'csv')
-%                 [filename, pathname] = uiputfile({'*.csv'},'Save Operating Condition Table Data','TableData');
-%                 if isequal(filename,0)
-%                     return;
-%                 end
-%                 Utilities.cell2csv(fullfile(pathname,filename), operCondTableData, ',');
-%             else
-% % %                 maxLengthOC =  length(obj.OperCondCollObj(obj.AnalysisTabSelIndex).OperatingCondition);
-% % % 
-% % %                 if isempty(expOpt.Range)
-% % %                     colIndicesOC = 1:maxLengthOC;
-% % %                 else
-% % %                     colIndicesOC = expOpt.Range;
-% % %                     colIndicesOC = colIndicesOC(colIndicesOC <= maxLengthOC);
-% % %                 end
-% % %                
-% % %                 operCond = operCondColl.OperatingCondition(colIndicesOC);
-% % %                 file = Utilities.write2mfile(operCond,true);
-% % %                 open(file);
-% 
-%                 [filename, pathname] = uiputfile({'*.m'},'Save Operating Condition Table Data','TableData');
-%                 if isequal(filename,0)
-%                     return;
-%                 end
-%                 Utilities.cell2mfile(fullfile(pathname,filename), operCondTableData);
-%                 
-%             end
-%         end % exportTable_CB
-
         function exportTable_CB( obj , ~ , eventData )
             if isempty(obj.AnalysisTabSelIndex)
                 return;

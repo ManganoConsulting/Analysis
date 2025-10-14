@@ -774,7 +774,7 @@ classdef StartUpScreen < matlab.mixin.Copyable & hgsetget
         end % update        
         
         function setWaitPtr(obj)
-            fig = ancestor(obj.Parent,'figure','toplevel');
+            fig = ancestor(gcf,'uifigure','toplevel');
             set(fig, 'pointer', 'watch');
             drawnow;
         end % setWaitPtr
