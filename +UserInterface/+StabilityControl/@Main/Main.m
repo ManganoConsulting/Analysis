@@ -1,7 +1,6 @@
 classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
     %% Public properties - Object Handles
     properties   
-        RibbonObj UserInterface.StabilityControl.ToolRibbon
         TaskCollectionObj lacm.TrimTaskCollection
         TaskCollectionObjBatch lacm.TrimTaskCollectionBatch
         
@@ -3435,9 +3434,6 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
 
             % User Defined Objects
-            try %#ok<*TRYNC>             
-                delete(obj.RibbonObj);
-            end
             try %#ok<*TRYNC>
                 delete(obj.TaskCollectionObj);
             end
@@ -3475,37 +3471,6 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
 
             delete@UserInterface.Level1Container(obj);
              
-%         obj.RibbonObj
-%         obj.TaskCollectionObj
-%         obj.TaskCollectionObjBatch
-%         obj.OperCondCollObj
-%         obj.Tree
-%         obj.AxisColl
-%         obj.SimAxisColl
-%         obj.PostSimAxisColl
-%         obj.ConstantsParamColl
-%         obj.AutoSave
-%         obj.AutoSaveFileName
-%         obj.AnalysisObjects
-%         obj.TaskCollectionCardPanel
-%         obj.BrowserPanel
-%         obj.SmallPanel
-%         obj.LargePanel
-%         obj.TaskPanel 
-%         obj.TabPanel
-%         obj.TabManual  
-%         obj.TabConstants 
-%  
-%         obj.ConstantTable  
-%         obj.AnalysisTabGroub  
-%         obj.AnalysisTabArray
-%         obj.TaskObjContainer
-%         obj.OperCondContainer
-%         obj.SimulationOutputData
-%         obj.OperatingConditionForSimData
-%         obj.SelectedTab
-
-
 
 
         end % delete
@@ -3517,8 +3482,6 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             % Override copyElement method:    
             % Make a shallow copy of all properties
             cpObj = copyElement@matlab.mixin.Copyable(obj);
-%             % Make a deep copy of the RibbonObj object
-%             cpObj.RibbonObj = copy(obj.RibbonObj);
             % Make a deep copy of the TaskCollectionObj object
             cpObj.TaskCollectionObj = copy(obj.TaskCollectionObj);
             % Make a deep copy of the TaskCollectionObjBatch object
