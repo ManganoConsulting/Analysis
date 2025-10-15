@@ -3482,6 +3482,7 @@ classdef Main < UserInterface.Level1Container %matlab.mixin.Copyable
             % Override copyElement method:    
             % Make a shallow copy of all properties
             cpObj = copyElement@matlab.mixin.Copyable(obj);
+
             % Make a deep copy of the TaskCollectionObj object
             cpObj.TaskCollectionObj = copy(obj.TaskCollectionObj);
             % Make a deep copy of the TaskCollectionObjBatch object
